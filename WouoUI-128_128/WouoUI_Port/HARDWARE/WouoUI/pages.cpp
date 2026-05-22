@@ -1,0 +1,767 @@
+#include "pages.h"
+#include "ui_state.h"
+#include "animation.h"
+#include "display.h"
+#include "menu_data.h"
+#include "eeprom_manager.h"
+#include "knob.h"
+#include "window.h"
+#include <math.h>
+#include <string.h>
+
+/* ADC stub (纯软件模拟,无实际ADC) */
+static int adc_stub_read(uint8_t ch) {
+    (void)ch;
+    static uint16_t phase = 0;
+    phase++;
+    return (int)(2048 + 1500 * sin(phase * 0.05f));
+}
+
+#define analogRead(pin) adc_stub_read(pin)
+
+static long map(long x, long in_min, long in_max, long out_min, long out_max) {
+    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+/* 模拟引脚编号(仅占位,stub用) */
+uint8_t analog_pin[8] = {0, 1, 2, 3, 4, 5, 6, 7};
+
+void check_box_v_init(uint8_t *param) {
+    check_box.v = param;
+}
+
+void check_box_m_init(uint8_t *param) {
+    check_box.m = param;
+}
+
+void check_box_s_init(uint8_t *param, uint8_t *param_p) {
+    check_box.s = param;
+    check_box.s_p = param_p;
+}
+
+void check_box_m_select(uint8_t param) {
+    check_box.m[param] = !check_box.m[param];
+    eeprom.change = true;
+}
+
+void check_box_s_select(uint8_t val, uint8_t pos) {
+    *check_box.s = val;
+    *check_box.s_p = pos;
+    eeprom.change = true;
+}
+
+void list_draw_value(int n) {
+    u8g2.print(check_box.v[n - 1]);
+}
+
+void list_draw_check_box_frame() {
+    u8g2.drawRFrame(CHECK_BOX_L_S, list.temp + CHECK_BOX_U_S, CHECK_BOX_F_W, CHECK_BOX_F_H, 1);
+}
+
+void list_draw_check_box_dot() {
+    u8g2.drawBox(CHECK_BOX_L_S + CHECK_BOX_D_S + 1, list.temp + CHECK_BOX_U_S + CHECK_BOX_D_S + 1, CHECK_BOX_F_W - (CHECK_BOX_D_S + 1) * 2, CHECK_BOX_F_H - (CHECK_BOX_D_S + 1) * 2);
+}
+
+void list_draw_krf(int n) {
+    switch (check_box.v[n - 1]) {
+        case 0: u8g2.print("OFF"); break;
+        case 1: u8g2.print("VOL"); break;
+        case 2: u8g2.print("BRI"); break;
+    }
+}
+
+void list_draw_kpf(int n) {
+    if (check_box.v[n - 1] == 0) u8g2.print("OFF");
+    else if (check_box.v[n - 1] <= 90) u8g2.print((char)check_box.v[n - 1]);
+    else u8g2.print("?");
+}
+
+void list_draw_text_and_check_box(Menu* arr, int i) {
+    u8g2.drawStr(LIST_TEXT_S, list.temp + LIST_TEXT_H + LIST_TEXT_S, arr[i].title);
+    u8g2.setCursor(CHECK_BOX_L_S, list.temp + LIST_TEXT_H + LIST_TEXT_S);
+    switch (arr[i].title[0]) {
+        case '~': list_draw_value(i); break;
+        case '+': list_draw_check_box_frame(); if (check_box.m[i - 1] == 1) list_draw_check_box_dot(); break;
+        case '=': list_draw_check_box_frame(); if (*check_box.s_p == i) list_draw_check_box_dot(); break;
+        case '#': list_draw_krf(i); break;
+        case '$': list_draw_kpf(i); break;
+    }
+}
+
+void tile_param_init() {
+    ui.init = false;
+    tile.icon_x = 0;
+    tile.icon_x_trg = TILE_ICON_S;
+    tile.icon_y = -TILE_ICON_H;
+    tile.icon_y_trg = 0;
+    tile.indi_x = 0;
+    tile.indi_x_trg = TILE_INDI_W;
+    tile.title_y = tile.title_y_calc;
+    tile.title_y_trg = tile.title_y_trg_calc;
+}
+
+void tile_show(Menu* arr_1, Menu* arr_2, const uint8_t icon_pic[][16 * 18]) {
+    animation(&tile.icon_x, &tile.icon_x_trg, TILE_ANI);
+    animation(&tile.icon_y, &tile.icon_y_trg, TILE_ANI);
+    animation(&tile.indi_x, &tile.indi_x_trg, TILE_ANI);
+    animation(&tile.title_y, &tile.title_y_trg, TILE_ANI);
+
+    u8g2.setDrawColor(1);
+    u8g2.setFontDirection(0);
+
+    u8g2.setFont(TILE_B_FONT);
+    u8g2.drawStr(((DISP_W - TILE_INDI_W) - u8g2.getStrWidth(arr_1[ui.select[ui.layer]].title)) / 2 + TILE_INDI_W, tile.title_y, arr_1[ui.select[ui.layer]].title);
+
+    u8g2.setFont(TILE_S_FONT);
+    u8g2.drawStr(((DISP_W - u8g2.getStrWidth(arr_2[ui.select[ui.layer]].title)) / 2), 0.5f * (TILE_ICON_S + TILE_INDI_H + DISP_H + LIST_TEXT_H), arr_2[ui.select[ui.layer]].title);
+
+    u8g2.drawBox(0, TILE_ICON_S, tile.indi_x, TILE_INDI_H);
+
+    if (!ui.init) {
+        for (uint8_t i = 0; i < ui.num[ui.index]; ++i) {
+            if (ui.param[TILE_UFD]) tile.temp = (DISP_W - TILE_ICON_W) / 2 + i * tile.icon_x - TILE_ICON_S * ui.select[ui.layer];
+            else tile.temp = (DISP_W - TILE_ICON_W) / 2 + (i - ui.select[ui.layer]) * tile.icon_x;
+            u8g2.drawXBMP((int16_t)tile.temp, (int16_t)tile.icon_y, TILE_ICON_W, TILE_ICON_H, icon_pic[i]);
+        }
+        if (tile.icon_x == tile.icon_x_trg) {
+            ui.init = true;
+            tile.icon_x = tile.icon_x_trg = -ui.select[ui.layer] * TILE_ICON_S;
+        }
+    }
+    else for (uint8_t i = 0; i < ui.num[ui.index]; ++i) u8g2.drawXBMP((DISP_W - TILE_ICON_W) / 2 + (int16_t)tile.icon_x + i * TILE_ICON_S, 0, TILE_ICON_W, TILE_ICON_H, icon_pic[i]);
+
+    u8g2.setDrawColor(2);
+    if (!ui.param[DARK_MODE]) u8g2.drawBox(0, 0, DISP_W, DISP_H);
+}
+
+void tile_rotate_switch() {
+    switch (btn.id) {
+        case BTN_ID_CC:
+            if (ui.init) {
+                if (ui.select[ui.layer] > 0) {
+                    ui.select[ui.layer] -= 1;
+                    tile.icon_x_trg += TILE_ICON_S;
+                    tile.select_flag = false;
+                }
+                else {
+                    if (ui.param[TILE_LOOP]) {
+                        ui.select[ui.layer] = ui.num[ui.index] - 1;
+                        tile.icon_x_trg = -TILE_ICON_S * (ui.num[ui.index] - 1);
+                        break;
+                    }
+                    else tile.select_flag = true;
+                }
+            }
+            break;
+
+        case BTN_ID_CW:
+            if (ui.init) {
+                if (ui.select[ui.layer] < (ui.num[ui.index] - 1)) {
+                    ui.select[ui.layer] += 1;
+                    tile.icon_x_trg -= TILE_ICON_S;
+                    tile.select_flag = false;
+                }
+                else {
+                    if (ui.param[TILE_LOOP]) {
+                        ui.select[ui.layer] = 0;
+                        tile.icon_x_trg = 0;
+                        break;
+                    }
+                    else tile.select_flag = true;
+                }
+            }
+            break;
+    }
+}
+
+void list_rotate_switch() {
+    if (!list.loop) {
+        switch (btn.id) {
+            case BTN_ID_CC:
+                if (ui.select[ui.layer] == 0) {
+                    if (ui.param[LIST_LOOP] && ui.init) {
+                        list.loop = true;
+                        ui.select[ui.layer] = ui.num[ui.index] - 1;
+                        if (ui.num[ui.index] > list.line_n) {
+                            list.box_y_trg[ui.layer] = DISP_H - LIST_LINE_H;
+                            list.y_trg = DISP_H - ui.num[ui.index] * LIST_LINE_H;
+                        }
+                        else list.box_y_trg[ui.layer] = (ui.num[ui.index] - 1) * LIST_LINE_H;
+                        break;
+                    }
+                    else break;
+                }
+                if (ui.init) {
+                    ui.select[ui.layer] -= 1;
+                    if (ui.select[ui.layer] < -(list.y_trg / LIST_LINE_H)) {
+                        if (!(DISP_H % LIST_LINE_H)) list.y_trg += LIST_LINE_H;
+                        else {
+                            if (list.box_y_trg[ui.layer] == DISP_H - LIST_LINE_H * list.line_n) {
+                                list.y_trg += (list.line_n + 1) * LIST_LINE_H - DISP_H;
+                                list.box_y_trg[ui.layer] = 0;
+                            }
+                            else if (list.box_y_trg[ui.layer] == LIST_LINE_H) {
+                                list.box_y_trg[ui.layer] = 0;
+                            }
+                            else list.y_trg += LIST_LINE_H;
+                        }
+                    }
+                    else list.box_y_trg[ui.layer] -= LIST_LINE_H;
+                    break;
+                }
+
+            case BTN_ID_CW:
+                if (ui.select[ui.layer] == (ui.num[ui.index] - 1)) {
+                    if (ui.param[LIST_LOOP] && ui.init) {
+                        list.loop = true;
+                        ui.select[ui.layer] = 0;
+                        list.y_trg = 0;
+                        list.box_y_trg[ui.layer] = 0;
+                        break;
+                    }
+                    else break;
+                }
+                if (ui.init) {
+                    ui.select[ui.layer] += 1;
+                    if ((ui.select[ui.layer] + 1) > (list.line_n - list.y_trg / LIST_LINE_H)) {
+                        if (!(DISP_H % LIST_LINE_H)) list.y_trg -= LIST_LINE_H;
+                        else {
+                            if (list.box_y_trg[ui.layer] == LIST_LINE_H * (list.line_n - 1)) {
+                                list.y_trg -= (list.line_n + 1) * LIST_LINE_H - DISP_H;
+                                list.box_y_trg[ui.layer] = DISP_H - LIST_LINE_H;
+                            }
+                            else if (list.box_y_trg[ui.layer] == DISP_H - LIST_LINE_H * 2) {
+                                list.box_y_trg[ui.layer] = DISP_H - LIST_LINE_H;
+                            }
+                            else list.y_trg -= LIST_LINE_H;
+                        }
+                    }
+                    else list.box_y_trg[ui.layer] += LIST_LINE_H;
+                    break;
+                }
+                break;
+        }
+    }
+}
+
+void list_show(Menu* arr, uint8_t ui_index) {
+    u8g2.setFont(LIST_FONT);
+    list.box_x_trg = u8g2.getStrWidth(arr[ui.select[ui.layer]].title) + LIST_TEXT_S * 2;
+    list.bar_y_trg = ceil((ui.select[ui.layer]) * ((float)DISP_H / (ui.num[ui_index] - 1)));
+
+    animation(&list.y, &list.y_trg, LIST_ANI);
+    animation(&list.box_x, &list.box_x_trg, LIST_ANI);
+    animation(&list.box_y, &list.box_y_trg[ui.layer], LIST_ANI);
+    animation(&list.bar_y, &list.bar_y_trg, LIST_ANI);
+
+    if (list.loop && list.box_y == list.box_y_trg[ui.layer]) list.loop = false;
+
+    u8g2.setDrawColor(1);
+
+    u8g2.drawHLine(DISP_W - LIST_BAR_W, 0, LIST_BAR_W);
+    u8g2.drawHLine(DISP_W - LIST_BAR_W, DISP_H - 1, LIST_BAR_W);
+    u8g2.drawVLine(DISP_W - ceil((float)LIST_BAR_W / 2), 0, DISP_H);
+    u8g2.drawBox(DISP_W - LIST_BAR_W, 0, LIST_BAR_W, list.bar_y);
+
+    if (!ui.init) {
+        for (int i = 0; i < ui.num[ui_index]; ++i) {
+            if (ui.param[LIST_UFD]) list.temp = i * list.y - LIST_LINE_H * ui.select[ui.layer] + list.box_y_trg[ui.layer];
+            else list.temp = (i - ui.select[ui.layer]) * list.y + list.box_y_trg[ui.layer];
+            list_draw_text_and_check_box(arr, i);
+        }
+        if (list.y == list.y_trg) {
+            ui.init = true;
+            list.y = list.y_trg = -LIST_LINE_H * ui.select[ui.layer] + list.box_y_trg[ui.layer];
+        }
+    }
+    else for (int i = 0; i < ui.num[ui_index]; ++i) {
+        list.temp = LIST_LINE_H * i + list.y;
+        list_draw_text_and_check_box(arr, i);
+    }
+
+    u8g2.setDrawColor(2);
+    u8g2.drawRBox(0, list.box_y, list.box_x, LIST_LINE_H, LIST_BOX_R);
+
+    if (!ui.param[DARK_MODE]) {
+        u8g2.drawBox(0, 0, DISP_W, DISP_H);
+        switch (ui.index) {
+            case M_WINDOW:
+            case M_VOLT:
+            u8g2.drawBox(0, 0, DISP_W, DISP_H);
+        }
+    }
+}
+
+void volt_param_init() {
+    volt.text_bg_l = 0;
+    volt.text_bg_l_trg = DISP_W;
+}
+
+void volt_show() {
+    u8g2.setFont(LIST_FONT);
+    list.box_x_trg = u8g2.getStrWidth(volt_menu[ui.select[ui.layer]].title) + LIST_TEXT_S * 2;
+
+    animation(&list.y, &list.y_trg, LIST_ANI);
+    animation(&list.box_x, &list.box_x_trg, LIST_ANI);
+    animation(&list.box_y, &list.box_y_trg[ui.layer], LIST_ANI);
+    animation(&volt.text_bg_l, &volt.text_bg_l_trg, TAG_ANI);
+
+    if (list.loop && list.box_y == list.box_y_trg[ui.layer]) list.loop = false;
+
+    u8g2.setDrawColor(1);
+
+    u8g2.setFontDirection(1);
+    if (!ui.init) {
+        for (uint8_t i = 0; i < ui.num[ui.index]; ++i) u8g2.drawStr(LIST_TEXT_S + (i - ui.select[ui.layer]) * list.y + list.box_y_trg[ui.layer] - 1, VOLT_LIST_U_S, volt_menu[i].title);
+        if (list.y == list.y_trg) {
+            ui.init = true;
+            list.y = list.y_trg = -LIST_LINE_H * ui.select[ui.layer] + list.box_y_trg[ui.layer];
+        }
+    }
+    else for (uint8_t i = 0; i < ui.num[ui.index]; ++i) u8g2.drawStr(LIST_TEXT_S + LIST_LINE_H * i + (int16_t)list.y - 1, VOLT_LIST_U_S, volt_menu[i].title);
+
+    volt.val = 0;
+    u8g2.drawFrame(0, 0, WAVE_BOX_W, WAVE_BOX_H);
+    u8g2.drawFrame(1, 1, WAVE_BOX_W - 2, WAVE_BOX_H - 2);
+    if (list.box_y == list.box_y_trg[ui.layer] && list.y == list.y_trg) {
+        for (int i = 1; i < WAVE_W - 1; i++) {
+            int adc_val = analogRead(analog_pin[ui.select[ui.layer]]);
+            volt.val = adc_val;
+            volt.ch0_wave[i] = map(adc_val, 0, 4095, WAVE_MAX, WAVE_MIN);
+            u8g2.drawLine(WAVE_L + i - 1, WAVE_U + volt.ch0_wave[i - 1], WAVE_L + i, WAVE_U + volt.ch0_wave[i]);
+        }
+    }
+
+    u8g2.setFontDirection(0);
+    u8g2.setFont(VOLT_FONT);
+    u8g2.setCursor(23, VOLT_LIST_U_S - 12);
+    u8g2.print(volt.val / 4096.0f * 3.3f);
+    u8g2.print("V");
+
+    u8g2.setDrawColor(2);
+    u8g2.drawRBox(list.box_y, VOLT_LIST_U_S - LIST_TEXT_S, LIST_LINE_H, list.box_x, LIST_BOX_R);
+    u8g2.drawBox(DISP_W - volt.text_bg_l, VOLT_TEXT_BG_U_S, DISP_W, VOLT_TEXT_BG_H);
+
+    if (!ui.param[DARK_MODE]) u8g2.drawBox(0, 0, DISP_W, DISP_H);
+}
+
+void about_param_init() {
+    about.indi_x = 0;
+    about.indi_x_trg = ABOUT_INDI_S;
+}
+
+void about_show() {
+    u8g2.setFont(LIST_FONT);
+    list.box_x_trg = u8g2.getStrWidth(about_menu[0].title) + LIST_TEXT_S * 2;
+
+    animation(&list.box_x, &list.box_x_trg, TAG_ANI);
+    animation(&about.indi_x, &about.indi_x_trg, TAG_ANI);
+
+    u8g2.setDrawColor(1);
+
+    u8g2.drawStr(ABOUT_INDI_S + LIST_TEXT_S, ABOUT_INDI_S + LIST_TEXT_S + LIST_TEXT_H, about_menu[0].title);
+    u8g2.drawStr(ABOUT_INDI_S + list.box_x_trg + ABOUT_INDI_S, ABOUT_INDI_S + LIST_TEXT_S + LIST_TEXT_H, about_menu[1].title);
+    for (int i = 2; i < ui.num[M_ABOUT]; i++) u8g2.drawStr(about.indi_x_trg + ABOUT_INDI_W + ABOUT_INDI_S * 2, ABOUT_INDI_S + LIST_LINE_H + LIST_TEXT_S / 2 + (i - 1) * LIST_LINE_H, about_menu[i].title);
+    u8g2.drawBox(about.indi_x, ABOUT_INDI_S + LIST_LINE_H + ABOUT_INDI_S * 2, ABOUT_INDI_W, (ui.num[M_ABOUT] - 2) * LIST_LINE_H - LIST_TEXT_S);
+
+    u8g2.setDrawColor(2);
+    u8g2.drawRBox(ABOUT_INDI_S, ABOUT_INDI_S, list.box_x, LIST_LINE_H, LIST_BOX_R);
+
+    if (!ui.param[DARK_MODE]) u8g2.drawBox(0, 0, DISP_W, DISP_H);
+}
+
+void sleep_param_init() {
+    ui.sleep = true;
+    if (eeprom.change) {
+        eeprom_write_all_data();
+        eeprom.change = false;
+    }
+}
+
+void sleep_proc() {
+    if (!ui.sleep) return;
+
+    if (btn.pressed) {
+        btn.pressed = 0;
+        if (btn.id == BTN_ID_SP || btn.id == BTN_ID_LP) {
+            ui.idle_timer = millis();
+            if (ui.last_index == M_SLEEP) ui.last_index = M_MAIN;
+            ui.index = ui.last_index;
+            ui.layer++;
+            ui.select[ui.layer] = ui.last_select;
+            list.box_y_trg[ui.layer] = ui.last_box_y_trg;
+            if (ui.index == M_MAIN) {
+                tile.icon_x = -ui.select[ui.layer] * TILE_ICON_S;
+                tile.icon_x_trg = tile.icon_x;
+                tile.icon_y = 0;
+                tile.icon_y_trg = 0;
+                tile.indi_x = TILE_INDI_W;
+                tile.indi_x_trg = TILE_INDI_W;
+                tile.title_y = tile.title_y_calc;
+                tile.title_y_trg = tile.title_y_trg_calc;
+                tile.select_flag = 1;
+            } else {
+                list.y = -LIST_LINE_H * ui.select[ui.layer] + list.box_y_trg[ui.layer];
+                list.y_trg = list.y;
+                list.box_y = list.box_y_trg[ui.layer];
+                list.box_x = 0;
+                list.box_x_trg = 0;
+                list.bar_y = ui.num[ui.index] > 1 ? ceil(ui.select[ui.layer] * ((float)DISP_H / (ui.num[ui.index] - 1))) : 0;
+                list.bar_y_trg = list.bar_y;
+                list.loop = 0;
+                if (ui.index == M_VOLT) {
+                    volt.text_bg_l = DISP_W;
+                    volt.text_bg_l_trg = DISP_W;
+                } else if (ui.index == M_ABOUT) {
+                    about.indi_x = ABOUT_INDI_S;
+                    about.indi_x_trg = ABOUT_INDI_S;
+                }
+            }
+            if (ui.index == M_SETTING) {
+                check_box_v_init(ui.param);
+                check_box_m_init(ui.param);
+                uint8_t pi = TILE_UFD, vi = DISP_BRI;
+                for (uint8_t i = 0; setting_menu[i].title[0] != '-'; ++i) {
+                    if (setting_menu[i].title[0] == '+') {
+                        check_box.m_map[i] = pi;
+                        ++pi;
+                    } else if (setting_menu[i].title[0] == '~') {
+                        if (strcmp(setting_menu[i].title + 2, "List Cur") == 0) check_box.v_map[i] = LIST_CUR;
+                        else if (strcmp(setting_menu[i].title + 2, "Rotate Scr") == 0) check_box.v_map[i] = ROTATE_SCR;
+                        else if (strcmp(setting_menu[i].title + 2, "Sleep") == 0) check_box.v_map[i] = SLP_T;
+                        else check_box.v_map[i] = vi++;
+                    }
+                }
+            } else if (ui.index == M_KNOB) {
+                check_box_v_init(knob.param);
+            } else if (ui.index == M_KRF) {
+                check_box_s_init(&knob.param[KNOB_ROT], &knob.param[KNOB_ROT_P]);
+            } else if (ui.index == M_KPF) {
+                check_box_s_init(&knob.param[KNOB_COD], &knob.param[KNOB_COD_P]);
+            }
+            ui.init = 1;
+            ui.wake_fade = 1;
+            ui.state = S_FADE;
+            ui.sleep = false;
+        }
+    }
+}
+
+void main_proc() {
+    tile_show(main_menu, main_menu_exp, main_icon_pic);
+    if (btn.pressed) {
+        btn.pressed = false;
+        switch (btn.id) {
+            case BTN_ID_CW:
+            case BTN_ID_CC:
+                tile_rotate_switch();
+                break;
+            case BTN_ID_SP:
+                switch (ui.select[ui.layer]) {
+                    case 0: ui.last_select = ui.select[ui.layer]; ui.last_box_y_trg = list.box_y_trg[ui.layer]; ui.index = M_SLEEP; ui.state = S_LAYER_OUT; break;
+                    case 1: ui.index = M_EDITOR; ui.state = S_LAYER_IN; break;
+                    case 2: ui.index = M_VOLT; ui.state = S_LAYER_IN; break;
+                    case 3: ui.index = M_SETTING; ui.state = S_LAYER_IN; break;
+                }
+                break;
+        }
+    }
+    if (!tile.select_flag && ui.init) {
+        tile.indi_x = 0;
+        tile.title_y = tile.title_y_calc;
+    }
+}
+
+void editor_proc() {
+    list_show(editor_menu, M_EDITOR);
+    if (btn.pressed) {
+        btn.pressed = false;
+        switch (btn.id) {
+            case BTN_ID_CW:
+            case BTN_ID_CC:
+                list_rotate_switch();
+                break;
+            case BTN_ID_LP:
+                ui.select[ui.layer] = 0;
+            case BTN_ID_SP:
+                switch (ui.select[ui.layer]) {
+                    case 0: ui.index = M_MAIN; ui.state = S_LAYER_OUT; break;
+                    case 11: ui.index = M_KNOB; ui.state = S_LAYER_IN; break;
+                }
+                break;
+        }
+    }
+}
+
+void knob_param_init() {
+    check_box_v_init(knob.param);
+}
+
+void krf_param_init() {
+    check_box_s_init(&knob.param[KNOB_ROT], &knob.param[KNOB_ROT_P]);
+}
+
+void kpf_param_init() {
+    check_box_s_init(&knob.param[KNOB_COD], &knob.param[KNOB_COD_P]);
+}
+
+void setting_param_init() {
+    check_box_v_init(ui.param);
+    check_box_m_init(ui.param);
+}
+
+void knob_proc() {
+    list_show(knob_menu, M_KNOB);
+    if (btn.pressed) {
+        btn.pressed = false;
+        switch (btn.id) {
+            case BTN_ID_CW:
+            case BTN_ID_CC:
+                list_rotate_switch();
+                break;
+            case BTN_ID_LP:
+                ui.select[ui.layer] = 0;
+            case BTN_ID_SP:
+                switch (ui.select[ui.layer]) {
+                    case 0: ui.index = M_EDITOR; ui.state = S_LAYER_OUT; break;
+                    case 1: ui.index = M_KRF; ui.state = S_LAYER_IN; check_box_s_init(&knob.param[KNOB_ROT], &knob.param[KNOB_ROT_P]); break;
+                    case 2: ui.index = M_KPF; ui.state = S_LAYER_IN; check_box_s_init(&knob.param[KNOB_COD], &knob.param[KNOB_COD_P]); break;
+                }
+                break;
+        }
+    }
+}
+
+void krf_proc() {
+    list_show(krf_menu, M_KRF);
+    if (btn.pressed) {
+        btn.pressed = false;
+        switch (btn.id) {
+            case BTN_ID_CW:
+            case BTN_ID_CC:
+                list_rotate_switch();
+                break;
+            case BTN_ID_LP:
+                ui.select[ui.layer] = 0;
+            case BTN_ID_SP:
+                switch (ui.select[ui.layer]) {
+                    case 0: ui.index = M_KNOB; ui.state = S_LAYER_OUT; break;
+                    case 1: break;
+                    case 2: check_box_s_select(KNOB_DISABLE, ui.select[ui.layer]); break;
+                    case 3: break;
+                    case 4: check_box_s_select(KNOB_ROT_VOL, ui.select[ui.layer]); break;
+                    case 5: check_box_s_select(KNOB_ROT_BRI, ui.select[ui.layer]); break;
+                    case 6: break;
+                }
+                break;
+        }
+    }
+}
+
+void kpf_proc() {
+    list_show(kpf_menu, M_KPF);
+    if (btn.pressed) {
+        btn.pressed = false;
+        switch (btn.id) {
+            case BTN_ID_CW:
+            case BTN_ID_CC:
+                list_rotate_switch();
+                break;
+            case BTN_ID_LP:
+                ui.select[ui.layer] = 0;
+            case BTN_ID_SP:
+                switch (ui.select[ui.layer]) {
+                    case 0: ui.index = M_KNOB; ui.state = S_LAYER_OUT; break;
+                    case 1: break;
+                    case 2: check_box_s_select(KNOB_DISABLE, ui.select[ui.layer]); break;
+                    case 3: break;
+                    case 4: check_box_s_select('A', ui.select[ui.layer]); break;
+                    case 5: check_box_s_select('B', ui.select[ui.layer]); break;
+                    case 6: check_box_s_select('C', ui.select[ui.layer]); break;
+                    case 7: check_box_s_select('D', ui.select[ui.layer]); break;
+                    case 8: check_box_s_select('E', ui.select[ui.layer]); break;
+                    case 9: check_box_s_select('F', ui.select[ui.layer]); break;
+                    case 10: check_box_s_select('G', ui.select[ui.layer]); break;
+                    case 11: check_box_s_select('H', ui.select[ui.layer]); break;
+                    case 12: check_box_s_select('I', ui.select[ui.layer]); break;
+                    case 13: check_box_s_select('J', ui.select[ui.layer]); break;
+                    case 14: check_box_s_select('K', ui.select[ui.layer]); break;
+                    case 15: check_box_s_select('L', ui.select[ui.layer]); break;
+                    case 16: check_box_s_select('M', ui.select[ui.layer]); break;
+                    case 17: check_box_s_select('N', ui.select[ui.layer]); break;
+                    case 18: check_box_s_select('O', ui.select[ui.layer]); break;
+                    case 19: check_box_s_select('P', ui.select[ui.layer]); break;
+                    case 20: check_box_s_select('Q', ui.select[ui.layer]); break;
+                    case 21: check_box_s_select('R', ui.select[ui.layer]); break;
+                    case 22: check_box_s_select('S', ui.select[ui.layer]); break;
+                    case 23: check_box_s_select('T', ui.select[ui.layer]); break;
+                    case 24: check_box_s_select('U', ui.select[ui.layer]); break;
+                    case 25: check_box_s_select('V', ui.select[ui.layer]); break;
+                    case 26: check_box_s_select('W', ui.select[ui.layer]); break;
+                    case 27: check_box_s_select('X', ui.select[ui.layer]); break;
+                    case 28: check_box_s_select('Y', ui.select[ui.layer]); break;
+                    case 29: check_box_s_select('Z', ui.select[ui.layer]); break;
+                    case 30: break;
+                    case 31: check_box_s_select('0', ui.select[ui.layer]); break;
+                    case 32: check_box_s_select('1', ui.select[ui.layer]); break;
+                    case 33: check_box_s_select('2', ui.select[ui.layer]); break;
+                    case 34: check_box_s_select('3', ui.select[ui.layer]); break;
+                    case 35: check_box_s_select('4', ui.select[ui.layer]); break;
+                    case 36: check_box_s_select('5', ui.select[ui.layer]); break;
+                    case 37: check_box_s_select('6', ui.select[ui.layer]); break;
+                    case 38: check_box_s_select('7', ui.select[ui.layer]); break;
+                    case 39: check_box_s_select('8', ui.select[ui.layer]); break;
+                    case 40: check_box_s_select('9', ui.select[ui.layer]); break;
+                    case 41: break;
+                    default: break;
+                }
+                break;
+        }
+    }
+}
+
+void volt_proc() {
+    volt_show();
+    if (btn.pressed) {
+        btn.pressed = false;
+        switch (btn.id) {
+            case BTN_ID_CW:
+            case BTN_ID_CC:
+                list_rotate_switch();
+                break;
+            case BTN_ID_SP:
+            case BTN_ID_LP:
+                ui.index = M_MAIN;
+                ui.state = S_LAYER_OUT;
+                break;
+        }
+    }
+}
+
+void setting_proc() {
+    list_show(setting_menu, M_SETTING);
+    if (btn.pressed) {
+        btn.pressed = false;
+        switch (btn.id) {
+            case BTN_ID_CW:
+            case BTN_ID_CC:
+                list_rotate_switch();
+                break;
+            case BTN_ID_LP:
+                ui.select[ui.layer] = 0;
+            case BTN_ID_SP:
+                switch (ui.select[ui.layer]) {
+                    case 0: ui.index = M_MAIN; ui.state = S_LAYER_OUT; break;
+                    case 1: window_value_init("Disp Bri", DISP_BRI, &ui.param[DISP_BRI], 255, 0, 5, setting_menu, M_SETTING); break;
+                    case 2: window_value_init("Tile Ani", TILE_ANI, &ui.param[TILE_ANI], 100, 10, 1, setting_menu, M_SETTING); break;
+                    case 3: window_value_init("List Ani", LIST_ANI, &ui.param[LIST_ANI], 100, 10, 1, setting_menu, M_SETTING); break;
+                    case 4: window_value_init("Win Ani", WIN_ANI, &ui.param[WIN_ANI], 100, 10, 1, setting_menu, M_SETTING); break;
+                    case 5: window_value_init("Spot Ani", SPOT_ANI, &ui.param[SPOT_ANI], 100, 10, 1, setting_menu, M_SETTING); break;
+                    case 6: window_value_init("Tag Ani", TAG_ANI, &ui.param[TAG_ANI], 100, 10, 1, setting_menu, M_SETTING); break;
+                    case 7: window_value_init("Fade Ani", FADE_ANI, &ui.param[FADE_ANI], 255, 0, 1, setting_menu, M_SETTING); break;
+                    case 8: window_value_init("Btn SPT", BTN_SPT, &ui.param[BTN_SPT], 255, 0, 1, setting_menu, M_SETTING); break;
+                    case 9: window_value_init("Btn LPT", BTN_LPT, &ui.param[BTN_LPT], 255, 0, 1, setting_menu, M_SETTING); break;
+                    case 10: check_box_m_select(TILE_UFD); break;
+                    case 11: check_box_m_select(LIST_UFD); break;
+                    case 12: check_box_m_select(TILE_LOOP); break;
+                    case 13: check_box_m_select(LIST_LOOP); break;
+                    case 14: check_box_m_select(WIN_BOK); break;
+                    case 15: check_box_m_select(KNOB_DIR); break;
+                    case 16: check_box_m_select(DARK_MODE); break;
+                    case 17: ui.index = M_ABOUT; ui.state = S_LAYER_IN; break;
+                }
+                break;
+        }
+    }
+}
+
+void about_proc() {
+    about_show();
+    if (btn.pressed) {
+        btn.pressed = false;
+        switch (btn.id) {
+            case BTN_ID_SP:
+            case BTN_ID_LP:
+                ui.index = M_SETTING;
+                ui.state = S_LAYER_OUT;
+                break;
+        }
+    }
+}
+
+void layer_init_in() {
+    ui.layer++;
+    ui.init = false;
+    list.y = 0;
+    list.y_trg = LIST_LINE_H;
+    list.box_x = 0;
+    list.box_y = 0;
+    list.bar_y = 0;
+    ui.state = S_FADE;
+    switch (ui.index) {
+        case M_MAIN: tile_param_init(); break;
+        case M_KNOB: knob_param_init(); break;
+        case M_KRF: krf_param_init(); break;
+        case M_KPF: kpf_param_init(); break;
+        case M_VOLT: volt_param_init(); break;
+        case M_SETTING: setting_param_init(); break;
+        case M_ABOUT: about_param_init(); break;
+    }
+}
+
+void layer_init_out() {
+    ui.select[ui.layer] = 0;
+    list.box_y_trg[ui.layer] = 0;
+    ui.layer--;
+    ui.init = false;
+    list.y = 0;
+    list.y_trg = LIST_LINE_H;
+    list.bar_y = 0;
+    ui.state = S_FADE;
+    switch (ui.index) {
+        case M_SLEEP: sleep_param_init(); break;
+        case M_MAIN: tile_param_init(); break;
+    }
+}
+
+void ui_proc() {
+    u8g2.sendBuffer();
+    switch (ui.state) {
+        case S_FADE:
+            if (ui.sleep) {
+                if (btn.pressed) {
+                    btn.pressed = false;
+                    ui.idle_timer = millis();
+                    ui.sleep = false;
+                    ui.index = ui.last_index;
+                    ui.state = S_LAYER_IN;
+                } else {
+                    fade_sleep();
+                }
+            } else if (ui.wake_fade) {
+                fade_wake();
+            } else {
+                fade();
+            }
+            break;
+        case S_WINDOW: window_param_init(); break;
+        case S_LAYER_IN: layer_init_in(); break;
+        case S_LAYER_OUT: layer_init_out(); break;
+
+        case S_NONE:
+            u8g2.clearBuffer();
+            switch (ui.index) {
+                case M_WINDOW: window_proc(); break;
+                case M_SLEEP: sleep_proc(); break;
+                case M_MAIN: main_proc(); break;
+                case M_EDITOR: editor_proc(); break;
+                case M_KNOB: knob_proc(); break;
+                case M_KRF: krf_proc(); break;
+                case M_KPF: kpf_proc(); break;
+                case M_VOLT: volt_proc(); break;
+                case M_SETTING: setting_proc(); break;
+                case M_ABOUT: about_proc(); break;
+            }
+            break;
+    }
+}

@@ -1,0 +1,11 @@
+*.o
+*.d
+*.hex
+*.bin
+*.elf
+*.map
+build/
+Debug/
+Release/
+.vscode/
+.idea/

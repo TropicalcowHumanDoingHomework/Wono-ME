@@ -1,0 +1,28 @@
+--cpu Cortex-M3
+"..\obj\core_cm3.o"
+"..\obj\startup_stm32f10x_md.o"
+"..\obj\oled.o"
+"..\obj\u8g2_adapter.o"
+"..\obj\u8g2_global.o"
+"..\obj\pages.o"
+"..\obj\ui_state.o"
+"..\obj\animation.o"
+"..\obj\menu_data.o"
+"..\obj\knob.o"
+"..\obj\window.o"
+"..\obj\eeprom_manager.o"
+"..\obj\misc.o"
+"..\obj\stm32f10x_gpio.o"
+"..\obj\stm32f10x_rcc.o"
+"..\obj\stm32f10x_tim.o"
+"..\obj\stm32f10x_usart.o"
+"..\obj\stm32f10x_dbgmcu.o"
+"..\obj\delay.o"
+"..\obj\sys.o"
+"..\obj\stm32f10x_it.o"
+"..\obj\system_stm32f10x.o"
+"..\obj\main.o"
+--strict --scatter "..\OBJ\WouoUI.sct"
+--summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
+--info sizes --info totals --info unused --info veneers
+--list ".\Listings\WouoUI.map" -o ..\OBJ\WouoUI.axf

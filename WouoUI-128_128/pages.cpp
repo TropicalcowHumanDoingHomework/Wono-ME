@@ -1,0 +1,955 @@
+#include "pages.h"
+#include "ui_state.h"
+#include "animation.h"
+#include "display.h"
+#include "menu_data.h"
+#include "eeprom_manager.h"
+#include "knob.h"
+#include "window.h"
+#include "hid_manager.h"
+#include <math.h>
+#include <string.h>
+
+//开发板模拟引脚
+uint8_t analog_pin[10] = {PA0, PA1, PA2, PA3, PA4, PA5, PA6, PA7, PB0, PB1};
+
+
+/*************** 根据列表每行开头符号，判断每行尾部是否绘制以及绘制什么内容 *************/
+
+void check_box_v_init(uint8_t *param) {
+    check_box.v = param;
+    for (uint8_t i = 0; i < UI_MNUMB; ++i) check_box.v_map[i] = 0xFF;
+}
+
+void check_box_m_init(uint8_t *param) {
+    check_box.m = param;
+    for (uint8_t i = 0; i < UI_MNUMB; ++i) check_box.m_map[i] = 0xFF;
+}
+
+void check_box_s_init(uint8_t *param, uint8_t *param_p) {
+    check_box.s = param;
+    check_box.s_p = param_p;
+}
+
+void check_box_m_select(uint8_t param) {
+    check_box.m[param] = !check_box.m[param];
+    eeprom.change = true;
+}
+
+void check_box_s_select(uint8_t val, uint8_t pos) {
+    *check_box.s = val;
+    *check_box.s_p = pos;
+    eeprom.change = true;
+}
+
+
+
+//列表显示数值
+void list_draw_value(int n) {
+    uint8_t idx = check_box.v_map[n] != 0xFF ? check_box.v_map[n] : n - 1;
+    if (idx == SLP_T) {
+        static const char* slp_str[] = {"Off", "10s", "30s", "60s", "180s", "300s"};
+        u8g2.print(slp_str[check_box.v[idx]]);
+    } else {
+        u8g2.print(check_box.v[idx]);
+    }
+}
+
+//绘制外框
+void list_draw_check_box_frame() {
+    u8g2.drawRFrame(CHECK_BOX_L_S + list.curve, list.temp + CHECK_BOX_U_S, CHECK_BOX_F_W, CHECK_BOX_F_H, 1);
+}
+
+//绘制框里面的点
+void list_draw_check_box_dot() {
+    u8g2.drawBox(CHECK_BOX_L_S + CHECK_BOX_D_S + 1 + list.curve, list.temp + CHECK_BOX_U_S + CHECK_BOX_D_S + 1, CHECK_BOX_F_W - (CHECK_BOX_D_S + 1) * 2, CHECK_BOX_F_H - (CHECK_BOX_D_S + 1) * 2);
+}
+
+//列表显示旋钮功能
+void list_draw_krf(int n) {
+    switch (check_box.v[n - 1]) {
+        case 0: u8g2.print("OFF"); break;
+        case 1: u8g2.print("VOL"); break;
+        case 2: u8g2.print("BRI"); break;
+    }
+}
+
+//列表显示按键键值
+void list_draw_kpf(int n) {
+    if (check_box.v[n - 1] == 0) u8g2.print("OFF");
+    else if (check_box.v[n - 1] <= 90) u8g2.print((char)check_box.v[n - 1]);
+    else u8g2.print("?");
+}
+
+//判断列表尾部内容
+void list_draw_text_and_check_box(Menu* arr, int i) {
+    u8g2.drawStr(LIST_TEXT_S + list.curve, list.temp + LIST_TEXT_H + LIST_TEXT_S, arr[i].title);
+    u8g2.setCursor(CHECK_BOX_L_S + list.curve, list.temp + LIST_TEXT_H + LIST_TEXT_S);
+    switch (arr[i].title[0]) {
+        case '~': list_draw_value(i); break;
+        case '+': list_draw_check_box_frame(); if (check_box.m_map[i] != 0xFF && check_box.m[check_box.m_map[i]] == 1) list_draw_check_box_dot(); break;
+        case '=': list_draw_check_box_frame(); if (*check_box.s_p == i) list_draw_check_box_dot(); break;
+        case '#': list_draw_krf(i); break;
+        case '$': list_draw_kpf(i); break;
+    }
+}
+
+
+/********************************* 分页面初始化函数 *********************************/
+
+//进入磁贴类时的初始化
+void tile_param_init() {
+    ui.init = false;
+    tile.icon_x = 0;
+    tile.icon_x_trg = TILE_ICON_S;
+    tile.icon_y = -TILE_ICON_H;
+    tile.icon_y_trg = 0;
+    tile.indi_x = 0;
+    tile.indi_x_trg = TILE_INDI_W;
+    tile.title_y = tile.title_y_calc;
+    tile.title_y_trg = tile.title_y_trg_calc;
+    tile.select_flag = true;
+}
+
+
+/************************************* 显示函数 *************************************/
+
+//磁贴类页面通用显示函数
+void tile_show(Menu* arr_1, Menu* arr_2, const uint8_t icon_pic[][16 * 18]) {
+    //计算动画过渡值
+    animation(&tile.icon_x, &tile.icon_x_trg, TILE_ANI);
+    animation(&tile.icon_y, &tile.icon_y_trg, TILE_ANI);
+    animation(&tile.indi_x, &tile.indi_x_trg, TILE_ANI);
+    animation(&tile.title_y, &tile.title_y_trg, TILE_ANI);
+
+    //设置大小标题的颜色和文字方向，0透显，1实显，2反色，这里都用实显
+    u8g2.setDrawColor(1);
+    u8g2.setFontDirection(0);
+
+    //绘制大标题
+    u8g2.setFont(TILE_B_FONT);
+    u8g2.drawStr(((DISP_W - TILE_INDI_W) - u8g2.getStrWidth(arr_1[ui.select[ui.layer]].title)) / 2 + TILE_INDI_W, tile.title_y, arr_1[ui.select[ui.layer]].title);
+
+    //绘制小标题
+    u8g2.setFont(TILE_S_FONT);
+    u8g2.drawStr(((DISP_W - u8g2.getStrWidth(arr_2[ui.select[ui.layer]].title)) / 2), 0.5 * (TILE_ICON_S + TILE_INDI_H + DISP_H + LIST_TEXT_H), arr_2[ui.select[ui.layer]].title);
+
+    //绘制大标题指示器
+    u8g2.drawBox(0, TILE_ICON_S, tile.indi_x, TILE_INDI_H);
+
+    //绘制图标
+    if (!ui.init) {
+        for (uint8_t i = 0; i < ui.num[ui.index]; ++i) {
+            if (ui.param[TILE_UFD]) tile.temp = (DISP_W - TILE_ICON_W) / 2 + i * tile.icon_x - TILE_ICON_S * ui.select[ui.layer];
+            else tile.temp = (DISP_W - TILE_ICON_W) / 2 + (i - ui.select[ui.layer]) * tile.icon_x;
+            u8g2.drawXBMP(tile.temp, (int16_t)tile.icon_y, TILE_ICON_W, TILE_ICON_H, icon_pic[i]);
+        }
+        if (tile.icon_x == tile.icon_x_trg) {
+            ui.init = true;
+            tile.icon_x = tile.icon_x_trg = -ui.select[ui.layer] * TILE_ICON_S;
+        }
+    }
+    else for (uint8_t i = 0; i < ui.num[ui.index]; ++i) u8g2.drawXBMP((DISP_W - TILE_ICON_W) / 2 + (int16_t)tile.icon_x + i * TILE_ICON_S, 0, TILE_ICON_W, TILE_ICON_H, icon_pic[i]);
+
+    //反转屏幕内元素颜色，白天模式遮罩
+    u8g2.setDrawColor(2);
+    if (!ui.param[DARK_MODE]) u8g2.drawBox(0, 0, DISP_W, DISP_H);
+}
+
+void tile_rotate_switch() {
+    switch (btn.id) {
+        case BTN_ID_CC:
+            if (ui.init) {
+                if (ui.select[ui.layer] > 0) {
+                    ui.select[ui.layer] -= 1;
+                    tile.icon_x_trg += TILE_ICON_S;
+                    tile.select_flag = false;
+                }
+                else {
+                    if (ui.param[TILE_LOOP]) {
+                        ui.select[ui.layer] = ui.num[ui.index] - 1;
+                        tile.icon_x_trg = -TILE_ICON_S * (ui.num[ui.index] - 1);
+                        tile.select_flag = false;
+                        break;
+                    }
+                    else tile.select_flag = true;
+                }
+            }
+            break;
+
+        case BTN_ID_CW:
+            if (ui.init) {
+                if (ui.select[ui.layer] < (ui.num[ui.index] - 1)) {
+                    ui.select[ui.layer] += 1;
+                    tile.icon_x_trg -= TILE_ICON_S;
+                    tile.select_flag = false;
+                }
+                else {
+                    if (ui.param[TILE_LOOP]) {
+                        ui.select[ui.layer] = 0;
+                        tile.icon_x_trg = 0;
+                        tile.select_flag = false;
+                        break;
+                    }
+                    else tile.select_flag = true;
+                }
+            }
+            break;
+    }
+}
+
+void list_rotate_switch() {
+    if (!list.loop) {
+        switch (btn.id) {
+            case BTN_ID_CC:
+                if (ui.select[ui.layer] == 0) {
+                    if (ui.param[LIST_LOOP] && ui.init) {
+                        list.loop = true;
+                        ui.select[ui.layer] = ui.num[ui.index] - 1;
+                        if (ui.num[ui.index] > list.line_n) {
+                            list.box_y_trg[ui.layer] = DISP_H - LIST_LINE_H;
+                            list.y_trg = DISP_H - ui.num[ui.index] * LIST_LINE_H;
+                        }
+                        else list.box_y_trg[ui.layer] = (ui.num[ui.index] - 1) * LIST_LINE_H;
+                        break;
+                    }
+                    else break;
+                }
+                if (ui.init) {
+                    ui.select[ui.layer] -= 1;
+                    if (ui.select[ui.layer] < -(list.y_trg / LIST_LINE_H)) {
+                        if (!(DISP_H % LIST_LINE_H)) list.y_trg += LIST_LINE_H;
+                        else {
+                            if (list.box_y_trg[ui.layer] == DISP_H - LIST_LINE_H * list.line_n) {
+                                list.y_trg += (list.line_n + 1) * LIST_LINE_H - DISP_H;
+                                list.box_y_trg[ui.layer] = 0;
+                            }
+                            else if (list.box_y_trg[ui.layer] == LIST_LINE_H) {
+                                list.box_y_trg[ui.layer] = 0;
+                            }
+                            else list.y_trg += LIST_LINE_H;
+                        }
+                    }
+                    else list.box_y_trg[ui.layer] -= LIST_LINE_H;
+                    break;
+                }
+
+            case BTN_ID_CW:
+                if (ui.select[ui.layer] == (ui.num[ui.index] - 1)) {
+                    if (ui.param[LIST_LOOP] && ui.init) {
+                        list.loop = true;
+                        ui.select[ui.layer] = 0;
+                        list.y_trg = 0;
+                        list.box_y_trg[ui.layer] = 0;
+                        break;
+                    }
+                    else break;
+                }
+                if (ui.init) {
+                    ui.select[ui.layer] += 1;
+                    if ((ui.select[ui.layer] + 1) > (list.line_n - list.y_trg / LIST_LINE_H)) {
+                        if (!(DISP_H % LIST_LINE_H)) list.y_trg -= LIST_LINE_H;
+                        else {
+                            if (list.box_y_trg[ui.layer] == LIST_LINE_H * (list.line_n - 1)) {
+                                list.y_trg -= (list.line_n + 1) * LIST_LINE_H - DISP_H;
+                                list.box_y_trg[ui.layer] = DISP_H - LIST_LINE_H;
+                            }
+                            else if (list.box_y_trg[ui.layer] == DISP_H - LIST_LINE_H * 2) {
+                                list.box_y_trg[ui.layer] = DISP_H - LIST_LINE_H;
+                            }
+                            else list.y_trg -= LIST_LINE_H;
+                        }
+                    }
+                    else list.box_y_trg[ui.layer] += LIST_LINE_H;
+                    break;
+                }
+                break;
+        }
+    }
+}
+
+
+/******************************** 列表显示函数 **************************************/
+
+//列表类页面通用显示函数
+void list_show(Menu* arr, uint8_t ui_index) {
+    //更新动画目标值
+    u8g2.setFont(LIST_FONT);
+    list.box_x_trg = u8g2.getStrWidth(arr[ui.select[ui.layer]].title) + LIST_TEXT_S * 2;
+    list.bar_y_trg = ceil((ui.select[ui.layer]) * ((float)DISP_H / (ui.num[ui_index] - 1)));
+
+    //计算动画过渡值
+    animation(&list.y, &list.y_trg, LIST_ANI);
+    animation(&list.box_x, &list.box_x_trg, LIST_ANI);
+    animation(&list.box_y, &list.box_y_trg[ui.layer], LIST_ANI);
+    animation(&list.bar_y, &list.bar_y_trg, LIST_ANI);
+
+    if (list.loop && list.box_y == list.box_y_trg[ui.layer]) list.loop = false;
+
+    u8g2.setDrawColor(1);
+
+    u8g2.drawHLine(DISP_W - LIST_BAR_W, 0, LIST_BAR_W);
+    u8g2.drawHLine(DISP_W - LIST_BAR_W, DISP_H - 1, LIST_BAR_W);
+    u8g2.drawVLine(DISP_W - ceil((float)LIST_BAR_W / 2), 0, DISP_H);
+    u8g2.drawBox(DISP_W - LIST_BAR_W, 0, LIST_BAR_W, list.bar_y);
+
+    u8g2.setClipWindow(0, 0, DISP_W - LIST_BAR_W, DISP_H);
+    if (!ui.init) {
+        for (int i = 0; i < ui.num[ui_index]; ++i) {
+            if (ui.param[LIST_UFD]) list.temp = i * list.y - LIST_LINE_H * ui.select[ui.layer] + list.box_y_trg[ui.layer];
+            else list.temp = (i - ui.select[ui.layer]) * list.y + list.box_y_trg[ui.layer];
+            list.curve = (ui.param[LIST_CUR] / 1000.0f) * pow(list.temp - list.box_y, 2);
+            list_draw_text_and_check_box(arr, i);
+        }
+        if (list.y == list.y_trg) {
+            ui.init = true;
+            list.y = list.y_trg = -LIST_LINE_H * ui.select[ui.layer] + list.box_y_trg[ui.layer];
+        }
+    }
+    else for (int i = 0; i < ui.num[ui_index]; ++i) {
+        list.temp = LIST_LINE_H * i + list.y;
+        list.curve = (ui.param[LIST_CUR] / 1000.0f) * pow(list.temp - list.box_y, 2);
+        list_draw_text_and_check_box(arr, i);
+    }
+    u8g2.setMaxClipWindow();
+
+    u8g2.setDrawColor(2);
+    u8g2.drawRBox(0, list.box_y, list.box_x, LIST_LINE_H, LIST_BOX_R);
+
+    if (!ui.param[DARK_MODE]) {
+        u8g2.drawBox(0, 0, DISP_W, DISP_H);
+        switch (ui.index) {
+            case M_WINDOW:
+            case M_VOLT:
+            u8g2.drawBox(0, 0, DISP_W, DISP_H);
+        }
+    }
+}
+
+//电压测量页面初始化
+void volt_param_init() {
+    volt.text_bg_l = 0;
+    volt.text_bg_l_trg = DISP_W;
+}
+
+void volt_show() {
+    u8g2.setFont(LIST_FONT);
+    list.box_x_trg = u8g2.getStrWidth(volt_menu[ui.select[ui.layer]].title) + LIST_TEXT_S * 2;
+
+    animation(&list.y, &list.y_trg, LIST_ANI);
+    animation(&list.box_x, &list.box_x_trg, LIST_ANI);
+    animation(&list.box_y, &list.box_y_trg[ui.layer], LIST_ANI);
+    animation(&volt.text_bg_l, &volt.text_bg_l_trg, TAG_ANI);
+
+    if (list.loop && list.box_y == list.box_y_trg[ui.layer]) list.loop = false;
+
+    u8g2.setDrawColor(1);
+
+    u8g2.setFontDirection(1);
+    if (!ui.init) {
+        for (uint8_t i = 0; i < ui.num[ui.index]; ++i) u8g2.drawStr(LIST_TEXT_S + (i - ui.select[ui.layer]) * list.y + list.box_y_trg[ui.layer] - 1, VOLT_LIST_U_S, volt_menu[i].title);
+        if (list.y == list.y_trg) {
+            ui.init = true;
+            list.y = list.y_trg = -LIST_LINE_H * ui.select[ui.layer] + list.box_y_trg[ui.layer];
+        }
+    }
+    else for (uint8_t i = 0; i < ui.num[ui.index]; ++i) u8g2.drawStr(LIST_TEXT_S + LIST_LINE_H * i + (int16_t)list.y - 1, VOLT_LIST_U_S, volt_menu[i].title);
+
+    volt.val = 0;
+    u8g2.drawFrame(0, 0, WAVE_BOX_W, WAVE_BOX_H);
+    u8g2.drawFrame(1, 1, WAVE_BOX_W - 2, WAVE_BOX_H - 2);
+    if (list.box_y == list.box_y_trg[ui.layer] && list.y == list.y_trg) {
+        for (int i = 1; i < WAVE_W - 1; i++) {
+            int adc_val = analogRead(analog_pin[ui.select[ui.layer]]);
+            volt.val = adc_val;
+            volt.ch0_wave[i] = map(adc_val, 0, 4095, WAVE_MAX, WAVE_MIN);
+            u8g2.drawLine(WAVE_L + i - 1, WAVE_U + volt.ch0_wave[i - 1], WAVE_L + i, WAVE_U + volt.ch0_wave[i]);
+        }
+    }
+
+    u8g2.setFontDirection(0);
+    u8g2.setFont(VOLT_FONT);
+    u8g2.setCursor(23, VOLT_LIST_U_S - 12);
+    u8g2.print(volt.val / 4096.0f * 3.3f);
+    u8g2.print("V");
+
+    u8g2.setDrawColor(2);
+    u8g2.drawRBox(list.box_y, VOLT_LIST_U_S - LIST_TEXT_S, LIST_LINE_H, list.box_x, LIST_BOX_R);
+    u8g2.drawBox(DISP_W - volt.text_bg_l, VOLT_TEXT_BG_U_S, DISP_W, VOLT_TEXT_BG_H);
+
+    if (!ui.param[DARK_MODE]) u8g2.drawBox(0, 0, DISP_W, DISP_H);
+}
+
+//关于本机页面初始化
+void about_param_init() {
+    about.indi_x = 0;
+    about.indi_x_trg = ABOUT_INDI_S;
+}
+
+void about_show() {
+    u8g2.setFont(LIST_FONT);
+    list.box_x_trg = u8g2.getStrWidth(about_menu[0].title) + LIST_TEXT_S * 2;
+
+    animation(&list.box_x, &list.box_x_trg, TAG_ANI);
+    animation(&about.indi_x, &about.indi_x_trg, TAG_ANI);
+
+    u8g2.setDrawColor(1);
+
+    u8g2.drawStr(ABOUT_INDI_S + LIST_TEXT_S, ABOUT_INDI_S + LIST_TEXT_S + LIST_TEXT_H, about_menu[0].title);
+    u8g2.drawStr(ABOUT_INDI_S + list.box_x_trg + ABOUT_INDI_S, ABOUT_INDI_S + LIST_TEXT_S + LIST_TEXT_H, about_menu[1].title);
+    for (int i = 2; i < ui.num[M_ABOUT]; i++) u8g2.drawStr(about.indi_x_trg + ABOUT_INDI_W + ABOUT_INDI_S * 2, ABOUT_INDI_S + LIST_LINE_H + LIST_TEXT_S / 2 + (i - 1) * LIST_LINE_H, about_menu[i].title);
+    u8g2.drawBox(about.indi_x, ABOUT_INDI_S + LIST_LINE_H + ABOUT_INDI_S * 2, ABOUT_INDI_W, (ui.num[M_ABOUT] - 2) * LIST_LINE_H - LIST_TEXT_S);
+
+    u8g2.setDrawColor(2);
+    u8g2.drawRBox(ABOUT_INDI_S, ABOUT_INDI_S, list.box_x, LIST_LINE_H, LIST_BOX_R);
+
+    if (!ui.param[DARK_MODE]) u8g2.drawBox(0, 0, DISP_W, DISP_H);
+}
+
+//从休眠中唤醒的淡入动画
+void fade_wake() {
+    static uint32_t last_fade_time = 0;
+    uint32_t now = millis();
+    if (now - last_fade_time < ui.param[FADE_ANI]) return;
+    last_fade_time = now;
+
+    u8g2.clearBuffer();
+    switch (ui.index) {
+        case M_MAIN: tile_show(main_menu, main_menu_exp, main_icon_pic); break;
+        case M_EDITOR: list_show(editor_menu, M_EDITOR); break;
+        case M_KNOB: list_show(knob_menu, M_KNOB); break;
+        case M_KRF: list_show(krf_menu, M_KRF); break;
+        case M_KPF: list_show(kpf_menu, M_KPF); break;
+        case M_SETTING: list_show(setting_menu, M_SETTING); break;
+        case M_VOLT: volt_show(); break;
+        case M_ABOUT: about_show(); break;
+        default: break;
+    }
+
+    switch (ui.fade) {
+        case 1:
+            for (uint16_t i = 0; i < buf_len; ++i)
+                if (i % 2 == 0) buf_ptr[i] = 0;
+                else buf_ptr[i] &= 0x55;
+            break;
+        case 2:
+            for (uint16_t i = 0; i < buf_len; ++i)
+                if (i % 2 == 0) buf_ptr[i] &= 0x55;
+            break;
+        case 3:
+        case 4:
+            break;
+        default:
+            ui.wake_fade = false;
+            ui.state = S_NONE;
+            ui.fade = 0;
+            break;
+    }
+    ui.fade++;
+}
+
+//进入睡眠时的初始化
+void sleep_param_init() {
+    ui.sleep = true;
+    if (eeprom.change) {
+        eeprom_write_all_data();
+        eeprom.change = false;
+    }
+}
+
+void sleep_proc() {
+    if (!ui.sleep) return;
+
+    if (btn.pressed) {
+        btn.pressed = false;
+        if (btn.id == BTN_ID_SP || btn.id == BTN_ID_LP) {
+            u8g2.setPowerSave(0);
+            ui.idle_timer = millis();
+            if (ui.last_index == M_SLEEP) ui.last_index = M_MAIN;
+            ui.index = ui.last_index;
+            ui.layer++;
+            ui.select[ui.layer] = ui.last_select;
+            list.box_y_trg[ui.layer] = ui.last_box_y_trg;
+            if (ui.index == M_MAIN) {
+                tile.icon_x = -ui.select[ui.layer] * TILE_ICON_S;
+                tile.icon_x_trg = tile.icon_x;
+                tile.icon_y = 0;
+                tile.icon_y_trg = 0;
+                tile.indi_x = TILE_INDI_W;
+                tile.indi_x_trg = TILE_INDI_W;
+                tile.title_y = tile.title_y_calc;
+                tile.title_y_trg = tile.title_y_trg_calc;
+                tile.select_flag = true;
+            } else {
+                list.y = -LIST_LINE_H * ui.select[ui.layer] + list.box_y_trg[ui.layer];
+                list.y_trg = list.y;
+                list.box_y = list.box_y_trg[ui.layer];
+                list.box_x = 0;
+                list.box_x_trg = 0;
+                list.bar_y = ui.num[ui.index] > 1 ? ceil(ui.select[ui.layer] * ((float)DISP_H / (ui.num[ui.index] - 1))) : 0;
+                list.bar_y_trg = list.bar_y;
+                list.loop = false;
+                if (ui.index == M_VOLT) {
+                    volt.text_bg_l = DISP_W;
+                    volt.text_bg_l_trg = DISP_W;
+                } else if (ui.index == M_ABOUT) {
+                    about.indi_x = ABOUT_INDI_S;
+                    about.indi_x_trg = ABOUT_INDI_S;
+                }
+            }
+            if (ui.index == M_SETTING) {
+                check_box_v_init(ui.param);
+                check_box_m_init(ui.param);
+                uint8_t pi = TILE_UFD, vi = DISP_BRI;
+                for (uint8_t i = 0; setting_menu[i].title[0] != '-'; ++i) {
+                    if (setting_menu[i].title[0] == '+') {
+                        check_box.m_map[i] = pi;
+                        ++pi;
+                    } else if (setting_menu[i].title[0] == '~') {
+                        if (strcmp(setting_menu[i].title + 2, "List Cur") == 0) check_box.v_map[i] = LIST_CUR;
+                        else if (strcmp(setting_menu[i].title + 2, "Rotate Scr") == 0) check_box.v_map[i] = ROTATE_SCR;
+                        else if (strcmp(setting_menu[i].title + 2, "Sleep") == 0) check_box.v_map[i] = SLP_T;
+                        else check_box.v_map[i] = vi++;
+                    }
+                }
+            } else if (ui.index == M_KNOB) {
+                check_box_v_init(knob.param);
+            } else if (ui.index == M_KRF) {
+                check_box_s_init(&knob.param[KNOB_ROT], &knob.param[KNOB_ROT_P]);
+            } else if (ui.index == M_KPF) {
+                check_box_s_init(&knob.param[KNOB_COD], &knob.param[KNOB_COD_P]);
+            }
+            ui.init = true;
+            ui.wake_fade = true;
+            ui.state = S_FADE;
+            ui.sleep = false;
+        } else {
+            switch (btn.id) {
+                case BTN_ID_CW:
+                    switch (knob.param[KNOB_ROT]) {
+                        case KNOB_ROT_VOL: Consumer.press(HIDConsumer::VOLUME_UP); Consumer.release(); break;
+                        case KNOB_ROT_BRI: Consumer.press(HIDConsumer::BRIGHTNESS_UP); Consumer.release(); break;
+                    }
+                    break;
+                case BTN_ID_CC:
+                    switch (knob.param[KNOB_ROT]) {
+                        case KNOB_ROT_VOL: Consumer.press(HIDConsumer::VOLUME_DOWN); Consumer.release(); break;
+                        case KNOB_ROT_BRI: Consumer.press(HIDConsumer::BRIGHTNESS_DOWN); Consumer.release(); break;
+                    }
+                    break;
+            }
+        }
+    }
+}
+
+void main_proc() {
+    tile_show(main_menu, main_menu_exp, main_icon_pic);
+    if (btn.pressed) {
+        btn.pressed = false;
+        switch (btn.id) {
+            case BTN_ID_CW:
+            case BTN_ID_CC:
+                tile_rotate_switch();
+                break;
+            case BTN_ID_SP:
+                switch (ui.select[ui.layer]) {
+                    case 0: ui.index = M_SLEEP; ui.state = S_LAYER_OUT; break;
+                    case 1: ui.index = M_EDITOR; ui.state = S_LAYER_IN; break;
+                    case 2: ui.index = M_VOLT; ui.state = S_LAYER_IN; break;
+                    case 3: ui.index = M_SETTING; ui.state = S_LAYER_IN; break;
+                }
+                break;
+        }
+    }
+    if (!tile.select_flag && ui.init) {
+        tile.indi_x = 0;
+        tile.title_y = tile.title_y_calc;
+        tile.select_flag = true;
+    }
+}
+
+void editor_proc() {
+    list_show(editor_menu, M_EDITOR);
+    if (btn.pressed) {
+        btn.pressed = false;
+        switch (btn.id) {
+            case BTN_ID_CW:
+            case BTN_ID_CC:
+                list_rotate_switch();
+                break;
+            case BTN_ID_LP:
+                ui.select[ui.layer] = 0;
+            case BTN_ID_SP:
+                switch (ui.select[ui.layer]) {
+                    case 0: ui.index = M_MAIN; ui.state = S_LAYER_OUT; break;
+                    case 10: window_message_init("Message Demo", "Hello World!\nLine 2\nLine 3", editor_menu, M_EDITOR); break;
+                    case 11: ui.index = M_KNOB; ui.state = S_LAYER_IN; break;
+                }
+                break;
+        }
+    }
+}
+
+//旋钮设置页面初始化
+void knob_param_init() {
+    check_box_v_init(knob.param);
+}
+
+//旋钮旋转页面初始化
+void krf_param_init() {
+    check_box_s_init(&knob.param[KNOB_ROT], &knob.param[KNOB_ROT_P]);
+}
+
+//旋钮按键页面初始化
+void kpf_param_init() {
+    check_box_s_init(&knob.param[KNOB_COD], &knob.param[KNOB_COD_P]);
+}
+
+//设置页面初始化
+void setting_param_init() {
+    check_box_v_init(ui.param);
+    check_box_m_init(ui.param);
+    uint8_t pi = TILE_UFD, vi = DISP_BRI;
+    for (uint8_t i = 0; setting_menu[i].title[0] != '-'; ++i) {
+        if (setting_menu[i].title[0] == '+') {
+            check_box.m_map[i] = pi;
+            ++pi;
+        } else if (setting_menu[i].title[0] == '~') {
+            if (strcmp(setting_menu[i].title + 2, "List Cur") == 0) check_box.v_map[i] = LIST_CUR;
+            else if (strcmp(setting_menu[i].title + 2, "Rotate Scr") == 0) check_box.v_map[i] = ROTATE_SCR;
+            else if (strcmp(setting_menu[i].title + 2, "Sleep") == 0) check_box.v_map[i] = SLP_T;
+            else check_box.v_map[i] = vi++;
+        }
+    }
+}
+
+void knob_proc() {
+    list_show(knob_menu, M_KNOB);
+    if (btn.pressed) {
+        btn.pressed = false;
+        switch (btn.id) {
+            case BTN_ID_CW:
+            case BTN_ID_CC:
+                list_rotate_switch();
+                break;
+            case BTN_ID_LP:
+                ui.select[ui.layer] = 0;
+            case BTN_ID_SP:
+                switch (ui.select[ui.layer]) {
+                    case 0: ui.index = M_EDITOR; ui.state = S_LAYER_OUT; break;
+                    case 1: ui.index = M_KRF; ui.state = S_LAYER_IN; check_box_s_init(&knob.param[KNOB_ROT], &knob.param[KNOB_ROT_P]); break;
+                    case 2: ui.index = M_KPF; ui.state = S_LAYER_IN; check_box_s_init(&knob.param[KNOB_COD], &knob.param[KNOB_COD_P]); break;
+                }
+                break;
+        }
+    }
+}
+
+void krf_proc() {
+    list_show(krf_menu, M_KRF);
+    if (btn.pressed) {
+        btn.pressed = false;
+        switch (btn.id) {
+            case BTN_ID_CW:
+            case BTN_ID_CC:
+                list_rotate_switch();
+                break;
+            case BTN_ID_LP:
+                ui.select[ui.layer] = 0;
+            case BTN_ID_SP:
+                switch (ui.select[ui.layer]) {
+                    case 0: ui.index = M_KNOB; ui.state = S_LAYER_OUT; break;
+                    case 1: break;
+                    case 2: check_box_s_select(KNOB_DISABLE, ui.select[ui.layer]); break;
+                    case 3: break;
+                    case 4: check_box_s_select(KNOB_ROT_VOL, ui.select[ui.layer]); break;
+                    case 5: check_box_s_select(KNOB_ROT_BRI, ui.select[ui.layer]); break;
+                    case 6: break;
+                }
+                break;
+        }
+    }
+}
+
+void kpf_proc() {
+    list_show(kpf_menu, M_KPF);
+    if (btn.pressed) {
+        btn.pressed = false;
+        switch (btn.id) {
+            case BTN_ID_CW:
+            case BTN_ID_CC:
+                list_rotate_switch();
+                break;
+            case BTN_ID_LP:
+                ui.select[ui.layer] = 0;
+            case BTN_ID_SP:
+                switch (ui.select[ui.layer]) {
+                    case 0: ui.index = M_KNOB; ui.state = S_LAYER_OUT; break;
+                    case 1: break;
+                    case 2: check_box_s_select(KNOB_DISABLE, ui.select[ui.layer]); break;
+                    case 3: break;
+                    case 4: check_box_s_select('A', ui.select[ui.layer]); break;
+                    case 5: check_box_s_select('B', ui.select[ui.layer]); break;
+                    case 6: check_box_s_select('C', ui.select[ui.layer]); break;
+                    case 7: check_box_s_select('D', ui.select[ui.layer]); break;
+                    case 8: check_box_s_select('E', ui.select[ui.layer]); break;
+                    case 9: check_box_s_select('F', ui.select[ui.layer]); break;
+                    case 10: check_box_s_select('G', ui.select[ui.layer]); break;
+                    case 11: check_box_s_select('H', ui.select[ui.layer]); break;
+                    case 12: check_box_s_select('I', ui.select[ui.layer]); break;
+                    case 13: check_box_s_select('J', ui.select[ui.layer]); break;
+                    case 14: check_box_s_select('K', ui.select[ui.layer]); break;
+                    case 15: check_box_s_select('L', ui.select[ui.layer]); break;
+                    case 16: check_box_s_select('M', ui.select[ui.layer]); break;
+                    case 17: check_box_s_select('N', ui.select[ui.layer]); break;
+                    case 18: check_box_s_select('O', ui.select[ui.layer]); break;
+                    case 19: check_box_s_select('P', ui.select[ui.layer]); break;
+                    case 20: check_box_s_select('Q', ui.select[ui.layer]); break;
+                    case 21: check_box_s_select('R', ui.select[ui.layer]); break;
+                    case 22: check_box_s_select('S', ui.select[ui.layer]); break;
+                    case 23: check_box_s_select('T', ui.select[ui.layer]); break;
+                    case 24: check_box_s_select('U', ui.select[ui.layer]); break;
+                    case 25: check_box_s_select('V', ui.select[ui.layer]); break;
+                    case 26: check_box_s_select('W', ui.select[ui.layer]); break;
+                    case 27: check_box_s_select('X', ui.select[ui.layer]); break;
+                    case 28: check_box_s_select('Y', ui.select[ui.layer]); break;
+                    case 29: check_box_s_select('Z', ui.select[ui.layer]); break;
+                    case 30: break;
+                    case 31: check_box_s_select('0', ui.select[ui.layer]); break;
+                    case 32: check_box_s_select('1', ui.select[ui.layer]); break;
+                    case 33: check_box_s_select('2', ui.select[ui.layer]); break;
+                    case 34: check_box_s_select('3', ui.select[ui.layer]); break;
+                    case 35: check_box_s_select('4', ui.select[ui.layer]); break;
+                    case 36: check_box_s_select('5', ui.select[ui.layer]); break;
+                    case 37: check_box_s_select('6', ui.select[ui.layer]); break;
+                    case 38: check_box_s_select('7', ui.select[ui.layer]); break;
+                    case 39: check_box_s_select('8', ui.select[ui.layer]); break;
+                    case 40: check_box_s_select('9', ui.select[ui.layer]); break;
+                    case 41: break;
+                    case 42: check_box_s_select(KEY_ESC, ui.select[ui.layer]); break;
+                    case 43: check_box_s_select(KEY_F1, ui.select[ui.layer]); break;
+                    case 44: check_box_s_select(KEY_F2, ui.select[ui.layer]); break;
+                    case 45: check_box_s_select(KEY_F3, ui.select[ui.layer]); break;
+                    case 46: check_box_s_select(KEY_F4, ui.select[ui.layer]); break;
+                    case 47: check_box_s_select(KEY_F5, ui.select[ui.layer]); break;
+                    case 48: check_box_s_select(KEY_F6, ui.select[ui.layer]); break;
+                    case 49: check_box_s_select(KEY_F7, ui.select[ui.layer]); break;
+                    case 50: check_box_s_select(KEY_F8, ui.select[ui.layer]); break;
+                    case 51: check_box_s_select(KEY_F9, ui.select[ui.layer]); break;
+                    case 52: check_box_s_select(KEY_F10, ui.select[ui.layer]); break;
+                    case 53: check_box_s_select(KEY_F11, ui.select[ui.layer]); break;
+                    case 54: check_box_s_select(KEY_F12, ui.select[ui.layer]); break;
+                    case 55: break;
+                    case 56: check_box_s_select(KEY_LEFT_CTRL, ui.select[ui.layer]); break;
+                    case 57: check_box_s_select(KEY_LEFT_SHIFT, ui.select[ui.layer]); break;
+                    case 58: check_box_s_select(KEY_LEFT_ALT, ui.select[ui.layer]); break;
+                    case 59: check_box_s_select(KEY_LEFT_GUI, ui.select[ui.layer]); break;
+                    case 60: check_box_s_select(KEY_RIGHT_CTRL, ui.select[ui.layer]); break;
+                    case 61: check_box_s_select(KEY_RIGHT_SHIFT, ui.select[ui.layer]); break;
+                    case 62: check_box_s_select(KEY_RIGHT_ALT, ui.select[ui.layer]); break;
+                    case 63: check_box_s_select(KEY_RIGHT_GUI, ui.select[ui.layer]); break;
+                    case 64: break;
+                    case 65: check_box_s_select(KEY_CAPS_LOCK, ui.select[ui.layer]); break;
+                    case 66: check_box_s_select(KEY_BACKSPACE, ui.select[ui.layer]); break;
+                    case 67: check_box_s_select(KEY_RETURN, ui.select[ui.layer]); break;
+                    case 68: check_box_s_select(KEY_INSERT, ui.select[ui.layer]); break;
+                    case 69: check_box_s_select(KEY_DELETE, ui.select[ui.layer]); break;
+                    case 70: check_box_s_select(KEY_TAB, ui.select[ui.layer]); break;
+                    case 71: break;
+                    case 72: check_box_s_select(KEY_HOME, ui.select[ui.layer]); break;
+                    case 73: check_box_s_select(KEY_END, ui.select[ui.layer]); break;
+                    case 74: check_box_s_select(KEY_PAGE_UP, ui.select[ui.layer]); break;
+                    case 75: check_box_s_select(KEY_PAGE_DOWN, ui.select[ui.layer]); break;
+                    case 76: break;
+                    case 77: check_box_s_select(KEY_UP_ARROW, ui.select[ui.layer]); break;
+                    case 78: check_box_s_select(KEY_DOWN_ARROW, ui.select[ui.layer]); break;
+                    case 79: check_box_s_select(KEY_LEFT_ARROW, ui.select[ui.layer]); break;
+                    case 80: check_box_s_select(KEY_RIGHT_ARROW, ui.select[ui.layer]); break;
+                    case 81: break;
+                }
+                break;
+        }
+    }
+}
+
+void volt_proc() {
+    volt_show();
+    if (btn.pressed) {
+        btn.pressed = false;
+        switch (btn.id) {
+            case BTN_ID_CW:
+            case BTN_ID_CC:
+                list_rotate_switch();
+                break;
+            case BTN_ID_SP:
+            case BTN_ID_LP:
+                ui.index = M_MAIN;
+                ui.state = S_LAYER_OUT;
+                break;
+        }
+    }
+}
+
+void setting_proc() {
+    list_show(setting_menu, M_SETTING);
+    if (btn.pressed) {
+        btn.pressed = false;
+        switch (btn.id) {
+            case BTN_ID_CW:
+            case BTN_ID_CC:
+                list_rotate_switch();
+                break;
+            case BTN_ID_LP:
+                ui.select[ui.layer] = 0;
+            case BTN_ID_SP:
+                switch (ui.select[ui.layer]) {
+                    case 0: ui.index = M_MAIN; ui.state = S_LAYER_OUT; break;
+                    case 1: window_value_init("Disp Bri", DISP_BRI, &ui.param[DISP_BRI], 255, 0, 5, setting_menu, M_SETTING); break;
+                    case 2: window_value_init("Tile Ani", TILE_ANI, &ui.param[TILE_ANI], 100, 10, 1, setting_menu, M_SETTING); break;
+                    case 3: window_value_init("List Ani", LIST_ANI, &ui.param[LIST_ANI], 100, 10, 1, setting_menu, M_SETTING); break;
+                    case 4: window_value_init("Win Ani", WIN_ANI, &ui.param[WIN_ANI], 100, 10, 1, setting_menu, M_SETTING); break;
+                    case 5: window_value_init("Spot Ani", SPOT_ANI, &ui.param[SPOT_ANI], 100, 10, 1, setting_menu, M_SETTING); break;
+                    case 6: window_value_init("Tag Ani", TAG_ANI, &ui.param[TAG_ANI], 100, 10, 1, setting_menu, M_SETTING); break;
+                    case 7: window_value_init("Fade Ani", FADE_ANI, &ui.param[FADE_ANI], 255, 0, 1, setting_menu, M_SETTING); break;
+                    case 8: window_value_init("Btn SPT", BTN_SPT, &ui.param[BTN_SPT], 255, 0, 1, setting_menu, M_SETTING); break;
+                    case 9: window_value_init("Btn LPT", BTN_LPT, &ui.param[BTN_LPT], 255, 0, 1, setting_menu, M_SETTING); break;
+                    case 10: check_box_m_select(TILE_UFD); break;
+                    case 11: check_box_m_select(LIST_UFD); break;
+                    case 12: check_box_m_select(TILE_LOOP); break;
+                    case 13: check_box_m_select(LIST_LOOP); break;
+                    case 14: check_box_m_select(WIN_BOK); break;
+                    case 15: check_box_m_select(KNOB_DIR); break;
+                    case 16: check_box_m_select(DARK_MODE); break;
+                    case 17: window_value_init("List Cur", LIST_CUR, &ui.param[LIST_CUR], 200, 0, 1, setting_menu, M_SETTING); break;
+                    case 18: window_value_init("Rotate Scr", ROTATE_SCR, &ui.param[ROTATE_SCR], 3, 0, 1, setting_menu, M_SETTING); break;
+                    case 19: window_value_init("Sleep Tm", SLP_T, &ui.param[SLP_T], 5, 0, 1, setting_menu, M_SETTING); break;
+                    case 20: ui.index = M_ABOUT; ui.state = S_LAYER_IN; break;
+                }
+                break;
+        }
+    }
+}
+
+void about_proc() {
+    about_show();
+    if (btn.pressed) {
+        btn.pressed = false;
+        switch (btn.id) {
+            case BTN_ID_SP:
+            case BTN_ID_LP:
+                ui.index = M_SETTING;
+                ui.state = S_LAYER_OUT;
+                break;
+        }
+    }
+}
+
+/********************************** 通用初始化函数 **********************************/
+
+/*
+    页面层级管理逻辑是，把所有页面都先当作列表类初始化，不是列表类按需求再初始化对应函数
+    这样做会浪费一些资源，但跳转页面时只需要考虑页面层级，逻辑上更清晰，减少出错
+*/
+
+//进入更深层级时的初始化
+void layer_init_in() {
+    ui.layer++;
+    ui.select[ui.layer] = 0;
+    list.box_y_trg[ui.layer] = 0;
+    ui.init = false;
+    list.y = 0;
+    list.y_trg = LIST_LINE_H;
+    list.box_x = 0;
+    list.box_y = 0;
+    list.bar_y = 0;
+    ui.fade = 1;
+    ui.state = S_FADE;
+    switch (ui.index) {
+        case M_MAIN: tile_param_init(); break;
+        case M_KNOB: knob_param_init(); break;
+        case M_KRF: krf_param_init(); break;
+        case M_KPF: kpf_param_init(); break;
+        case M_VOLT: volt_param_init(); break;
+        case M_SETTING: setting_param_init(); break;
+        case M_ABOUT: about_param_init(); break;
+    }
+}
+
+//进入更浅层级时的初始化
+void layer_init_out() {
+    ui.select[ui.layer] = 0;
+    list.box_y_trg[ui.layer] = 0;
+    ui.layer--;
+    ui.init = false;
+    list.y = 0;
+    list.y_trg = LIST_LINE_H;
+    list.bar_y = 0;
+    ui.fade = 1;
+    ui.state = S_FADE;
+    switch (ui.index) {
+        case M_SLEEP: sleep_param_init(); break;
+        case M_MAIN: tile_param_init(); break;
+    }
+}
+
+
+
+void ui_proc() {
+    static const uint16_t slp_map[] = {0, 10, 30, 60, 180, 300};
+    static const u8g2_cb_t *rot_table[4] = { U8G2_R0, U8G2_R1, U8G2_R2, U8G2_R3 };
+
+    u8g2.setDisplayRotation(rot_table[ui.param[ROTATE_SCR] & 3u]);
+    u8g2.sendBuffer();
+    switch (ui.state) {
+        case S_FADE:
+            if (ui.sleep) {
+                if (btn.pressed) {
+                    btn.pressed = false;
+                    u8g2.setPowerSave(0);
+                    ui.idle_timer = millis();
+                    ui.sleep = false;
+                    ui.index = ui.last_index;
+                    ui.wake_fade = true;
+                    ui.state = S_LAYER_IN;
+                } else {
+                    fade_sleep();
+                }
+            } else if (ui.wake_fade) {
+                fade_wake();
+            } else {
+                fade();
+            }
+            break;
+        case S_WINDOW: window_param_init(); break;
+        case S_LAYER_IN: layer_init_in(); break;
+        case S_LAYER_OUT: layer_init_out(); break;
+
+        case S_NONE:
+            if (!ui.sleep) u8g2.clearBuffer();
+            if (btn.pressed) ui.idle_timer = millis();
+            switch (ui.index) {
+                case M_WINDOW: window_proc(); break;
+                case M_SLEEP: sleep_proc(); break;
+                case M_MAIN: main_proc(); break;
+                case M_EDITOR: editor_proc(); break;
+                case M_KNOB: knob_proc(); break;
+                case M_KRF: krf_proc(); break;
+                case M_KPF: kpf_proc(); break;
+                case M_VOLT: volt_proc(); break;
+                case M_SETTING: setting_proc(); break;
+                case M_ABOUT: about_proc(); break;
+            }
+            if (!ui.sleep && ui.param[SLP_T] > 0 && ui.index != M_SLEEP && ui.index != M_WINDOW) {
+                if (btn.pressed) {
+                    ui.idle_timer = millis();
+                } else if (millis() - ui.idle_timer >= slp_map[ui.param[SLP_T]] * 1000UL) {
+                    ui.last_select = ui.select[ui.layer];
+                    ui.last_box_y_trg = list.box_y_trg[ui.layer];
+                    ui.last_index = ui.index;
+                    ui.index = M_SLEEP;
+                    ui.state = S_LAYER_OUT;
+                }
+            }
+            break;
+    }
+}
