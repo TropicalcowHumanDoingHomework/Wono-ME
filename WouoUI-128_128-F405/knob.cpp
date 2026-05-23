@@ -123,6 +123,10 @@ void buzzer_exit_sound() {
     btn.buzzer_exit = true;
 }
 
+void buzzer_boot_sound() {
+    btn.buzzer_boot = true;
+}
+
 void buzzer_proc() {
     static bool  s_is_confirm = false;
     static bool  s_is_exit = false;

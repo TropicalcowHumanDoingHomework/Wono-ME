@@ -1,13 +1,14 @@
 """
 WouoUI 图标编辑器 — 全功能像素图标编辑工具
 =============================================
-Version 0.14
+Version 0.15
 
 支持可变尺寸正方形画布（默认 48×48），
 可导入/导出 PNG 和 C 代码，实时预览代码。
 
 功能:
   ✓ 可变画布大小（8×8 ~ 256×256，始终正方形）
+  ✓ C 代码导入自动识别尺寸并调整画布
   ✓ 画笔粗细（1×1 ~ 4×4）
   ✓ 导入/导出 PNG（支持缩放与裁剪）
   ✓ 导入/导出 C 代码 & 原始十六进制
@@ -19,7 +20,7 @@ Version 0.14
   ✓ 多步撤销/重做，复制/粘贴
 """
 
-VERSION = "0.14"
+VERSION = "0.15"
 import tkinter as tk
 import tkinter.font as tkfont
 from tkinter import filedialog, messagebox, ttk
@@ -1617,7 +1618,7 @@ class IconEditor:
                     f"自动安装 Pillow 失败。\n\n错误信息:\n{result['text']}")
         self._update_status("")
 
-    def _resize_canvas(self, preset=None):
+    def _resize_canvas(self, preset=None, silent=False):
         g = globals()
         old_size = g['ICON_W']
 
@@ -1673,11 +1674,12 @@ class IconEditor:
         if new_size == old_size:
             return
 
-        if not messagebox.askyesno("确认调整",
-            f"将画布从 {old_size}×{old_size} 调整为 {new_size}×{new_size}。\n\n"
-            f"{'原图将居中放置' if new_size > old_size else '将从中心裁剪原图'}。\n"
-            "确认继续？"):
-            return
+        if not silent:
+            if not messagebox.askyesno("确认调整",
+                f"将画布从 {old_size}×{old_size} 调整为 {new_size}×{new_size}。\n\n"
+                f"{'原图将居中放置' if new_size > old_size else '将从中心裁剪原图'}。\n"
+                "确认继续？"):
+                return
 
         offset = (new_size - old_size) // 2
         new_px = [[0] * new_size for _ in range(new_size)]
@@ -1768,23 +1770,31 @@ class IconEditor:
             with open(path) as f:
                 text = f.read()
             data = self._parse_c_array(text)
-            if data and len(data) == ICON_H * BYTES_PER_ROW:
-                self._save_state()
-                self.pixels = decode_c_bytes(data)
-                self._render()
-                self._update_status(f"已导入 C 代码: {os.path.basename(path)}")
-            else:
-                expected = ICON_H * BYTES_PER_ROW
-                got = len(data) if data else 0
-                hint = ""
-                if data:
-                    inferred = infer_square_size(len(data))
-                    if inferred is not None:
-                        hint = f"\n数据 {got} 字节, 推测为 {inferred}×{inferred} 图标"
+            if not data:
+                messagebox.showerror("导入失败", "未能从文件中解析出有效的十六进制数据")
+                return
+
+            got = len(data)
+            inferred = infer_square_size(got)
+            if inferred is None:
                 messagebox.showerror("导入失败",
-                    f"数据尺寸不匹配\n\n"
-                    f"当前画布: {ICON_W}×{ICON_H}  (需要 {expected} 字节)\n"
-                    f"导入数据: {got} 字节{hint}")
+                    f"无法识别图标尺寸\n\n"
+                    f"导入数据: {got} 字节\n"
+                    f"数据长度不符合任何正方形单色图标格式 (1×1~256×256)")
+                return
+
+            if ICON_W != inferred or ICON_H != inferred:
+                if not messagebox.askyesno("尺寸不匹配",
+                    f"导入数据为 {inferred}×{inferred} 图标 ({got} 字节)\n"
+                    f"当前画布: {ICON_W}×{ICON_H}\n\n"
+                    f"是否自动调整画布为 {inferred}×{inferred} 并导入？"):
+                    return
+                self._resize_canvas(preset=inferred, silent=True)
+
+            self._save_state()
+            self.pixels = decode_c_bytes(data)
+            self._render()
+            self._update_status(f"已导入 C 代码: {os.path.basename(path)} ({inferred}×{inferred})")
         except Exception as e:
             messagebox.showerror("导入失败", str(e))
 

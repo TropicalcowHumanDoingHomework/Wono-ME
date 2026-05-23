@@ -13,5 +13,6 @@ void btn_scan();
 void btn_init();
 void buzzer_proc();
 void buzzer_exit_sound();
+void buzzer_boot_sound();
 
 #endif

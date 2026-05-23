@@ -151,6 +151,7 @@ struct ButtonState {
     bool buzzer_trig;
     bool buzzer_confirm;
     bool buzzer_exit;
+    bool buzzer_boot;
     uint32_t buzzer_start;
 };
 
