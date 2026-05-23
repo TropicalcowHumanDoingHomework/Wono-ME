@@ -11,7 +11,9 @@
 <p align="center">
   WouoUI 嵌入式 UI 框架的多平台移植版与配套工具合集
   <br>
-  基于稚晖君 <strong>MonoUI</strong> 设计理念，由 <strong>音游玩的人</strong> 原版开发
+  基于稚晖君 <strong>MonoUI</strong> 设计理念，由 <strong>音游玩的人</strong> 原版开发，
+  <br>
+  <strong>STM32F103C8</strong> 与 <strong>STM32F405</strong> 移植版由 <strong>罗米奇</strong> 移植维护
 </p>
 
 <p align="center">
@@ -62,13 +64,13 @@ Wonome/
 │   ├── WouoUI-128_128.ino      # 主程序入口
 │   ├── config.h                # 全局配置与引脚定义
 │   ├── ui_types.h              # 数据结构定义
-│   ├── pages.c / .h            # 页面渲染与交互逻辑
-│   ├── menu_data.c / .h        # 菜单文本与图标数据
-│   ├── window.c / .h           # 弹窗系统
-│   ├── knob.c / .h             # 旋钮与按键扫描
-│   ├── animation.c / .h        # 动画引擎
-│   ├── eeprom_manager.c / .h   # EEPROM 持久化
-│   ├── hid_manager.c / .h      # USB HID
+│   ├── pages.cpp / .h          # 页面渲染与交互逻辑
+│   ├── menu_data.cpp / .h      # 菜单文本与图标数据
+│   ├── window.cpp / .h         # 弹窗系统
+│   ├── knob.cpp / .h           # 旋钮与按键扫描
+│   ├── animation.cpp / .h      # 动画引擎
+│   ├── eeprom_manager.cpp / .h # EEPROM 持久化
+│   ├── hid_manager.cpp / .h    # USB HID
 │   ├── README.md               # 详细文档
 │   └── ...
 │
@@ -76,15 +78,15 @@ Wonome/
 │   ├── WouoUI-128_128-F405.ino # 主程序入口
 │   ├── config.h                # 全局配置与引脚定义
 │   ├── ui_types.h              # 数据结构定义
-│   ├── pages.c / .h            # 页面渲染与交互逻辑
-│   ├── menu_data.c / .h        # 菜单文本与图标数据
-│   ├── window.c / .h           # 弹窗系统
-│   ├── knob.c / .h             # 旋钮与按键扫描
-│   ├── animation.c / .h        # 动画引擎
-│   ├── eeprom_manager.c / .h   # EEPROM 持久化
-│   ├── hid_manager.c / .h      # USB HID
-│   ├── led.c / .h              # RGB LED 呼吸灯
-│   ├── usb_manager.c / .h      # USB MSC 大容量存储
+│   ├── pages.cpp / .h          # 页面渲染与交互逻辑
+│   ├── menu_data.cpp / .h      # 菜单文本与图标数据
+│   ├── window.cpp / .h         # 弹窗系统
+│   ├── knob.cpp / .h           # 旋钮与按键扫描
+│   ├── animation.cpp / .h      # 动画引擎
+│   ├── eeprom_manager.cpp / .h # EEPROM 持久化
+│   ├── hid_manager.cpp / .h    # USB HID
+│   ├── led.cpp / .h            # RGB LED 呼吸灯
+│   ├── usb_manager.cpp / .h    # USB MSC 大容量存储
 │   ├── README.md               # 详细文档
 │   └── ...
 │
