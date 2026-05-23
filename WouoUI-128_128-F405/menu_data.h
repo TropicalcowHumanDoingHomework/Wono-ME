@@ -17,6 +17,11 @@ extern Menu win_list_demo_menu[];
 extern Menu about_menu[];
 extern Menu animition_menu[];
 
+/************************************* 列表选择弹窗测试数据 *************************************/
+
+#define WIN_LIST_TEST_ITEMS_NUM 8
+extern const char* win_list_test_items[];
+
 /************************************* 图片内容 *************************************/
 
 extern PROGMEM const uint8_t main_icon_pic[][16 * 18];

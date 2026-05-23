@@ -93,6 +93,14 @@ struct WindowState {
     Menu* bg;
     uint8_t index;
     uint8_t msg_mode;
+    uint8_t list_mode;
+    char list_items[WIN_LIST_MAX][WIN_LIST_ITEM_LEN];
+    uint8_t list_count;
+    uint8_t list_select;
+    float hl_sel_cur;
+    float hl_sel_trg;
+    float list_y;
+    float list_y_trg;
     uint8_t bokeh_step;
     uint32_t last_bokeh_time;
     float bar;

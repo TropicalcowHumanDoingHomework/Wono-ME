@@ -26,7 +26,7 @@ Menu editor_menu[] = {
     {"- Function 5"},
     {"- Function 6"},
     {"- Function 7"},
-    {"- Function 8"},
+    {"- List Win Sel"},
     {"- Win List Demo"},
     {"- Message Box"},
     {"- Knob"}
@@ -204,6 +204,18 @@ Menu animition_menu[] = {
     {"+ L Loop Mode"},
     {"+ Win Bokeh Bg"},
     {"+ Win Stretch"}
+};
+
+//列表选择弹窗测试数据
+const char* win_list_test_items[] = {
+    "Item A",
+    "Item B",
+    "Item C",
+    "Item D",
+    "Item E",
+    "Item F",
+    "Item G",
+    "Item H"
 };
 
 PROGMEM const uint8_t main_icon_pic[][16*18]

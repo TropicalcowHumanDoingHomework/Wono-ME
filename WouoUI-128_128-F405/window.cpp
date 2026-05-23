@@ -68,8 +68,60 @@ void window_message_init(const char title[], const char message[], Menu *bg, uin
     ui.state = S_NONE;
 }
 
+void window_list_select_init(const char title[], const char* items[], uint8_t item_count, Menu *bg, uint8_t index) {
+    strcpy(win.title, title);
+    win.list_mode = 1;
+    win.list_count = item_count < WIN_LIST_MAX ? item_count : WIN_LIST_MAX;
+    for (uint8_t i = 0; i < win.list_count; i++) {
+        strncpy(win.list_items[i], items[i], WIN_LIST_ITEM_LEN - 1);
+        win.list_items[i][WIN_LIST_ITEM_LEN - 1] = '\0';
+    }
+    win.list_select = 0;
+    win.hl_sel_cur = 0;
+    win.hl_sel_trg = 0;
+    win.list_y = 0;
+    win.list_y_trg = 0;
+    win.bg = bg;
+    win.index = index;
+    win.msg_mode = 0;
+    ui.index = M_WINDOW;
+
+    u8g2.setFont(WIN_FONT);
+    uint8_t max_w = u8g2.getStrWidth(win.title);
+    for (uint8_t i = 0; i < win.list_count; i++) {
+        uint8_t item_w = u8g2.getStrWidth(win.list_items[i]);
+        if (item_w > max_w) max_w = item_w;
+        if (item_w + WIN_MSG_PAD * 2 + 4 > 90) max_w = 90 - WIN_MSG_PAD * 2 - 4;
+    }
+
+    win.w = win.w_trg = max_w + WIN_MSG_PAD * 2 + 4;
+    if (win.w_trg < 60) win.w = win.w_trg = 60;
+    if (win.w_trg > 106) win.w = win.w_trg = 106;
+
+    uint8_t item_area_h = (DISP_H - 20) - WIN_MSG_PAD * 3 - LIST_TEXT_H;
+    uint8_t item_rows = item_area_h / LIST_LINE_H;
+    if (item_rows > 6) item_rows = 6;
+    win.h = win.h_trg = WIN_MSG_PAD * 3 + LIST_TEXT_H + item_rows * LIST_LINE_H;
+    if (win.h > DISP_H - 8) win.h = win.h_trg = DISP_H - 8;
+
+    if (ui.param[WIN_STYLE]) {
+        win.box_H = win.h;
+        win.box_h = 0;
+        win.box_h_trg = win.h + ui.param[WIN_Y_OS];
+        win.w = DISP_W;
+    }
+
+    win.l = (DISP_W - win.w) / 2;
+    win.y = -win.h - 2;
+    win.y_trg = (DISP_H - win.h) / 2;
+    if (win.y_trg < 2) win.y_trg = 2;
+    win.u = win.y_trg;
+    ui.state = S_NONE;
+}
+
 void window_param_init() {
     win.msg_mode = 0;
+    win.list_mode = 0;
     win.bokeh_step = 0;
     win.last_bokeh_time = 0;
     win.bar = 0;
@@ -204,6 +256,64 @@ void window_show() {
                 line = strtok(NULL, "\n");
             }
         }
+    } else if (win.list_mode) {
+        animation(&win.y, &win.y_trg, WIN_ANI);
+        animation(&win.list_y, &win.list_y_trg, LIST_ANI);
+        animation(&win.hl_sel_cur, &win.hl_sel_trg, LIST_ANI);
+
+        if (ui.param[WIN_STYLE]) {
+            animation(&win.box_h, &win.box_h_trg, WIN_ANI);
+            animation(&win.box_h_trg, &win.box_H, WIN_ANI);
+            animation(&win.w, &win.w_trg, WIN_ANI);
+            win.l = (DISP_W - win.w) / 2;
+            if (win.box_h > 2) {
+                u8g2.setDrawColor(bg_color);
+                u8g2.drawBox((int16_t)win.l + 1, (int16_t)win.y + 1, (int16_t)win.w - 2, (int16_t)win.box_h - 2);
+                u8g2.setDrawColor(fg_color);
+                u8g2.drawRFrame((int16_t)win.l, (int16_t)win.y, (int16_t)win.w, (int16_t)win.box_h, 2);
+            }
+        } else {
+            u8g2.setDrawColor(bg_color);
+            u8g2.drawBox((int16_t)win.l + 1, (int16_t)win.y + 1, (int16_t)win.w - 2, (int16_t)win.h - 2);
+            u8g2.setDrawColor(fg_color);
+            u8g2.drawRFrame((int16_t)win.l, (int16_t)win.y, (int16_t)win.w, (int16_t)win.h, 2);
+        }
+
+        int16_t content_top = (int16_t)win.y + WIN_MSG_PAD * 2 + LIST_TEXT_H;
+        int16_t content_bot = (int16_t)win.y + (int16_t)win.h - WIN_MSG_PAD;
+        uint8_t item_rows = (content_bot - content_top) / LIST_LINE_H;
+
+        u8g2.setDrawColor(fg_color);
+        u8g2.setCursor((int16_t)win.l + ((int16_t)win.w - u8g2.getStrWidth(win.title)) / 2, (int16_t)win.y + WIN_MSG_PAD + LIST_TEXT_H);
+        u8g2.print(win.title);
+
+        u8g2.setClipWindow((int16_t)win.l + 2, content_top, (int16_t)win.l + (int16_t)win.w - 2, content_bot);
+
+        for (uint8_t i = 0; i < win.list_count; i++) {
+            int16_t item_y = content_top + (int16_t)(i * LIST_LINE_H) + (int16_t)win.list_y;
+            u8g2.setDrawColor(fg_color);
+            u8g2.setCursor((int16_t)win.l + ((int16_t)win.w - u8g2.getStrWidth(win.list_items[i])) / 2, item_y + LIST_TEXT_H + LIST_TEXT_S);
+            u8g2.print(win.list_items[i]);
+        }
+
+        int16_t hl_y = content_top + (int16_t)(win.hl_sel_cur * LIST_LINE_H) + (int16_t)win.list_y;
+        u8g2.setDrawColor(2);
+        u8g2.drawRBox((int16_t)win.l + 2, hl_y, (int16_t)win.w - 4, LIST_LINE_H, LIST_BOX_R);
+
+        u8g2.setMaxClipWindow();
+
+        if (win.list_count > item_rows) {
+            u8g2.setDrawColor(fg_color);
+            float scroll_ratio = (float)(-win.list_y) / ((win.list_count - item_rows) * LIST_LINE_H);
+            if (scroll_ratio < 0) scroll_ratio = 0;
+            if (scroll_ratio > 1) scroll_ratio = 1;
+            uint16_t track_h = content_bot - content_top - 4;
+            uint8_t thumb_h = track_h * item_rows / win.list_count;
+            if (thumb_h < 4) thumb_h = 4;
+            uint8_t thumb_y = content_top + 2 + (track_h - thumb_h) * scroll_ratio;
+            u8g2.drawVLine((int16_t)win.l + (int16_t)win.w - 3, content_top + 2, track_h);
+            u8g2.drawBox((int16_t)win.l + (int16_t)win.w - 4, thumb_y, 3, thumb_h);
+        }
     } else {
         win.bar_trg = (float)(*win.value - win.min) / (float)(win.max - win.min) * (WIN_BAR_W - 4);
 
@@ -248,6 +358,7 @@ void window_proc() {
     window_show();
     if (win.y == win.y_trg && win.y_trg < 0) {
         if (!ui.param[WIN_STYLE] || win.box_h == 0) {
+            win.list_mode = 0;
             ui.index = win.index;
             ui.state = S_NONE;
         }
@@ -262,6 +373,40 @@ void window_proc() {
                 win.w_trg = DISP_W;
             }
             buzzer_exit_sound();
+        } else if (win.list_mode) {
+            int16_t content_top = (int16_t)win.y + WIN_MSG_PAD * 2 + LIST_TEXT_H;
+            int16_t content_bot = (int16_t)win.y + (int16_t)win.h - WIN_MSG_PAD;
+            uint8_t item_rows = (content_bot - content_top) / LIST_LINE_H;
+            switch (btn.id) {
+                case BTN_ID_CW:
+                    if (win.list_select < win.list_count - 1) {
+                        win.list_select++;
+                        win.hl_sel_trg = (float)win.list_select;
+                        int16_t scroll_rows = (int16_t)(-win.list_y_trg / LIST_LINE_H);
+                        if ((int16_t)win.list_select >= scroll_rows + (int16_t)item_rows)
+                            win.list_y_trg -= LIST_LINE_H;
+                    }
+                    break;
+                case BTN_ID_CC:
+                    if (win.list_select > 0) {
+                        win.list_select--;
+                        win.hl_sel_trg = (float)win.list_select;
+                        int16_t scroll_rows = (int16_t)(-win.list_y_trg / LIST_LINE_H);
+                        if ((int16_t)win.list_select < scroll_rows)
+                            win.list_y_trg += LIST_LINE_H;
+                    }
+                    break;
+                case BTN_ID_SP:
+                case BTN_ID_LP:
+                    win.y_trg = -win.h - 2;
+                    if (ui.param[WIN_STYLE]) {
+                        win.box_H = 0;
+                        win.box_h_trg = 0;
+                        win.w_trg = DISP_W;
+                    }
+                    buzzer_exit_sound();
+                    break;
+            }
         } else {
             switch (btn.id) {
                 case BTN_ID_CW:

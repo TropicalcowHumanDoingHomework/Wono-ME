@@ -641,6 +641,7 @@ void editor_proc() {
             case BTN_ID_SP:
                 switch (ui.select[ui.layer]) {
                     case 0: ui.index = M_MAIN; ui.state = S_LAYER_OUT; break;
+                    case 9: window_list_select_init("Select Item", win_list_test_items, WIN_LIST_TEST_ITEMS_NUM, editor_menu, M_EDITOR); break;
                     case 10: ui.index = M_WIN_LIST_DEMO; ui.state = S_LAYER_IN; break;
                     case 11: window_message_init("Message", "Hello World!\nLine 2\nLine 3", editor_menu, M_EDITOR); break;
                     case 12: ui.index = M_KNOB; ui.state = S_LAYER_IN; break;
