@@ -84,6 +84,8 @@ void setup() {
     USBComposite.begin();
   }
 #endif
+
+  buzzer_boot_sound();
 }
 
 void loop() {

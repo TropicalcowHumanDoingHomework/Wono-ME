@@ -130,7 +130,9 @@ void buzzer_boot_sound() {
 void buzzer_proc() {
     static bool  s_is_confirm = false;
     static bool  s_is_exit = false;
+    static bool  s_is_boot = false;
     static uint8_t s_exit_phase = 0;
+    static uint8_t s_boot_phase = 0;
     static const uint32_t k_rot_arr[5] = {0, 1199, 799, 532, 399};
     static const uint32_t k_rot_ccr[5] = {0, 360, 320, 266, 260};
     const uint32_t rot_total_ms  = 120;
@@ -143,10 +145,31 @@ void buzzer_proc() {
     const uint32_t exit_gap_ms = 60;
     const uint32_t exit_attack_ms = 3;
     const uint32_t exit_release_ms = 15;
+    const uint32_t boot_single_ms = 110;
+    const uint32_t boot_gap_ms = 50;
+    const uint32_t boot_attack_ms = 5;
+    const uint32_t boot_release_ms = 20;
+
+    if (btn.buzzer_boot) {
+        s_is_boot = true;
+        s_boot_phase = 0;
+        s_is_exit = false;
+        s_is_confirm = false;
+        btn.buzzer_boot = false;
+        uint8_t vol = ui.param[BUZ_VOL];
+        if (vol == 0) return;
+        uint32_t arr = k_rot_arr[vol] * 3 / 2;
+        TIM12_CNT = 0;
+        TIM12_ARR = arr;
+        TIM12_CCR1 = 0;
+        btn.buzzer_start = millis();
+        TIM12_CR1 |= (1u << 0);
+    }
 
     if (btn.buzzer_exit) {
         s_is_exit = true;
         s_exit_phase = 0;
+        s_is_boot = false;
         btn.buzzer_exit = false;
         uint8_t vol = ui.param[BUZ_VOL];
         if (vol == 0) return;
@@ -160,6 +183,7 @@ void buzzer_proc() {
 
     if (btn.buzzer_trig || btn.buzzer_confirm) {
         s_is_confirm = btn.buzzer_confirm;
+        s_is_boot = false;
         s_is_exit = false;
         btn.buzzer_trig = false;
         btn.buzzer_confirm = false;
@@ -178,10 +202,75 @@ void buzzer_proc() {
 
     if (btn.buzzer_start == 0) return;
 
-    uint32_t total_ms   = s_is_confirm ? cnf_total_ms  : (s_is_exit ? (exit_single_ms + exit_gap_ms + exit_single_ms) : rot_total_ms);
-    uint32_t attack_ms  = s_is_confirm ? cnf_attack_ms : (s_is_exit ? exit_attack_ms : rot_attack_ms);
-    uint32_t release_ms = s_is_confirm ? cnf_release_ms : (s_is_exit ? exit_release_ms : rot_release_ms);
+    uint32_t total_ms   = s_is_confirm ? cnf_total_ms  : (s_is_exit ? (exit_single_ms + exit_gap_ms + exit_single_ms) : (s_is_boot ? (boot_single_ms * 3 + boot_gap_ms * 2) : rot_total_ms));
+    uint32_t attack_ms  = s_is_confirm ? cnf_attack_ms : (s_is_exit ? exit_attack_ms : (s_is_boot ? boot_attack_ms : rot_attack_ms));
+    uint32_t release_ms = s_is_confirm ? cnf_release_ms : (s_is_exit ? exit_release_ms : (s_is_boot ? boot_release_ms : rot_release_ms));
     uint32_t elapsed_ms = (uint32_t)(millis() - btn.buzzer_start);
+
+    if (s_is_boot) {
+        uint8_t vol = ui.param[BUZ_VOL];
+        uint32_t target_ccr = k_rot_ccr[vol];
+
+        if (s_boot_phase == 0) {
+            if (elapsed_ms < boot_single_ms) {
+                uint32_t current_ccr = target_ccr;
+                if (elapsed_ms < attack_ms)
+                    current_ccr = current_ccr * elapsed_ms / attack_ms;
+                else if (elapsed_ms > boot_single_ms - release_ms)
+                    current_ccr = current_ccr * (boot_single_ms - elapsed_ms) / release_ms;
+                TIM12_CCR1 = current_ccr;
+            } else {
+                s_boot_phase = 1;
+                TIM12_CCR1 = 0;
+            }
+        } else if (s_boot_phase == 1) {
+            if (elapsed_ms < boot_single_ms + boot_gap_ms) {
+                TIM12_CCR1 = 0;
+            } else {
+                s_boot_phase = 2;
+                TIM12_ARR = k_rot_arr[vol];
+                TIM12_CNT = 0;
+            }
+        } else if (s_boot_phase == 2) {
+            uint32_t phase_elapsed = elapsed_ms - (boot_single_ms + boot_gap_ms);
+            if (phase_elapsed < boot_single_ms) {
+                uint32_t current_ccr = target_ccr;
+                if (phase_elapsed < attack_ms)
+                    current_ccr = current_ccr * phase_elapsed / attack_ms;
+                else if (phase_elapsed > boot_single_ms - release_ms)
+                    current_ccr = current_ccr * (boot_single_ms - phase_elapsed) / release_ms;
+                TIM12_CCR1 = current_ccr;
+            } else {
+                s_boot_phase = 3;
+                TIM12_CCR1 = 0;
+            }
+        } else if (s_boot_phase == 3) {
+            if (elapsed_ms < boot_single_ms * 2 + boot_gap_ms) {
+                TIM12_CCR1 = 0;
+            } else {
+                s_boot_phase = 4;
+                TIM12_ARR = k_rot_arr[vol] * 2 / 3;
+                TIM12_CNT = 0;
+            }
+        } else if (s_boot_phase == 4) {
+            uint32_t phase_elapsed = elapsed_ms - (boot_single_ms * 2 + boot_gap_ms * 2);
+            if (phase_elapsed < boot_single_ms) {
+                uint32_t current_ccr = target_ccr;
+                if (phase_elapsed < attack_ms)
+                    current_ccr = current_ccr * phase_elapsed / attack_ms;
+                else if (phase_elapsed > boot_single_ms - release_ms)
+                    current_ccr = current_ccr * (boot_single_ms - phase_elapsed) / release_ms;
+                TIM12_CCR1 = current_ccr;
+            } else {
+                TIM12_CCR1 = 0;
+                TIM12_CR1 &= ~(1u << 0);
+                btn.buzzer_start = 0;
+                s_is_boot = false;
+                s_boot_phase = 0;
+            }
+        }
+        return;
+    }
 
     if (s_is_exit) {
         uint8_t vol = ui.param[BUZ_VOL];

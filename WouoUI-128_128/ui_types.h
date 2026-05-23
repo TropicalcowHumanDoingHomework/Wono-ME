@@ -27,6 +27,7 @@ struct UiState {
     uint8_t last_select = 0;
     uint8_t last_box_y_trg = 0;
     bool wake_fade = false;
+    bool window_sleep = false;
     uint32_t idle_timer = 0;
 };
 

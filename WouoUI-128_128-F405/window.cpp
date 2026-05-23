@@ -113,38 +113,49 @@ void window_show() {
         }
 
         if (win.bokeh_step) {
-            if (ui.param[DARK_MODE]) {
-                if (win.bokeh_step >= 3) {
-                    for (uint16_t y = 0; y < 128; ++y)
-                        for (uint16_t x = 0; x < 16; ++x)
-                            if (y % 2 == 0) buf_ptr[y * 16 + x] &= 0x55;
-                            else buf_ptr[y * 16 + x] &= 0xAA;
-                } else if (win.bokeh_step >= 2) {
-                    for (uint16_t y = 0; y < 128; ++y)
-                        for (uint16_t x = 0; x < 16; ++x)
-                            if (y % 2 == 0) buf_ptr[y * 16 + x] &= 0xAA;
-                            else buf_ptr[y * 16 + x] &= 0x55;
+            if (ui.param[FADE_MODE] == 0) {
+                if (ui.param[DARK_MODE]) {
+                    if (win.bokeh_step >= 3) {
+                        for (uint16_t y = 0; y < 128; ++y)
+                            for (uint16_t x = 0; x < 16; ++x)
+                                if (y % 2 == 0) buf_ptr[y * 16 + x] &= 0x55;
+                                else buf_ptr[y * 16 + x] &= 0xAA;
+                    } else if (win.bokeh_step >= 2) {
+                        for (uint16_t y = 0; y < 128; ++y)
+                            for (uint16_t x = 0; x < 16; ++x)
+                                if (y % 2 == 0) buf_ptr[y * 16 + x] &= 0xAA;
+                                else buf_ptr[y * 16 + x] &= 0x55;
+                    } else {
+                        for (uint16_t y = 0; y < 128; y += 2)
+                            for (uint16_t x = 0; x < 16; ++x)
+                                buf_ptr[y * 16 + x] &= 0x55;
+                    }
                 } else {
-                    for (uint16_t y = 0; y < 128; y += 2)
-                        for (uint16_t x = 0; x < 16; ++x)
-                            buf_ptr[y * 16 + x] &= 0x55;
+                    if (win.bokeh_step >= 3) {
+                        for (uint16_t y = 0; y < 128; ++y)
+                            for (uint16_t x = 0; x < 16; ++x)
+                                if (y % 2 == 0) buf_ptr[y * 16 + x] |= 0xAA;
+                                else buf_ptr[y * 16 + x] |= 0x55;
+                    } else if (win.bokeh_step >= 2) {
+                        for (uint16_t y = 0; y < 128; ++y)
+                            for (uint16_t x = 0; x < 16; ++x)
+                                if (y % 2 == 0) buf_ptr[y * 16 + x] |= 0x55;
+                                else buf_ptr[y * 16 + x] |= 0xAA;
+                    } else {
+                        for (uint16_t y = 0; y < 128; y += 2)
+                            for (uint16_t x = 0; x < 16; ++x)
+                                buf_ptr[y * 16 + x] |= 0x55;
+                    }
                 }
             } else {
-                if (win.bokeh_step >= 3) {
-                    for (uint16_t y = 0; y < 128; ++y)
+                if (win.bokeh_step >= 2) {
+                    for (uint16_t y = 1; y < 128; y += 2)
                         for (uint16_t x = 0; x < 16; ++x)
-                            if (y % 2 == 0) buf_ptr[y * 16 + x] |= 0xAA;
-                            else buf_ptr[y * 16 + x] |= 0x55;
-                } else if (win.bokeh_step >= 2) {
-                    for (uint16_t y = 0; y < 128; ++y)
-                        for (uint16_t x = 0; x < 16; ++x)
-                            if (y % 2 == 0) buf_ptr[y * 16 + x] |= 0x55;
-                            else buf_ptr[y * 16 + x] |= 0xAA;
-                } else {
-                    for (uint16_t y = 0; y < 128; y += 2)
-                        for (uint16_t x = 0; x < 16; ++x)
-                            buf_ptr[y * 16 + x] |= 0x55;
+                            buf_ptr[y * 16 + x] = 0x55;
                 }
+                for (uint16_t y = 0; y < 128; y += 2)
+                    for (uint16_t x = 0; x < 16; ++x)
+                        buf_ptr[y * 16 + x] = 0xAA;
             }
         }
     }

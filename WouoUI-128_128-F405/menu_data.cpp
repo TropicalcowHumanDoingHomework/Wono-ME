@@ -149,12 +149,12 @@ Menu volt_menu[] = {
 Menu setting_menu[] = {
     {"[ Setting ]"},
     {"~ Disp Bri"},
-    {"~ Btn SPT"},
-    {"~ Btn LPT"},
-    {"+ Knob Rot Dir"},
     {"+ Dark Mode"},
     {"~ Rotate Scr"},
     {"~ Buzzer Vol"},
+    {"~ Btn SPT"},
+    {"~ Btn LPT"},
+    {"+ Knob Rot Dir"},
     {"+ USB Storage"},
     {"- [ About ]"}
 };
@@ -197,6 +197,7 @@ Menu animition_menu[] = {
     {"~ Spot Ani"},
     {"~ Tag Ani"},
     {"~ Fade Ani"},
+    {"+ Fade Mode"},
     {"+ T Ufd Fm Scr"},
     {"+ L Ufd Fm Scr"},
     {"+ T Loop Mode"},

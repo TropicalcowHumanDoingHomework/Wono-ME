@@ -440,6 +440,10 @@ void sleep_proc() {
                 check_box_s_init(&knob.param[KNOB_COD], &knob.param[KNOB_COD_P]);
             }
             ui.init = 1;
+            if (ui.window_sleep) {
+                ui.index = M_WINDOW;
+                ui.window_sleep = 0;
+            }
             ui.wake_fade = 1;
             ui.state = S_FADE;
             ui.sleep = false;

@@ -415,6 +415,7 @@ void fade_wake() {
 
     u8g2.clearBuffer();
     switch (ui.index) {
+        case M_WINDOW: window_show(); break;
         case M_MAIN: tile_show(main_menu, main_menu_exp, main_icon_pic); break;
         case M_EDITOR: list_show(editor_menu, M_EDITOR); break;
         case M_KNOB: list_show(knob_menu, M_KNOB); break;
@@ -520,6 +521,10 @@ void sleep_proc() {
                 check_box_s_init(&knob.param[KNOB_COD], &knob.param[KNOB_COD_P]);
             }
             ui.init = true;
+            if (ui.window_sleep) {
+                ui.index = M_WINDOW;
+                ui.window_sleep = false;
+            }
             ui.wake_fade = true;
             ui.state = S_FADE;
             ui.sleep = false;
@@ -909,8 +914,63 @@ void ui_proc() {
                     ui.idle_timer = millis();
                     ui.sleep = false;
                     ui.index = ui.last_index;
+                    ui.layer++;
+                    ui.select[ui.layer] = ui.last_select;
+                    list.box_y_trg[ui.layer] = ui.last_box_y_trg;
+                    if (ui.index == M_MAIN) {
+                        tile.icon_x = -ui.select[ui.layer] * TILE_ICON_S;
+                        tile.icon_x_trg = tile.icon_x;
+                        tile.icon_y = 0;
+                        tile.icon_y_trg = 0;
+                        tile.indi_x = TILE_INDI_W;
+                        tile.indi_x_trg = TILE_INDI_W;
+                        tile.title_y = tile.title_y_calc;
+                        tile.title_y_trg = tile.title_y_trg_calc;
+                        tile.select_flag = true;
+                    } else {
+                        list.y = -LIST_LINE_H * ui.select[ui.layer] + list.box_y_trg[ui.layer];
+                        list.y_trg = list.y;
+                        list.box_y = list.box_y_trg[ui.layer];
+                        list.box_x = 0;
+                        list.box_x_trg = 0;
+                        list.bar_y = ui.num[ui.index] > 1 ? ceil(ui.select[ui.layer] * ((float)DISP_H / (ui.num[ui.index] - 1))) : 0;
+                        list.bar_y_trg = list.bar_y;
+                        list.loop = false;
+                        if (ui.index == M_VOLT) {
+                            volt.text_bg_l = DISP_W;
+                            volt.text_bg_l_trg = DISP_W;
+                        } else if (ui.index == M_ABOUT) {
+                            about.indi_x = ABOUT_INDI_S;
+                            about.indi_x_trg = ABOUT_INDI_S;
+                        }
+                    }
+                    if (ui.index == M_SETTING) {
+                        check_box_v_init(ui.param);
+                        check_box_m_init(ui.param);
+                        uint8_t pi = TILE_UFD, vi = DISP_BRI;
+                        for (uint8_t i = 0; setting_menu[i].title[0] != '-'; ++i) {
+                            if (setting_menu[i].title[0] == '+') { check_box.m_map[i] = pi; ++pi; }
+                            else if (setting_menu[i].title[0] == '~') {
+                                if (strcmp(setting_menu[i].title + 2, "List Cur") == 0) check_box.v_map[i] = LIST_CUR;
+                                else if (strcmp(setting_menu[i].title + 2, "Rotate Scr") == 0) check_box.v_map[i] = ROTATE_SCR;
+                                else if (strcmp(setting_menu[i].title + 2, "Sleep") == 0) check_box.v_map[i] = SLP_T;
+                                else check_box.v_map[i] = vi++;
+                            }
+                        }
+                    } else if (ui.index == M_KNOB) {
+                        check_box_v_init(knob.param);
+                    } else if (ui.index == M_KRF) {
+                        check_box_s_init(&knob.param[KNOB_ROT], &knob.param[KNOB_ROT_P]);
+                    } else if (ui.index == M_KPF) {
+                        check_box_s_init(&knob.param[KNOB_COD], &knob.param[KNOB_COD_P]);
+                    }
+                    if (ui.window_sleep) {
+                        ui.index = M_WINDOW;
+                        ui.window_sleep = false;
+                    }
+                    ui.init = true;
                     ui.wake_fade = true;
-                    ui.state = S_LAYER_IN;
+                    ui.state = S_FADE;
                 } else {
                     fade_sleep();
                 }
@@ -939,13 +999,14 @@ void ui_proc() {
                 case M_SETTING: setting_proc(); break;
                 case M_ABOUT: about_proc(); break;
             }
-            if (!ui.sleep && ui.param[SLP_T] > 0 && ui.index != M_SLEEP && ui.index != M_WINDOW) {
+            if (!ui.sleep && ui.param[SLP_T] > 0 && ui.index != M_SLEEP) {
                 if (btn.pressed) {
                     ui.idle_timer = millis();
                 } else if (millis() - ui.idle_timer >= slp_map[ui.param[SLP_T]] * 1000UL) {
+                    ui.window_sleep = (ui.index == M_WINDOW);
                     ui.last_select = ui.select[ui.layer];
                     ui.last_box_y_trg = list.box_y_trg[ui.layer];
-                    ui.last_index = ui.index;
+                    ui.last_index = ui.window_sleep ? win.index : ui.index;
                     ui.index = M_SLEEP;
                     ui.state = S_LAYER_OUT;
                 }

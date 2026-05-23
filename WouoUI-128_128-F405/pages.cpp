@@ -99,18 +99,18 @@ void list_draw_text_and_check_box(Menu* arr, int i) {
 // 菜单项 1~9 对应的 ParamIndex
 static const uint8_t setting_param_map[] = {
     0,   // 1: Disp Bri  → DISP_BRI
-    11,  // 2: Btn SPT   → BTN_SPT
-    12,  // 3: Btn LPT   → BTN_LPT
-    18,  // 4: Knob Rot Dir → KNOB_DIR
-    19,  // 5: Dark Mode → DARK_MODE
-    20,  // 6: Rotate Scr → ROTATE_SCR
-    21,  // 7: Buzzer Vol → BUZ_VOL
+    19,  // 2: Dark Mode → DARK_MODE
+    20,  // 3: Rotate Scr → ROTATE_SCR
+    21,  // 4: Buzzer Vol → BUZ_VOL
+    11,  // 5: Btn SPT   → BTN_SPT
+    12,  // 6: Btn LPT   → BTN_LPT
+    18,  // 7: Knob Rot Dir → KNOB_DIR
     22,  // 8: USB Storage → USB_ENABLE
     0    // 9: [ About ] → 无显示（占位）
 };
 
 // Animi 页面：菜单项位置 → 参数索引映射
-// 菜单项 1~16 对应的 ParamIndex
+// 菜单项 1~17 对应的 ParamIndex
 static const uint8_t animi_param_map[] = {
     1,   // 1: Tile Ani  → TILE_ANI
     2,   // 2: List Cur  → LIST_CUR
@@ -122,12 +122,13 @@ static const uint8_t animi_param_map[] = {
     8,   // 8: Spot Ani  → SPOT_ANI
     9,   // 9: Tag Ani   → TAG_ANI
     10,  // 10: Fade Ani → FADE_ANI
-    13,  // 11: T Ufd Fm Scr → TILE_UFD
-    14,  // 12: L Ufd Fm Scr → LIST_UFD
-    15,  // 13: T Loop Mode → TILE_LOOP
-    16,  // 14: L Loop Mode → LIST_LOOP
-    17,  // 15: Win Bokeh Bg → WIN_BOK
-    23   // 16: Win Stretch → WIN_STYLE
+    24,  // 11: Fade Mode → FADE_MODE
+    13,  // 12: T Ufd Fm Scr → TILE_UFD
+    14,  // 13: L Ufd Fm Scr → LIST_UFD
+    15,  // 14: T Loop Mode → TILE_LOOP
+    16,  // 15: L Loop Mode → LIST_LOOP
+    17,  // 16: Win Bokeh Bg → WIN_BOK
+    23   // 17: Win Stretch → WIN_STYLE
 };
 
 
@@ -522,12 +523,13 @@ void animition_proc() {
                     case 8: window_value_init("Spot Ani", SPOT_ANI, &ui.param[SPOT_ANI], 100, 10, 1, animition_menu, M_ANIMITION); break;
                     case 9: window_value_init("Tag Ani", TAG_ANI, &ui.param[TAG_ANI], 100, 10, 1, animition_menu, M_ANIMITION); break;
                     case 10: window_value_init("Fade Ani", FADE_ANI, &ui.param[FADE_ANI], 255, 0, 1, animition_menu, M_ANIMITION); break;
-                    case 11: check_box_m_select(TILE_UFD); break;
-                    case 12: check_box_m_select(LIST_UFD); break;
-                    case 13: check_box_m_select(TILE_LOOP); break;
-                    case 14: check_box_m_select(LIST_LOOP); break;
-                    case 15: check_box_m_select(WIN_BOK); break;
-                    case 16: check_box_m_select(WIN_STYLE); break;
+                    case 11: check_box_m_select(FADE_MODE); break;
+                    case 12: check_box_m_select(TILE_UFD); break;
+                    case 13: check_box_m_select(LIST_UFD); break;
+                    case 14: check_box_m_select(TILE_LOOP); break;
+                    case 15: check_box_m_select(LIST_LOOP); break;
+                    case 16: check_box_m_select(WIN_BOK); break;
+                    case 17: check_box_m_select(WIN_STYLE); break;
                 }
                 break;
         }
@@ -873,12 +875,12 @@ void setting_proc() {
                 switch (ui.select[ui.layer]) {
                     case 0: ui.index = M_MAIN; ui.state = S_LAYER_OUT; break;
                     case 1: window_value_init("Disp Bri", DISP_BRI, &ui.param[DISP_BRI], 1, 0, 1, setting_menu, M_SETTING); break;
-                    case 2: window_value_init("Btn SPT", BTN_SPT, &ui.param[BTN_SPT], 255, 0, 1, setting_menu, M_SETTING); break;
-                    case 3: window_value_init("Btn LPT", BTN_LPT, &ui.param[BTN_LPT], 255, 0, 1, setting_menu, M_SETTING); break;
-                    case 4: check_box_m_select(KNOB_DIR); break;
-                    case 5: check_box_m_select(DARK_MODE); break;
-                    case 6: window_value_init("Rotate Scr", ROTATE_SCR, &ui.param[ROTATE_SCR], 3, 0, 1, setting_menu, M_SETTING); break;
-                    case 7: window_value_init("Buzzer Vol", BUZ_VOL, &ui.param[BUZ_VOL], 4, 0, 1, setting_menu, M_SETTING); break;
+                    case 2: check_box_m_select(DARK_MODE); break;
+                    case 3: window_value_init("Rotate Scr", ROTATE_SCR, &ui.param[ROTATE_SCR], 3, 0, 1, setting_menu, M_SETTING); break;
+                    case 4: window_value_init("Buzzer Vol", BUZ_VOL, &ui.param[BUZ_VOL], 4, 0, 1, setting_menu, M_SETTING); break;
+                    case 5: window_value_init("Btn SPT", BTN_SPT, &ui.param[BTN_SPT], 255, 0, 1, setting_menu, M_SETTING); break;
+                    case 6: window_value_init("Btn LPT", BTN_LPT, &ui.param[BTN_LPT], 255, 0, 1, setting_menu, M_SETTING); break;
+                    case 7: check_box_m_select(KNOB_DIR); break;
                     case 8: check_box_m_select(USB_ENABLE); break;
                     case 9: ui.index = M_ABOUT; ui.state = S_LAYER_IN; break;
                 }

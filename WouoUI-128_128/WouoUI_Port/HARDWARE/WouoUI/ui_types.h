@@ -21,6 +21,7 @@ struct UiState {
     uint8_t last_index;
     uint8_t last_select;
     uint8_t last_box_y_trg;
+    uint8_t window_sleep;
     uint8_t wake_fade;
     uint32_t idle_timer;
 };
