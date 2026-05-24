@@ -39,6 +39,10 @@ struct TileState {
     float indi_x_trg;
     float title_y;
     float title_y_trg;
+    float icon_x_vel;
+    float icon_y_vel;
+    float indi_x_vel;
+    float title_y_vel;
 };
 
 //列表状态
@@ -61,6 +65,12 @@ struct ListState {
     float box_H;
     float box_h;
     float box_h_trg;
+    float box_y_vel;
+    float box_x_vel;
+    float box_w_vel;
+    float box_w_vel_trg;
+    float box_h_vel;
+    float box_h_vel_trg;
 };
 
 //电压测量状态
@@ -101,6 +111,8 @@ struct WindowState {
     float hl_sel_trg;
     float list_y;
     float list_y_trg;
+    float hl_vel;
+    float list_vel;
     uint8_t bokeh_step;
     uint32_t last_bokeh_time;
     float bar;
@@ -116,6 +128,7 @@ struct WindowState {
     float box_H;
     float box_h;
     float box_h_trg;
+    void (*list_on_close)(uint8_t);
 };
 
 //聚光灯状态

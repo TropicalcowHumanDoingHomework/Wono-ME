@@ -11,6 +11,7 @@ void window_value_init(const char title[], uint8_t select, uint8_t *value, uint8
 void window_message_init(const char title[], const char message[], Menu *bg, uint8_t index);
 void window_list_select_init(const char title[], const char* items[], uint8_t item_count, Menu *bg, uint8_t index);
 void window_param_init();
+void window_set_list_callback(void (*cb)(uint8_t));
 void window_show();
 void window_proc();
 

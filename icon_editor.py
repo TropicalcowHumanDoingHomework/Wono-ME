@@ -1,7 +1,7 @@
 """
 WouoUI 图标编辑器 — 全功能像素图标编辑工具
 =============================================
-Version 0.15
+Version 0.22
 
 支持可变尺寸正方形画布（默认 48×48），
 可导入/导出 PNG 和 C 代码，实时预览代码。
@@ -20,7 +20,7 @@ Version 0.15
   ✓ 多步撤销/重做，复制/粘贴
 """
 
-VERSION = "0.15"
+VERSION = "0.22"
 import tkinter as tk
 import tkinter.font as tkfont
 from tkinter import filedialog, messagebox, ttk
@@ -29,6 +29,7 @@ import sys
 import math
 import subprocess
 import threading
+import traceback
 
 def _find_pip():
     py = sys.executable
@@ -235,7 +236,7 @@ def format_raw_hex(byte_data, sep=" ", upper=True, cols=16):
     return sep.join(parts)
 
 
-def pixels_from_png(filepath, scale_to_fit=True, scale_factor=None):
+def pixels_from_png(filepath, scale_to_fit=True, scale_factor=None, crop_offset=None, crop_scale=None):
     from PIL import Image
     img = Image.open(filepath)
 
@@ -252,7 +253,14 @@ def pixels_from_png(filepath, scale_to_fit=True, scale_factor=None):
         img = img.convert('RGB')
 
     w, h = img.size
-    if w != ICON_W or h != ICON_H:
+    if crop_offset is not None:
+        ox, oy = crop_offset
+        cw = max(1, round(ICON_W * crop_scale)) if crop_scale else ICON_W
+        ch = max(1, round(ICON_H * crop_scale)) if crop_scale else ICON_H
+        img = img.crop((ox, oy, ox + cw, oy + ch))
+        if crop_scale and crop_scale != 1.0:
+            img = img.resize((ICON_W, ICON_H), Image.LANCZOS)
+    elif w != ICON_W or h != ICON_H:
         if scale_factor is not None and scale_factor > 0:
             nw = max(1, round(w * scale_factor))
             nh = max(1, round(h * scale_factor))
@@ -270,9 +278,16 @@ def pixels_from_png(filepath, scale_to_fit=True, scale_factor=None):
         elif scale_to_fit:
             img = img.resize((ICON_W, ICON_H), Image.NEAREST)
         else:
-            left = (w - ICON_W) // 2
-            top = (h - ICON_H) // 2
-            img = img.crop((left, top, left + ICON_W, top + ICON_H))
+            if w >= ICON_W and h >= ICON_H:
+                left = (w - ICON_W) // 2
+                top = (h - ICON_H) // 2
+                img = img.crop((left, top, left + ICON_W, top + ICON_H))
+            else:
+                bg = Image.new('RGB', (ICON_W, ICON_H), (255, 255, 255))
+                left = (ICON_W - w) // 2
+                top = (ICON_H - h) // 2
+                bg.paste(img, (left, top))
+                img = bg
 
     img = img.convert('L')
     pixels = new_pixels(0)
@@ -301,9 +316,16 @@ def preview_from_img(img, mode="fit", scale_pct=100):
     if mode == "fit":
         img = img.resize((ICON_W, ICON_H), Image.NEAREST)
     elif mode == "crop":
-        left = (w - ICON_W) // 2
-        top = (h - ICON_H) // 2
-        img = img.crop((left, top, left + ICON_W, top + ICON_H))
+        if w >= ICON_W and h >= ICON_H:
+            left = (w - ICON_W) // 2
+            top = (h - ICON_H) // 2
+            img = img.crop((left, top, left + ICON_W, top + ICON_H))
+        else:
+            bg = Image.new('RGB', (ICON_W, ICON_H), (255, 255, 255))
+            left = (ICON_W - w) // 2
+            top = (ICON_H - h) // 2
+            bg.paste(img, (left, top))
+            img = bg
     else:
         factor = scale_pct / 100.0
         nw = max(1, round(w * factor))
@@ -325,6 +347,40 @@ def preview_from_img(img, mode="fit", scale_pct=100):
     for y in range(ICON_H):
         for x in range(ICON_W):
             p = img.getpixel((x, y))
+            pixels[y][x] = 1 if p < 128 else 0
+    return pixels
+
+
+def preview_from_img_custom(pil_img, ox, oy, scale_factor=1.0):
+    from PIL import Image
+    w, h = pil_img.size
+    sel_w = max(1, round(ICON_W * scale_factor))
+    sel_h = max(1, round(ICON_H * scale_factor))
+    if w < sel_w or h < sel_h:
+        return preview_from_img(pil_img, mode="crop")
+    ox = max(0, min(ox, w - sel_w))
+    oy = max(0, min(oy, h - sel_h))
+
+    if pil_img.mode in ('P', 'PA'):
+        if 'transparency' in pil_img.info:
+            pil_img = pil_img.convert('RGBA')
+        else:
+            pil_img = pil_img.convert('RGB')
+    if pil_img.mode == 'RGBA':
+        bg = Image.new('RGB', pil_img.size, (255, 255, 255))
+        bg.paste(pil_img, (0, 0), pil_img)
+        pil_img = bg
+    elif pil_img.mode != 'RGB':
+        pil_img = pil_img.convert('RGB')
+
+    region = pil_img.crop((ox, oy, ox + sel_w, oy + sel_h))
+    if scale_factor != 1.0:
+        region = region.resize((ICON_W, ICON_H), Image.LANCZOS)
+    region = region.convert('L')
+    pixels = new_pixels(0)
+    for y in range(ICON_H):
+        for x in range(ICON_W):
+            p = region.getpixel((x, y))
             pixels[y][x] = 1 if p < 128 else 0
     return pixels
 
@@ -494,6 +550,8 @@ class IconEditor:
         self.has_selection = False
         self.sel_x1 = self.sel_y1 = self.sel_x2 = self.sel_y2 = 0
         self.sel_rect_id = None
+        self._hover_id = None
+        self._cell_items = []
 
         self._build_ui()
         self._render()
@@ -727,7 +785,7 @@ class IconEditor:
 
     def _save_state(self):
         self.history.append([row[:] for row in self.pixels])
-        if len(self.history) > 50:
+        if len(self.history) > 30:
             self.history.pop(0)
         self.redo_stack.clear()
         self.modified = True
@@ -737,7 +795,7 @@ class IconEditor:
         if self.history:
             self.redo_stack.append([row[:] for row in self.pixels])
             self.pixels = self.history.pop()
-            self._render()
+            self._render_incremental()
             self._update_status("已撤销")
             self.modified = True
 
@@ -745,7 +803,7 @@ class IconEditor:
         if self.redo_stack:
             self.history.append([row[:] for row in self.pixels])
             self.pixels = self.redo_stack.pop()
-            self._render()
+            self._render_incremental()
             self._update_status("已重做")
             self.modified = True
 
@@ -789,30 +847,47 @@ class IconEditor:
             extra = f"  笔刷:{self.brush_size}×{self.brush_size}" if self.tool == "pencil" else ""
             self._update_status(f"工具:{tool_name}{extra}  颜色:{color_name}  坐标 ({x}, {y})  值={self.pixels[y][x]}")
             if self.tool != "select":
-                if self.hover_cell is not None:
-                    self.cv.delete(self.hover_cell)
-                if self.tool == "pencil":
-                    s = self.brush_size
-                    half = s // 2
-                    px = (x - half) * CELL_SIZE + 1
-                    py = (y - half) * CELL_SIZE + 1
-                    self.hover_cell = self.cv.create_rectangle(
-                        px, py, px + s * CELL_SIZE, py + s * CELL_SIZE,
-                        outline="#FF0000", width=2, dash=(3, 2))
+                if self._hover_id is None:
+                    if self.tool == "pencil":
+                        s = self.brush_size
+                        half = s // 2
+                        px = (x - half) * CELL_SIZE + 1
+                        py = (y - half) * CELL_SIZE + 1
+                        self._hover_id = self.cv.create_rectangle(
+                            px, py, px + s * CELL_SIZE, py + s * CELL_SIZE,
+                            outline="#FF0000", width=2, dash=(3, 2), tags="hover")
+                    else:
+                        px = x * CELL_SIZE + 1
+                        py = y * CELL_SIZE + 1
+                        self._hover_id = self.cv.create_rectangle(
+                            px, py, px+CELL_SIZE, py+CELL_SIZE,
+                            outline="#FF0000", width=2, dash=(3, 2), tags="hover")
                 else:
-                    px = x * CELL_SIZE + 1
-                    py = y * CELL_SIZE + 1
-                    self.hover_cell = self.cv.create_rectangle(
-                        px, py, px+CELL_SIZE, py+CELL_SIZE,
-                        outline="#FF0000", width=2, dash=(3, 2))
+                    if self.tool == "pencil":
+                        s = self.brush_size
+                        half = s // 2
+                        px = (x - half) * CELL_SIZE + 1
+                        py = (y - half) * CELL_SIZE + 1
+                        self.cv.coords(self._hover_id, px, py, px + s * CELL_SIZE, py + s * CELL_SIZE)
+                    else:
+                        px = x * CELL_SIZE + 1
+                        py = y * CELL_SIZE + 1
+                        self.cv.coords(self._hover_id, px, py, px+CELL_SIZE, py+CELL_SIZE)
             else:
-                if self.hover_cell is not None:
-                    self.cv.delete(self.hover_cell)
-                    self.hover_cell = None
+                self._clear_hover()
         else:
-            if self.hover_cell is not None:
-                self.cv.delete(self.hover_cell)
-                self.hover_cell = None
+            self._clear_hover()
+
+    def _clear_hover(self):
+        if self._hover_id is not None:
+            self.cv.delete(self._hover_id)
+            self._hover_id = None
+
+    def _clear_preview(self):
+        if self.preview_outline:
+            for item_id in self.preview_outline:
+                self.cv.delete(item_id)
+            self.preview_outline = None
 
     def _mouse_down(self, event):
         x, y = event.x // CELL_SIZE, event.y // CELL_SIZE
@@ -825,7 +900,7 @@ class IconEditor:
 
         if self.tool == "pencil":
             self._draw_brush(x, y)
-            self._render()
+            self._render_incremental()
         elif self.tool == "select":
             self._clear_selection()
         elif self.tool == "line":
@@ -853,14 +928,10 @@ class IconEditor:
             if (x, y) != (sx, sy):
                 self._draw_brush_line(sx, sy, x, y)
                 self.drag_start = (x, y)
-                self._render()
+                self._render_incremental()
         else:
             x0, y0 = self.drag_start
-            self._render()
-            if self.preview_outline is not None:
-                self.cv.delete(self.preview_outline)
-                self.preview_outline = None
-
+            self._clear_preview()
             if self.tool == "select":
                 self.preview_outline = []
                 xa, xb = sorted((x0, x))
@@ -970,14 +1041,11 @@ class IconEditor:
         if not self.drawing:
             return
         self.drawing = False
-
-        if self.preview_outline is not None:
-            self.cv.delete(self.preview_outline)
-            self.preview_outline = None
+        self._clear_preview()
 
         x1, y1 = event.x // CELL_SIZE, event.y // CELL_SIZE
         if not self.drag_start:
-            self._render()
+            self._render_incremental()
             return
 
         x0, y0 = self.drag_start
@@ -990,23 +1058,23 @@ class IconEditor:
                 self.sel_x1, self.sel_y1 = xa, ya
                 self.sel_x2, self.sel_y2 = xb, yb
                 self._render()
-                self._draw_selection()
-                self._update_status(f"已框选区域 ({xa},{ya})-({xb},{yb})")
             else:
-                self._render()
+                self._render_incremental()
         elif self.tool == "line":
             draw_line(self.pixels, x0, y0, x1, y1, self.current_color)
+            self._render_incremental()
         elif self.tool == "rect":
             r = self.radius_var.get()
             draw_rect(self.pixels, x0, y0, x1, y1, self.current_color, self.rect_fill, r)
+            self._render_incremental()
         elif self.tool == "circle":
             cx, cy = (x0 + x1) // 2, (y0 + y1) // 2
             r = int(math.sqrt((x1 - x0)**2 + (y1 - y0)**2) // 2)
             if r > 0:
                 draw_circle(self.pixels, cx, cy, r, self.current_color, self.circle_fill)
+            self._render_incremental()
 
         self.drag_start = None
-        self._render()
 
     def _pick_color(self, event):
         x, y = event.x // CELL_SIZE, event.y // CELL_SIZE
@@ -1020,7 +1088,7 @@ class IconEditor:
         for y in range(ICON_H):
             for x in range(ICON_W):
                 self.pixels[y][x] = 1 - self.pixels[y][x]
-        self._render()
+        self._render_incremental()
         self._update_status("已反色")
 
     def rotate(self, times):
@@ -1029,7 +1097,7 @@ class IconEditor:
         for _ in range(times % 4):
             p = [[p[ICON_H-1-c][r] for c in range(ICON_H)] for r in range(ICON_W)]
         self.pixels = p
-        self._render()
+        self._render_incremental()
         self._update_status(f"已旋转 {'左' if times > 0 else '右'} 90° × {abs(times)}")
 
     def flip(self, direction):
@@ -1041,7 +1109,7 @@ class IconEditor:
         else:
             self.pixels = self.pixels[::-1]
             self._update_status("已垂直镜像")
-        self._render()
+        self._render_incremental()
 
     def apply_rounded_corners(self):
         win = tk.Toplevel(self.root)
@@ -1203,7 +1271,7 @@ class IconEditor:
                                     self.pixels[py][px] = bg_color
                 self._update_status(f"已应用圆角裁剪 r={r}")
 
-            self._render()
+            self._render_incremental()
             win.destroy()
 
         win.bind("<Return>", do_apply)
@@ -1358,13 +1426,13 @@ class IconEditor:
         for y in range(ICON_H):
             for x in range(ICON_W):
                 self.pixels[y][x] = 1
-        self._render()
+        self._render_incremental()
         self._update_status("已全选(填充)")
 
     def clear_all(self):
         self._save_state()
         self.pixels = new_pixels(0)
-        self._render()
+        self._render_incremental()
         self._update_status("已清空")
 
     def copy(self):
@@ -1376,14 +1444,14 @@ class IconEditor:
             return
         self._save_state()
         self.pixels = [row[:] for row in self.clipboard]
-        self._render()
+        self._render_incremental()
         self._update_status("已粘贴")
 
     def reset(self):
         if messagebox.askyesno("重置", "确定要重置为空白图标吗？"):
             self.pixels = new_pixels(0)
             self.history.clear()
-            self._render()
+            self._render_incremental()
             self._update_status("已重置")
 
     # ── 导入导出 ────────────────────────────────────────────────
@@ -1404,6 +1472,7 @@ class IconEditor:
 
             mode = "fit"
             scale_pct = 100
+            custom_ox, custom_oy = 0, 0
             if w != ICON_W or h != ICON_H:
                 win = tk.Toplevel(self.root)
                 win.title("选择导入方式")
@@ -1423,6 +1492,8 @@ class IconEditor:
                 ttk.Radiobutton(left_pane, text=f"缩放到 {ICON_W}×{ICON_H}", variable=mode_var, value="fit").pack(anchor=tk.W, pady=2)
                 ttk.Radiobutton(left_pane, text=f"从中心裁剪到 {ICON_W}×{ICON_H}", variable=mode_var, value="crop").pack(anchor=tk.W, pady=2)
                 ttk.Radiobutton(left_pane, text="自定义缩放比例:", variable=mode_var, value="scale").pack(anchor=tk.W, pady=2)
+                custom_rb = ttk.Radiobutton(left_pane, text="自定义选择区域", variable=mode_var, value="custom")
+                custom_rb.pack(anchor=tk.W, pady=2)
 
                 scale_frame = ttk.Frame(left_pane)
                 scale_frame.pack(padx=16, fill=tk.X)
@@ -1439,11 +1510,25 @@ class IconEditor:
                     scale_label.config(text=f"{scale_var.get():.0f}%")
                 scale_var.trace("w", update_scale_label)
 
+                need_thumbnail = (w > ICON_W or h > ICON_H)
+
                 def disable_scale(*args):
-                    state = tk.NORMAL if mode_var.get() == "scale" else tk.DISABLED
+                    m = mode_var.get()
+                    state = tk.NORMAL if m in ("scale", "custom") else tk.DISABLED
                     scale_slider.configure(state=state)
+                    custom_rb.configure(state=tk.NORMAL if need_thumbnail else tk.DISABLED)
+                    if m == "custom" and need_thumbnail:
+                        sf = scale_var.get() / 100.0
+                        sel_w = max(1, round(ICON_W * sf))
+                        sel_h = max(1, round(ICON_H * sf))
+                        custom_offset[0] = max(0, (w - sel_w) // 2)
+                        custom_offset[1] = max(0, (h - sel_h) // 2)
                 mode_var.trace("w", disable_scale)
                 disable_scale()
+
+                custom_ox = (w - ICON_W) // 2 if need_thumbnail else 0
+                custom_oy = (h - ICON_H) // 2 if need_thumbnail else 0
+                custom_offset = [custom_ox, custom_oy]
 
                 ttk.Label(left_pane, text="原图尺寸 → 结果尺寸",
                           font=("", 9)).pack(pady=(10, 2))
@@ -1451,12 +1536,16 @@ class IconEditor:
                                        font=("Consolas", 10))
                 size_label.pack()
 
-                result = [None, None, None]
+                result = [None, None, None, None]
 
                 def do_ok():
                     result[0] = mode_var.get()
                     if result[0] == "scale":
                         result[1] = scale_var.get()
+                    elif result[0] == "custom":
+                        result[1] = scale_var.get()
+                        result[2] = custom_offset[0]
+                        result[3] = custom_offset[1]
                     win.destroy()
 
                 def do_cancel():
@@ -1474,11 +1563,35 @@ class IconEditor:
                 pv_frame = ttk.LabelFrame(right_pane, text=f" 预览 ({ICON_W}×{ICON_H}) ", padding=6)
                 pv_frame.pack(fill=tk.BOTH, expand=True)
 
-                PV_CELL = 10
-                pv_cv = tk.Canvas(pv_frame, width=ICON_W*PV_CELL+2, height=ICON_H*PV_CELL+2,
+                PV_CELL = max(4, min(14, 600 // ICON_W))
+                pv_req = ICON_W * PV_CELL + 2
+                pv_cv = tk.Canvas(pv_frame, width=pv_req, height=pv_req,
                                   bg="#F0F0F0", highlightthickness=1,
                                   highlightbackground="#C0C0C0", relief=tk.FLAT)
-                pv_cv.pack()
+                pv_cv.pack(fill=tk.BOTH, expand=True)
+                pv_cv._custom_info = {"scale": 1, "img_w": w, "img_h": h, "pil_img": None}
+
+                def _set_offset_from_event(event):
+                    info = pv_cv._custom_info
+                    ts = info["scale"]
+                    iw, ih = info["img_w"], info["img_h"]
+                    sf = scale_var.get() / 100.0
+                    sel_w = max(1, round(ICON_W * sf))
+                    sel_h = max(1, round(ICON_H * sf))
+                    ix = (event.x - 2) / ts
+                    iy = (event.y - 2) / ts
+                    ox = max(0, min(iw - sel_w, int(ix - sel_w // 2)))
+                    oy = max(0, min(ih - sel_h, int(iy - sel_h // 2)))
+                    custom_offset[0] = ox
+                    custom_offset[1] = oy
+                    _update_custom_region()
+
+                def on_cv_click(event):
+                    if mode_var.get() != "custom" or not need_thumbnail:
+                        return
+                    _set_offset_from_event(event)
+                pv_cv.bind("<Button-1>", on_cv_click)
+                pv_cv.bind("<B1-Motion>", on_cv_click)
 
                 info_frame = ttk.Frame(pv_frame)
                 info_frame.pack(fill=tk.X, pady=(6, 0))
@@ -1489,61 +1602,219 @@ class IconEditor:
                 ttk.Label(info_frame, textvariable=white_var,
                           font=("Consolas", 9), foreground="#333").pack(side=tk.LEFT)
 
+                def _draw_result_inset(ix, iy, cell, pp, tag_update=False):
+                    tag = "custom_region" if tag_update else ""
+                    iw = ICON_W * cell
+                    ih = ICON_H * cell
+                    pv_cv.create_rectangle(ix - 2, iy - 2, ix + iw + 2, iy + ih + 2,
+                                           fill="#FFFFFF", outline="#999", width=1, tags=tag)
+                    for py in range(ICON_H):
+                        for px in range(ICON_W):
+                            v = pp[py][px]
+                            x1 = ix + px * cell
+                            y1 = iy + py * cell
+                            pv_cv.create_rectangle(x1, y1, x1+cell, y1+cell,
+                                                   fill=PALETTE[v], outline="#D0D0D0", width=1,
+                                                   tags=tag)
+                    pv_cv.create_text(ix + iw // 2, iy - 2, anchor=tk.S,
+                                      text=f"结果 {ICON_W}×{ICON_H}",
+                                      fill="#333", font=("Consolas", 9), tags=tag)
+
+                def _update_custom_region():
+                    pv_cv.delete("custom_region")
+                    pil_img = pv_cv._custom_info.get("pil_img")
+                    if pil_img is None:
+                        return
+                    ts = pv_cv._custom_info["scale"]
+                    sf = scale_var.get() / 100.0
+                    ox, oy = custom_offset
+                    sel_w = max(1, int(ICON_W * sf * ts))
+                    sel_h = max(1, int(ICON_H * sf * ts))
+                    sx = 2 + ox * ts
+                    sy = 2 + oy * ts
+                    pv_cv.create_rectangle(sx, sy, sx + sel_w, sy + sel_h,
+                                           outline="#FF0000", width=2, tags="custom_region")
+                    pp = preview_from_img_custom(pil_img, ox, oy, scale_factor=sf)
+                    black_cnt = sum(row.count(1) for row in pp)
+                    white_cnt = sum(row.count(0) for row in pp)
+                    black_var.set(f"黑: {black_cnt}")
+                    white_var.set(f"白: {white_cnt}")
+                    cw = pv_cv.winfo_width() - 4
+                    ch = pv_cv.winfo_height() - 4
+                    cell = max(4, min(10, 200 // ICON_W))
+                    iw = ICON_W * cell
+                    ih = ICON_H * cell
+                    ix = max(2, cw - iw - 6)
+                    iy = max(2, ch - ih - 6)
+                    _draw_result_inset(ix, iy, cell, pp, tag_update=True)
+
                 def render_preview(*args):
                     m = mode_var.get()
                     sp = scale_var.get() if m == "scale" else 100
                     pv_cv.delete("all")
+                    pv_cv._preview_refs = []
+                    cw_fb = max(pv_req, pv_cv.winfo_width() - 4)
+                    ch_fb = cw_fb
+                    pv_cv.update_idletasks()
                     try:
                         pil_img = Image.open(path)
-                        pp = preview_from_img(pil_img, mode=m, scale_pct=sp)
-                        black_cnt = 0
-                        white_cnt = 0
-                        for py in range(ICON_H):
-                            for px in range(ICON_W):
-                                v = pp[py][px]
-                                color = PALETTE[v]
-                                if v:
-                                    black_cnt += 1
-                                else:
-                                    white_cnt += 1
-                                x1 = px * PV_CELL + 1
-                                y1 = py * PV_CELL + 1
-                                pv_cv.create_rectangle(x1, y1, x1+PV_CELL, y1+PV_CELL,
-                                                       fill=color, outline="#D0D0D0", width=1)
+                        ow, oh = pil_img.size
+
+                        if pil_img.mode in ('P', 'PA'):
+                            if 'transparency' in pil_img.info:
+                                pil_img = pil_img.convert('RGBA')
+                            else:
+                                pil_img = pil_img.convert('RGB')
+                        if pil_img.mode == 'RGBA':
+                            bg = Image.new('RGB', pil_img.size, (255, 255, 255))
+                            bg.paste(pil_img, (0, 0), pil_img)
+                            pil_img = bg
+                        elif pil_img.mode != 'RGB':
+                            pil_img = pil_img.convert('RGB')
+                        pv_cv._custom_info["pil_img"] = pil_img
+
+                        need_thumbnail = (ow > ICON_W or oh > ICON_H)
+
+                        if m == "custom" and need_thumbnail:
+                            sf = sp / 100.0
+                            sel_w = max(1, round(ICON_W * sf))
+                            sel_h = max(1, round(ICON_H * sf))
+                            custom_offset[0] = max(0, min(custom_offset[0], ow - sel_w))
+                            custom_offset[1] = max(0, min(custom_offset[1], oh - sel_h))
+
+                        if need_thumbnail:
+                            cw = pv_cv.winfo_width() - 4
+                            ch = pv_cv.winfo_height() - 4
+                            if cw < 50:
+                                cw = cw_fb
+                            if ch < 50:
+                                ch = ch_fb
+
+                            thumb_scale = min(cw / ow, ch / oh)
+                            tw = max(1, int(ow * thumb_scale))
+                            th = max(1, int(oh * thumb_scale))
+
+                            pv_cv._custom_info["scale"] = thumb_scale
+
+                            from io import BytesIO
+                            thumb_img = pil_img.resize((tw, th), Image.LANCZOS)
+                            if thumb_img.mode != 'RGB':
+                                thumb_img = thumb_img.convert('RGB')
+                            buf = BytesIO()
+                            thumb_img.save(buf, format='PPM')
+                            buf.seek(0)
+                            tk_thumb = tk.PhotoImage(data=buf.read())
+                            pv_cv._preview_refs.append(tk_thumb)
+                            pv_cv.create_image(2, 2, image=tk_thumb, anchor=tk.NW)
+
+                            if m == "custom":
+                                ox, oy = custom_offset
+                                sf = sp / 100.0
+                                sx = 2 + ox * thumb_scale
+                                sy = 2 + oy * thumb_scale
+                                sw = max(1, int(ICON_W * sf * thumb_scale))
+                                sh = max(1, int(ICON_H * sf * thumb_scale))
+                                pv_cv.create_rectangle(sx, sy, sx + sw, sy + sh,
+                                                       outline="#FF0000", width=2,
+                                                       tags="custom_region")
+                                pv_cv.create_text(2, 2, anchor=tk.NW,
+                                                  text=f"原图 {ow}×{oh}  拖拽选择区域",
+                                                  fill="#333", font=("Consolas", 9),
+                                                  tags="custom_region")
+                            else:
+                                crop_ow, crop_oh = ICON_W, ICON_H
+                                if m == "fit":
+                                    crop_ow, crop_oh = ow, oh
+                                elif m == "scale":
+                                    factor = sp / 100.0
+                                    crop_ow = max(1, round(ow * factor))
+                                    crop_oh = max(1, round(oh * factor))
+
+                                cx = (tw - crop_ow * thumb_scale) / 2
+                                cy = (th - crop_oh * thumb_scale) / 2
+                                rw = max(1, int(crop_ow * thumb_scale))
+                                rh = max(1, int(crop_oh * thumb_scale))
+                                pv_cv.create_rectangle(2 + cx, 2 + cy, 2 + cx + rw, 2 + cy + rh,
+                                                       outline="#FF0000", width=2, dash=(6, 3))
+                                pv_cv.create_text(2, 2, anchor=tk.NW,
+                                                  text=f"原图 {ow}×{oh}  红色虚线框 = 将提取的区域 ({ICON_W}×{ICON_H})",
+                                                  fill="#333", font=("Consolas", 9))
+
+                        if m == "custom" and need_thumbnail:
+                            pp = preview_from_img_custom(pil_img, custom_offset[0], custom_offset[1], scale_factor=sp/100)
+                        else:
+                            pp = preview_from_img(pil_img, mode=m, scale_pct=sp)
+                        black_cnt = sum(row.count(1) for row in pp)
+                        white_cnt = sum(row.count(0) for row in pp)
                         black_var.set(f"黑: {black_cnt}")
                         white_var.set(f"白: {white_cnt}")
-                        if m == "scale":
-                            size_label.config(text=f"{w}×{h} → 缩放 {sp:.0f}% → {ICON_W}×{ICON_H}")
-                        elif m == "crop":
-                            size_label.config(text=f"{w}×{h} → 居中裁剪 → {ICON_W}×{ICON_H}")
+
+                        if need_thumbnail:
+                            cw = pv_cv.winfo_width() - 4
+                            ch = pv_cv.winfo_height() - 4
+                            if cw < 50:
+                                cw = cw_fb
+                            if ch < 50:
+                                ch = ch_fb
+                            inset_cell = max(4, min(10, 200 // ICON_W))
+                            inset_w = ICON_W * inset_cell
+                            inset_h = ICON_H * inset_cell
+                            ix = max(2, cw - inset_w - 6)
+                            iy = max(2, ch - inset_h - 6)
+                            _draw_result_inset(ix, iy, inset_cell, pp, m == "custom")
                         else:
-                            size_label.config(text=f"{w}×{h} → 直接缩放 → {ICON_W}×{ICON_H}")
-                    except Exception:
-                        pass
+                            for py in range(ICON_H):
+                                for px in range(ICON_W):
+                                    v = pp[py][px]
+                                    x1 = px * PV_CELL + 1
+                                    y1 = py * PV_CELL + 1
+                                    pv_cv.create_rectangle(x1, y1, x1+PV_CELL, y1+PV_CELL,
+                                                           fill=PALETTE[v], outline="#D0D0D0", width=1)
+
+                        if m == "custom":
+                            if sp != 100:
+                                size_label.config(text=f"{ow}×{oh} → 自定义({sp:.0f}%) → {ICON_W}×{ICON_H}")
+                            else:
+                                size_label.config(text=f"{ow}×{oh} → 自定义区域 → {ICON_W}×{ICON_H}")
+                        elif m == "fit":
+                            size_label.config(text=f"{ow}×{oh} → 直接缩放 → {ICON_W}×{ICON_H}")
+                        elif m == "scale":
+                            size_label.config(text=f"{ow}×{oh} → 缩放 {sp:.0f}% → {ICON_W}×{ICON_H}")
+                        else:
+                            size_label.config(text=f"{ow}×{oh} → 居中裁剪 → {ICON_W}×{ICON_H}")
+                    except Exception as e:
+                        err = str(e)
+                        traceback.print_exc()
+                        pv_cv.create_text(4, 4, anchor=tk.NW, text=f"预览出错: {err}",
+                                          fill="red", font=("Consolas", 9))
 
                 mode_var.trace("w", render_preview)
                 scale_var.trace("w", render_preview)
-                render_preview()
-
                 auto_size(win, pad_x=20, pad_y=10)
                 center_dialog(win, win.master)
+                win.update_idletasks()
+                render_preview()
 
                 self.root.wait_window(win)
 
                 if result[0] is None:
                     return
                 mode = result[0]
-                if mode == "scale":
+                if mode in ("scale", "custom"):
                     scale_pct = result[1]
+                custom_ox, custom_oy = result[2], result[3]
 
             self._save_state()
-            if mode == "fit":
+            if mode == "custom":
+                cs = scale_pct / 100.0 if scale_pct != 100 else None
+                self.pixels = pixels_from_png(path, crop_offset=(custom_ox, custom_oy), crop_scale=cs)
+            elif mode == "fit":
                 self.pixels = pixels_from_png(path, scale_to_fit=True)
             elif mode == "crop":
                 self.pixels = pixels_from_png(path, scale_to_fit=False)
             else:
                 self.pixels = pixels_from_png(path, scale_factor=scale_pct / 100.0)
-            self._render()
+            self._render_incremental()
             self._update_status(f"已导入: {os.path.basename(path)} ({w}×{h})")
         except Exception as e:
             messagebox.showerror("导入失败", str(e))
@@ -1793,7 +2064,7 @@ class IconEditor:
 
             self._save_state()
             self.pixels = decode_c_bytes(data)
-            self._render()
+            self._render_incremental()
             self._update_status(f"已导入 C 代码: {os.path.basename(path)} ({inferred}×{inferred})")
         except Exception as e:
             messagebox.showerror("导入失败", str(e))
@@ -1971,7 +2242,7 @@ class IconEditor:
                 self.pixels[ny1 + dy_off][nx1 + dx_off] = region[dy_off][dx_off]
         self.sel_x1, self.sel_y1 = nx1, ny1
         self.sel_x2, self.sel_y2 = nx2, ny2
-        self._render()
+        self._render_incremental()
         self._draw_selection()
         self._update_status(f"框选已移动至 ({nx1},{ny1})-({nx2},{ny2})")
 
@@ -2026,7 +2297,7 @@ class IconEditor:
             for y in range(ya, yb + 1):
                 for x in range(xa, xb + 1):
                     self.pixels[y][x] = region[y - ya][x - xa]
-            self._render()
+            self._render_incremental()
             return
 
         for y in range(new_h + 1):
@@ -2035,23 +2306,36 @@ class IconEditor:
 
         self.sel_x1, self.sel_y1 = nx1, ny1
         self.sel_x2, self.sel_y2 = nx2, ny2
-        self._render()
+        self._render_incremental()
         self._draw_selection()
         dir_str = "顺时针" if clockwise else "逆时针"
         self._update_status(f"框选已{dir_str}旋转 ({nx1},{ny1})-({nx2},{ny2})")
 
     # ── 渲染 ────────────────────────────────────────────────────
 
-    def _render(self):
-        self.cv.delete("all")
-        self.cv.config(scrollregion=(0, 0, CANVAS_W + 2, CANVAS_H + 2))
+    def _render_incremental(self):
         for y in range(ICON_H):
+            row_items = self._cell_items[y]
+            px = y * CELL_SIZE + 1
+            for x in range(ICON_W):
+                self.cv.itemconfig(row_items[x], fill=PALETTE[self.pixels[y][x]])
+        self._refresh_preview()
+
+    def _render(self):
+        self.cv.delete("cell")
+        self._cell_items = []
+        for y in range(ICON_H):
+            row = []
+            py = y * CELL_SIZE + 1
             for x in range(ICON_W):
                 color = PALETTE[self.pixels[y][x]]
                 px = x * CELL_SIZE + 1
-                py = y * CELL_SIZE + 1
-                self.cv.create_rectangle(px, py, px+CELL_SIZE, py+CELL_SIZE,
-                                         fill=color, outline="#CCCCCC", width=1)
+                item_id = self.cv.create_rectangle(
+                    px, py, px + CELL_SIZE, py + CELL_SIZE,
+                    fill=color, outline="#CCCCCC", width=1, tags="cell")
+                row.append(item_id)
+            self._cell_items.append(row)
+        self.cv.config(scrollregion=(0, 0, CANVAS_W + 2, CANVAS_H + 2))
         if self.has_selection:
             self._draw_selection()
         self._refresh_preview()

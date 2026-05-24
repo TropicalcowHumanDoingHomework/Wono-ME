@@ -57,8 +57,9 @@ void ui_init() {
     ui.num[M_KRF] = 7;
     ui.num[M_KPF] = 82;
     ui.num[M_VOLT] = 10;
-    ui.num[M_SETTING] = 10;
+    ui.num[M_SETTING] = 11;
     ui.num[M_ABOUT] = 8;
     list.line_n = DISP_H / LIST_LINE_H;
 }
+
 

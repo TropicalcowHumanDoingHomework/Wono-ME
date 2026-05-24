@@ -15,6 +15,19 @@ void animation(float *a, float *a_trg, uint8_t n) {
     }
 }
 
+//弹簧动画函数
+void animation_spring(float *a, float *a_trg, float *vel, float stiffness, float damping) {
+    if (*a != *a_trg || fabs(*vel) > 0.01f) {
+        float force = (*a_trg - *a) * stiffness;
+        *vel = (*vel + force) * damping;
+        *a += *vel;
+        if (fabs(*a - *a_trg) < 0.05f && fabs(*vel) < 0.05f) {
+            *a = *a_trg;
+            *vel = 0;
+        }
+    }
+}
+
 //消失函数
 void fade() {
     static uint32_t last_fade_time = 0;

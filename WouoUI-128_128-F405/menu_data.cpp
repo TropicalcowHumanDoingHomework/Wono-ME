@@ -156,6 +156,7 @@ Menu setting_menu[] = {
     {"~ Btn LPT"},
     {"+ Knob Rot Dir"},
     {"+ USB Storage"},
+    {"* HL Ani Mode"},
     {"- [ About ]"}
 };
 

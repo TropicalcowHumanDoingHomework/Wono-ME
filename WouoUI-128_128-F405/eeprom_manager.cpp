@@ -52,6 +52,7 @@ static void validate_ui_params() {
   ui.param[USB_ENABLE] = validate_param(eeprom_ui_params[USB_ENABLE], 0, 1, ui.param[USB_ENABLE]);
   ui.param[WIN_STYLE] = validate_param(eeprom_ui_params[WIN_STYLE], 0, 1, ui.param[WIN_STYLE]);
   ui.param[FADE_MODE] = validate_param(eeprom_ui_params[FADE_MODE], 0, 1, ui.param[FADE_MODE]);
+  ui.param[HL_ANI_MODE] = validate_param(eeprom_ui_params[HL_ANI_MODE], 0, 1, ui.param[HL_ANI_MODE]);
 }
 
 // 验证所有旋钮参数

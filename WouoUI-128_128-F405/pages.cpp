@@ -19,6 +19,25 @@
 //开发板模拟引脚
 uint8_t analog_pin[10] = {PA0, PA1, PA2, PA3, PA4, PA5, PA6, PA7, PB0, PB1};
 
+//高亮条动画模式包装函数
+static void hl_ani(float *a, float *a_trg, float *vel, uint8_t n) {
+    if (ui.param[HL_ANI_MODE] == 0) {
+        animation(a, a_trg, n);
+    } else {
+        animation_spring(a, a_trg, vel, 0.25f, 0.7f);
+    }
+}
+
+static void hl_ani_cascade(float *a, float *a_trg, float *a_final, float *vel, float *vel_trg, uint8_t n) {
+    if (ui.param[HL_ANI_MODE] == 0) {
+        animation(a, a_trg, n);
+        animation(a_trg, a_final, n);
+    } else {
+        animation_spring(a_trg, a_final, vel_trg, 0.35f, 0.60f);
+        animation_spring(a, a_trg, vel, 0.45f, 0.75f);
+    }
+}
+
 
 /*************** 根据列表每行开头符号，判断每行尾部是否绘制以及绘制什么内容 *************/
 
@@ -89,6 +108,7 @@ void list_draw_text_and_check_box(Menu* arr, int i) {
         case '=': list_draw_check_box_frame(); if (*check_box.s_p == i) list_draw_check_box_dot(); break;
         case '#': list_draw_krf(i); break;
         case '$': list_draw_kpf(i); break;
+        case '*': { static const char* hl_labels[] = {"Ease", "Spring"}; uint8_t pi = check_box.map ? check_box.map[i - 1] : (uint8_t)(i - 1); u8g2.print(hl_labels[ui.param[pi]]); } break;
     }
 }
 
@@ -96,7 +116,7 @@ void list_draw_text_and_check_box(Menu* arr, int i) {
 /********************************* 映射数组 *********************************/
 
 // Setting 页面：菜单项位置 → 参数索引映射
-// 菜单项 1~9 对应的 ParamIndex
+// 菜单项 1~10 对应的 ParamIndex
 static const uint8_t setting_param_map[] = {
     0,   // 1: Disp Bri  → DISP_BRI
     19,  // 2: Dark Mode → DARK_MODE
@@ -106,8 +126,14 @@ static const uint8_t setting_param_map[] = {
     12,  // 6: Btn LPT   → BTN_LPT
     18,  // 7: Knob Rot Dir → KNOB_DIR
     22,  // 8: USB Storage → USB_ENABLE
-    0    // 9: [ About ] → 无显示（占位）
+    25,  // 9: HL Ani Mode → HL_ANI_MODE
+    0    // 10: [ About ] → 无显示（占位）
 };
+
+static const char* hl_ani_mode_items[] = { "Ease", "Spring" };
+static void setting_hl_ani_callback(uint8_t select) {
+    ui.param[HL_ANI_MODE] = select;
+}
 
 // Animi 页面：菜单项位置 → 参数索引映射
 // 菜单项 1~17 对应的 ParamIndex
@@ -146,6 +172,10 @@ void tile_param_init() {
     tile.title_y = tile.title_y_calc;
     tile.title_y_trg = tile.title_y_trg_calc;
     tile.select_flag = true;  // 防止动画完成后复位指示器和标题
+    tile.icon_x_vel = 0;
+    tile.icon_y_vel = 0;
+    tile.indi_x_vel = 0;
+    tile.title_y_vel = 0;
     led_set_red();  // 进入主菜单时显示红色
 }
 
@@ -155,10 +185,10 @@ void tile_param_init() {
 //磁贴类页面通用显示函数
 void tile_show(Menu* arr_1, Menu* arr_2, const uint8_t icon_pic[][16 * 18]) {
     //计算动画过渡值
-    animation(&tile.icon_x, &tile.icon_x_trg, TILE_ANI);
-    animation(&tile.icon_y, &tile.icon_y_trg, TILE_ANI);
-    animation(&tile.indi_x, &tile.indi_x_trg, TILE_ANI);
-    animation(&tile.title_y, &tile.title_y_trg, TILE_ANI);
+    hl_ani(&tile.icon_x, &tile.icon_x_trg, &tile.icon_x_vel, TILE_ANI);
+    hl_ani(&tile.icon_y, &tile.icon_y_trg, &tile.icon_y_vel, TILE_ANI);
+    hl_ani(&tile.indi_x, &tile.indi_x_trg, &tile.indi_x_vel, TILE_ANI);
+    hl_ani(&tile.title_y, &tile.title_y_trg, &tile.title_y_vel, TILE_ANI);
 
     //设置大小标题的颜色和文字方向，0透显，1实显，2反色，这里都用实显
     u8g2.setDrawColor(1);
@@ -355,11 +385,9 @@ void list_show(Menu* arr, uint8_t ui_index) {
     //计算动画过渡值
     animation(&list.y, &list.y_trg, LIST_ANI);
     animation(&list.box_x, &list.box_x_trg, LIST_ANI);
-    animation(&list.box_w, &list.box_w_trg, LIST_ANI);
-    animation(&list.box_w_trg, &list.box_W, LIST_ANI);
-    animation(&list.box_y, &list.box_y_trg[ui.layer], LIST_ANI);
-    animation(&list.box_h, &list.box_h_trg, LIST_ANI);
-    animation(&list.box_h_trg, &list.box_H, LIST_ANI);
+    hl_ani_cascade(&list.box_w, &list.box_w_trg, &list.box_W, &list.box_w_vel, &list.box_w_vel_trg, LIST_ANI);
+    hl_ani(&list.box_y, &list.box_y_trg[ui.layer], &list.box_y_vel, LIST_ANI);
+    hl_ani_cascade(&list.box_h, &list.box_h_trg, &list.box_H, &list.box_h_vel, &list.box_h_vel_trg, LIST_ANI);
     animation(&list.bar_y, &list.bar_y_trg, LIST_ANI);
 
     if (list.loop && list.box_y == list.box_y_trg[ui.layer]) list.loop = false;
@@ -414,8 +442,8 @@ void volt_show()
 
   //计算动画过渡值  
   animation(&list.y, &list.y_trg, LIST_ANI);
-  animation(&list.box_x, &list.box_x_trg, LIST_ANI);
-  animation(&list.box_y, &list.box_y_trg[ui.layer], LIST_ANI);
+  hl_ani(&list.box_x, &list.box_x_trg, &list.box_x_vel, LIST_ANI);
+  hl_ani(&list.box_y, &list.box_y_trg[ui.layer], &list.box_y_vel, LIST_ANI);
   animation(&volt.text_bg_l, &volt.text_bg_l_trg, TAG_ANI);
 
   //检查循环动画是否结束
@@ -477,7 +505,7 @@ void about_show() {
     u8g2.setFont(LIST_FONT);
     list.box_x_trg = u8g2.getStrWidth(about_menu[0].title) + LIST_TEXT_S * 2;
 
-    animation(&list.box_x, &list.box_x_trg, TAG_ANI);
+    hl_ani(&list.box_x, &list.box_x_trg, &list.box_x_vel, TAG_ANI);
     animation(&about.indi_x, &about.indi_x_trg, TAG_ANI);
 
     u8g2.setDrawColor(1);
@@ -883,7 +911,8 @@ void setting_proc() {
                     case 6: window_value_init("Btn LPT", BTN_LPT, &ui.param[BTN_LPT], 255, 0, 1, setting_menu, M_SETTING); break;
                     case 7: check_box_m_select(KNOB_DIR); break;
                     case 8: check_box_m_select(USB_ENABLE); break;
-                    case 9: ui.index = M_ABOUT; ui.state = S_LAYER_IN; break;
+                    case 9: window_list_select_init("HL Ani Mode", hl_ani_mode_items, 2, setting_menu, M_SETTING); window_set_list_callback(setting_hl_ani_callback); break;
+                    case 10: ui.index = M_ABOUT; ui.state = S_LAYER_IN; break;
                 }
                 break;
         }
@@ -932,6 +961,12 @@ static void init_list_box_params() {
     list.box_h_trg = list.box_H;
     list.box_w_trg += ui.param[BOX_X_OS];
     list.box_h_trg += ui.param[BOX_Y_OS];
+    list.box_y_vel = 0;
+    list.box_x_vel = 0;
+    list.box_w_vel = 0;
+    list.box_w_vel_trg = 0;
+    list.box_h_vel = 0;
+    list.box_h_vel_trg = 0;
 }
 
 

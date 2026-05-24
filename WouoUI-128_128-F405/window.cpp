@@ -81,6 +81,8 @@ void window_list_select_init(const char title[], const char* items[], uint8_t it
     win.hl_sel_trg = 0;
     win.list_y = 0;
     win.list_y_trg = 0;
+    win.hl_vel = 0;
+    win.list_vel = 0;
     win.bg = bg;
     win.index = index;
     win.msg_mode = 0;
@@ -122,6 +124,7 @@ void window_list_select_init(const char title[], const char* items[], uint8_t it
 void window_param_init() {
     win.msg_mode = 0;
     win.list_mode = 0;
+    win.list_on_close = nullptr;
     win.bokeh_step = 0;
     win.last_bokeh_time = 0;
     win.bar = 0;
@@ -140,6 +143,10 @@ void window_param_init() {
     }
 
     ui.state = S_NONE;
+}
+
+void window_set_list_callback(void (*cb)(uint8_t)) {
+    win.list_on_close = cb;
 }
 
 void window_show() {
@@ -258,8 +265,13 @@ void window_show() {
         }
     } else if (win.list_mode) {
         animation(&win.y, &win.y_trg, WIN_ANI);
-        animation(&win.list_y, &win.list_y_trg, LIST_ANI);
-        animation(&win.hl_sel_cur, &win.hl_sel_trg, LIST_ANI);
+        if (ui.param[HL_ANI_MODE] == 0) {
+            animation(&win.list_y, &win.list_y_trg, LIST_ANI);
+            animation(&win.hl_sel_cur, &win.hl_sel_trg, LIST_ANI);
+        } else {
+            animation_spring(&win.list_y, &win.list_y_trg, &win.list_vel, 0.25f, 0.7f);
+            animation_spring(&win.hl_sel_cur, &win.hl_sel_trg, &win.hl_vel, 0.25f, 0.7f);
+        }
 
         if (ui.param[WIN_STYLE]) {
             animation(&win.box_h, &win.box_h_trg, WIN_ANI);
@@ -298,21 +310,29 @@ void window_show() {
 
         int16_t hl_y = content_top + (int16_t)(win.hl_sel_cur * LIST_LINE_H) + (int16_t)win.list_y;
         u8g2.setDrawColor(2);
-        u8g2.drawRBox((int16_t)win.l + 2, hl_y, (int16_t)win.w - 4, LIST_LINE_H, LIST_BOX_R);
+        u8g2.drawRBox((int16_t)win.l + 2, hl_y, (int16_t)win.w - 8, LIST_LINE_H, LIST_BOX_R);
 
         u8g2.setMaxClipWindow();
 
         if (win.list_count > item_rows) {
-            u8g2.setDrawColor(fg_color);
-            float scroll_ratio = (float)(-win.list_y) / ((win.list_count - item_rows) * LIST_LINE_H);
-            if (scroll_ratio < 0) scroll_ratio = 0;
-            if (scroll_ratio > 1) scroll_ratio = 1;
-            uint16_t track_h = content_bot - content_top - 4;
-            uint8_t thumb_h = track_h * item_rows / win.list_count;
-            if (thumb_h < 4) thumb_h = 4;
-            uint8_t thumb_y = content_top + 2 + (track_h - thumb_h) * scroll_ratio;
-            u8g2.drawVLine((int16_t)win.l + (int16_t)win.w - 3, content_top + 2, track_h);
-            u8g2.drawBox((int16_t)win.l + (int16_t)win.w - 4, thumb_y, 3, thumb_h);
+            int16_t eff_h = ui.param[WIN_STYLE] ? (int16_t)win.box_h : (int16_t)win.h;
+            int16_t scr_bot = (int16_t)win.y + eff_h - WIN_MSG_PAD;
+            int16_t track_h = scr_bot - content_top - 4;
+            if (track_h > 4) {
+                u8g2.setClipWindow((int16_t)win.l, (int16_t)win.y + 2,
+                                   (int16_t)win.l + (int16_t)win.w,
+                                   (int16_t)win.y + eff_h - 1);
+                u8g2.setDrawColor(fg_color);
+                float scroll_ratio = (float)(-win.list_y) / ((win.list_count - item_rows) * LIST_LINE_H);
+                if (scroll_ratio < 0) scroll_ratio = 0;
+                if (scroll_ratio > 1) scroll_ratio = 1;
+                uint8_t thumb_h = track_h * item_rows / win.list_count;
+                if (thumb_h < 4) thumb_h = 4;
+                uint8_t thumb_y = content_top + 2 + (track_h - thumb_h) * scroll_ratio;
+                u8g2.drawVLine((int16_t)win.l + (int16_t)win.w - 3, content_top + 2, track_h);
+                u8g2.drawBox((int16_t)win.l + (int16_t)win.w - 4, thumb_y, 3, thumb_h);
+                u8g2.setMaxClipWindow();
+            }
         }
     } else {
         win.bar_trg = (float)(*win.value - win.min) / (float)(win.max - win.min) * (WIN_BAR_W - 4);
@@ -398,6 +418,11 @@ void window_proc() {
                     break;
                 case BTN_ID_SP:
                 case BTN_ID_LP:
+                    if (win.list_on_close) {
+                        win.list_on_close(win.list_select);
+                        win.list_on_close = nullptr;
+                        eeprom.change = true;
+                    }
                     win.y_trg = -win.h - 2;
                     if (ui.param[WIN_STYLE]) {
                         win.box_H = 0;

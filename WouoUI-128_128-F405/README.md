@@ -25,7 +25,7 @@
 
 ## 目录
 
-[硬件要求](#硬件要求) &nbsp;&bull;&nbsp; [功能特性](#功能特性) &nbsp;&bull;&nbsp; [页面说明](#页面说明) &nbsp;&bull;&nbsp; [引脚定义](#硬件引脚定义) &nbsp;&bull;&nbsp; [项目结构](#项目结构) &nbsp;&bull;&nbsp; [快速开始](#快速开始) &nbsp;&bull;&nbsp; [配置说明](#配置说明) &nbsp;&bull;&nbsp; [使用方法](#使用方法) &nbsp;&bull;&nbsp; [常见问题](#常见问题) &nbsp;&bull;&nbsp; [作者](#作者与致谢) &nbsp;&bull;&nbsp; [版本历史](#版本历史) &nbsp;&bull;&nbsp; [许可证](#许可证)
+[硬件要求](#硬件要求) &nbsp;&bull;&nbsp; [功能特性](#功能特性) &nbsp;&bull;&nbsp; [页面说明](#页面说明) &nbsp;&bull;&nbsp; [引脚定义](#硬件引脚定义) &nbsp;&bull;&nbsp; [项目结构](#项目结构) &nbsp;&bull;&nbsp; [快速开始](#快速开始) &nbsp;&bull;&nbsp; [配置说明](#配置说明) &nbsp;&bull;&nbsp; [使用方法](#使用方法) &nbsp;&bull;&nbsp; [常见问题](#常见问题) &nbsp;&bull;&nbsp; [已知限制](#已知限制) &nbsp;&bull;&nbsp; [作者](#作者与致谢) &nbsp;&bull;&nbsp; [贡献指南](#贡献指南) &nbsp;&bull;&nbsp; [版本历史](#版本历史) &nbsp;&bull;&nbsp; [许可证](#许可证)
 
 ---
 
@@ -153,6 +153,7 @@ M_SLEEP（睡眠）
    │     └─ M_KPF（旋钮按键功能设置）
    ├─ M_VOLT（电压测量）
    ├─ M_SETTING（系统设置）
+   │  ├─ M_ANIMITION（动画调试调参）
    │  └─ M_ABOUT（关于本机）
    └─ M_WINDOW（弹窗，覆盖在任何页面上层）
 ```
@@ -167,6 +168,7 @@ M_SLEEP（睡眠）
 | **KPF** | 按键功能列表（82 项：字母 A-Z、数字 0-9、F1-F12、方向键、修饰键等） |
 | **Volt** | 实时电压测量（10 个模拟通道：PA0-PA7, PB0-PB1）与波形显示 |
 | **Setting** | 26 项系统参数：显示对比度、动画速度、弯曲度、过伸值、开关选项等 |
+| **Animition** | 动画调试调参页（10 项动画参数独立弹窗调节：Tile/List/Win/Spot/Tag/Fade Ani、List Cur、Box X/Y OS、Win Y OS） |
 | **About** | MCU 型号、主频、RAM、Flash、作者信息 |
 
 ---
@@ -277,7 +279,7 @@ git clone <repo-url>
 |:---|:-----|:-------|
 | `UI_DEPTH` | 页面层级最大深度 | `20` |
 | `UI_MNUMB` | 最大菜单项数量 | `100` |
-| `UI_PARAM` | 系统可调参数数量 | `24` |
+| `UI_PARAM` | 系统可调参数数量 | `25` |
 | `HID_ENABLE` | USB HID 功能开关 | `0`（禁用） |
 | `USB_MSC_ENABLE` | USB 大容量存储开关 | `0`（禁用） |
 | `SPI_BUS_CLOCK` | SPI 时钟频率 | `2000000`（2MHz） |
@@ -317,6 +319,7 @@ git clone <repo-url>
 | `BUZ_VOL` | 蜂鸣器音量 | `0` ~ `4` | `2` |
 | `USB_ENABLE` | USB 存储开关 | 开 / 关 | 关 |
 | `WIN_STYLE` | 弹窗动画样式 | `0`=滑动 / `1`=拉伸 | `0` |
+| `FADE_MODE` | 消失动画模式 | `0`=棋盘格渐变 / `1`=整体遮罩 | `0` |
 
 ### 旋钮专用参数（Editor 页面调节）
 
@@ -413,12 +416,22 @@ git clone <repo-url>
 
 ---
 
+## 已知限制
+
+- **分辨率**：当前仅适配 **128×128** 分辨率。其他分辨率（128×64、128×32、通用版）请参考 WouoUI 原版多分辨率分支。
+- **USB 功能**：HID 和 MSC 依赖 [USBComposite](https://github.com/arpruss/USBComposite_stm32f1) 库，启用前需确认该库与目标 MCU 兼容，并正确设置 BOOT0/BOOT1 跳线。
+- **背景虚化**：开启 `WIN_BOK` 后弹窗背景虚化需要全页重绘，会显著增加 MCU 负载，仅在必要时开启。
+- **EEPROM 与 MSC 共用 Flash**：EEPROM 模拟使用 Flash Sector 11（地址 `0x080C0000`），与 USB MSC 虚拟磁盘共享同一区域。同时启用 EEPROM 写入和 MSC 存储可能导致数据冲突，建议择一使用。
+- **Sharp Memory LCD 的 DISP 引脚**：DISP 需要持续方波信号维持显示，断电或 DISP 悬空均会导致屏幕无显示。
+
+---
+
 ## 作者与致谢
 
 | 角色 | 作者 | 贡献 |
 |:-----|:-----|:-----|
 | **设计灵感** | [稚晖君](https://space.bilibili.com/9182439) | MonoUI 原版界面设计灵感 |
-| **原版作者** | [音游玩的人](https://space.bilibili.com/9182439) | WouoUI v2.0 原版开发，[项目开源地址](https://github.com/Wonome/WouoUI-128_128-F405) |
+| **原版作者** | 音游玩的人 | WouoUI v2.0 原版开发，[项目开源地址](https://github.com/Wonome/WouoUI-128_128-F405) |
 | **F405 移植** | [罗米奇](https://space.bilibili.com/549713590) | STM32F405 移植、USB MSC、RGB LED、蜂鸣器、自动 MCU 检测 |
 
 ### 参考项目
@@ -429,13 +442,26 @@ git clone <repo-url>
 
 ---
 
+## 贡献指南
+
+欢迎提交 Issue 和 Pull Request。参与贡献前请注意：
+
+- **代码风格**：保持与现有代码一致的 Arduino C++ 风格（4 空格缩进、中文注释、模块化 .h/.cpp 分离）。
+- **编译兼容**：提交前请确保在 STM32F405 / F407 目标下 **零编译警告**。
+- **config.h 同步**：新增配置项需同步更新 `config.h` 中的注释和默认值。
+- **文档同步**：新增或修改功能时，请同步更新本 README 中的对应章节（参数表格、页面层级图等）。
+
+> 如有疑问，请先发起 Issue 讨论后再提交代码修改。
+
+---
+
 ## 版本历史
 
 | 版本 | 日期 | 说明 |
 |:-----|:-----|:-----|
-| **v2.3** | — | F405 移植版：支持 STM32F4xx 自动检测、USB MSC 大容量存储、RGB LED 呼吸灯、蜂鸣器、Apache 2.0 许可；新增 `LIST_CUR` 列表弯曲、`BOX_X_OS`/`BOX_Y_OS` 选择框过伸、`WIN_Y_OS` 弹窗过伸、`WIN_STYLE` 弹窗拉伸样式、`M_WIN_LIST_DEMO` 演示页面；`UI_PARAM` 扩展至 24 项 |
-| **v2.0** | — | 重构动画引擎，新增磁贴界面、电压测量、弹窗系统、EEPROM 存储 |
-| **v1.0** | — | 基础列表 UI 框架 |
+| **v2.3** | 2025-05 | F405 移植版：支持 STM32F4xx 自动检测、USB MSC 大容量存储、RGB LED 呼吸灯、蜂鸣器、Apache 2.0 许可；新增 `LIST_CUR` 列表弯曲、`BOX_X_OS`/`BOX_Y_OS` 选择框过伸、`WIN_Y_OS` 弹窗过伸、`WIN_STYLE` 弹窗拉伸样式、`FADE_MODE` 消失动画模式、`M_WIN_LIST_DEMO` 演示页面；`UI_PARAM` 扩展至 25 项 |
+| **v2.0** | 2024-06 | 重构动画引擎，新增磁贴界面、电压测量、弹窗系统、EEPROM 存储 |
+| **v1.0** | 2024-01 | 基础列表 UI 框架 |
 
 ---
 
