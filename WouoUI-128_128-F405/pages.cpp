@@ -121,7 +121,7 @@ void list_draw_text_and_check_box(Menu* arr, int i) {
 /********************************* 映射数组 *********************************/
 
 // Setting 页面：菜单项位置 → 参数索引映射
-// 菜单项 1~10 对应的 ParamIndex
+// 菜单项 1~9 对应的 ParamIndex
 static const uint8_t setting_param_map[] = {
     0,   // 1: Disp Bri  → DISP_BRI
     19,  // 2: Dark Mode → DARK_MODE
@@ -131,8 +131,7 @@ static const uint8_t setting_param_map[] = {
     12,  // 6: Btn LPT   → BTN_LPT
     18,  // 7: Knob Rot Dir → KNOB_DIR
     22,  // 8: USB Storage → USB_ENABLE
-    25,  // 9: HL Ani Mode → HL_ANI_MODE
-    0    // 10: [ About ] → 无显示（占位）
+    0    // 9: [ About ] → 无显示（占位）
 };
 
 static const char* hl_ani_mode_items[] = { "Ease", "Spring", "Bounce" };
@@ -922,8 +921,7 @@ void setting_proc() {
                     case 6: window_value_init("Btn LPT", BTN_LPT, &ui.param[BTN_LPT], 255, 0, 1, setting_menu, M_SETTING); break;
                     case 7: check_box_m_select(KNOB_DIR); break;
                     case 8: check_box_m_select(USB_ENABLE); break;
-                    case 9: window_list_select_init("HL Ani Mode", hl_ani_mode_items, 3, setting_menu, M_SETTING); window_set_list_callback(hl_ani_callback); break;
-                    case 10: ui.index = M_ABOUT; ui.state = S_LAYER_IN; break;
+                    case 9: ui.index = M_ABOUT; ui.state = S_LAYER_IN; break;
                 }
                 break;
         }
