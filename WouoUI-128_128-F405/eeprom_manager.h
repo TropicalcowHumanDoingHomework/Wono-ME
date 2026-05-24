@@ -5,14 +5,16 @@
 
 /************************************* 断电保存 *************************************/
 
-//EEPROM变量
+//EEPROM状态变量：管理断电存储的数据校验和写入状态
 extern EepromState eeprom;
 
-//EEPROM写数据，回到睡眠时执行一遍
+//EEPROM写数据：将所有配置参数写入Flash模拟EEPROM，回到睡眠时执行
 void eeprom_write_all_data();
-//EEPROM读数据，开机初始化时执行一遍
+
+//EEPROM读数据：从Flash模拟EEPROM读取所有配置参数，开机初始化时执行
 void eeprom_read_all_data();
-//开机检查是否已经修改过，没修改过则跳过读配置步骤，用默认设置
+
+//EEPROM初始化：开机检查校验状态，有效则读取配置，无效则使用默认设置
 void eeprom_init();
 
 #endif

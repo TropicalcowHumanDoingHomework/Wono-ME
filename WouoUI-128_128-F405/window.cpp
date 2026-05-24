@@ -8,6 +8,22 @@
 
 /************************************* 弹窗相关 *************************************/
 
+/*
+ * 数值调节弹窗初始化
+ * 
+ * 创建带进度条和数值显示的调节弹窗
+ * 支持WIN_STYLE=1时的拉伸展开动画效果
+ * 
+ * 参数：
+ *   title - 弹窗标题（如"Disp Bri"）
+ *   select - 初始选中项
+ *   value - 指向要调节的数值变量的指针
+ *   max - 最大值
+ *   min - 最小值
+ *   step - 步进值
+ *   bg - 弹窗背景菜单指针
+ *   index - 弹窗关闭后返回的页面索引
+ */
 void window_value_init(const char title[], uint8_t select, uint8_t *value, uint8_t max, uint8_t min, uint8_t step, Menu *bg, uint8_t index) {
     strcpy(win.title, title);
     win.select = select;
@@ -29,6 +45,19 @@ void window_value_init(const char title[], uint8_t select, uint8_t *value, uint8
     }
 }
 
+/*
+ * 消息弹窗初始化
+ * 
+ * 创建纯文本消息提示弹窗
+ * 支持多行消息（使用\n换行）
+ * 自动计算弹窗宽高以适配文本内容
+ * 
+ * 参数：
+ *   title - 弹窗标题
+ *   message - 消息文本（支持\n换行）
+ *   bg - 弹窗背景菜单指针
+ *   index - 弹窗关闭后返回的页面索引
+ */
 void window_message_init(const char title[], const char message[], Menu *bg, uint8_t index) {
     strcpy(win.title, title);
     strcpy(win.message, message);
@@ -68,6 +97,19 @@ void window_message_init(const char title[], const char message[], Menu *bg, uin
     ui.state = S_NONE;
 }
 
+/*
+ * 列表选择弹窗初始化
+ * 
+ * 创建可选列表弹窗，支持滚动和选择高亮
+ * 最多显示WIN_LIST_MAX项
+ * 
+ * 参数：
+ *   title - 弹窗标题
+ *   items - 字符串数组，每项为一个选择
+ *   item_count - 选项数量
+ *   bg - 弹窗背景菜单指针
+ *   index - 弹窗关闭后返回的页面索引
+ */
 void window_list_select_init(const char title[], const char* items[], uint8_t item_count, Menu *bg, uint8_t index) {
     strcpy(win.title, title);
     win.list_mode = 1;
@@ -121,6 +163,13 @@ void window_list_select_init(const char title[], const char* items[], uint8_t it
     ui.state = S_NONE;
 }
 
+/*
+ * 弹窗参数初始化
+ * 
+ * 重置弹窗的各项参数为默认值
+ * 包括：模式标志、位置、尺寸、动画参数
+ * 根据WIN_STYLE参数选择弹窗样式（标准/拉伸）
+ */
 void window_param_init() {
     win.msg_mode = 0;
     win.list_mode = 0;
@@ -145,10 +194,81 @@ void window_param_init() {
     ui.state = S_NONE;
 }
 
+//设置列表选择弹窗关闭回调函数
 void window_set_list_callback(void (*cb)(uint8_t)) {
     win.list_on_close = cb;
 }
 
+/*
+ * 确认弹窗初始化
+ * 
+ * 创建Yes/No确认对话框
+ * 通过回调函数返回用户选择结果
+ * 
+ * 参数：
+ *   title - 弹窗标题
+ *   message - 确认消息文本
+ *   bg - 弹窗背景菜单指针
+ *   index - 弹窗关闭后返回的页面索引
+ *   on_close - 关闭回调，参数为true=Yes，false=No
+ */
+void window_confirm_init(const char title[], const char message[], Menu *bg, uint8_t index, void (*on_close)(bool)) {
+    strcpy(win.title, title);
+    strcpy(win.message, message);
+    win.confirm_mode = 1;
+    win.msg_mode = 0;
+    win.list_mode = 0;
+    win.confirm_on_close = on_close;
+    win.select = 0;
+    win.conf_hl_cur = 0;
+    win.conf_hl_trg = 0;
+    win.conf_hl_vel = 0;
+    win.bg = bg;
+    win.index = index;
+    ui.index = M_WINDOW;
+
+    u8g2.setFont(WIN_FONT);
+    uint8_t max_w = u8g2.getStrWidth(win.title);
+    char msg_copy[128];
+    strcpy(msg_copy, win.message);
+    char* line = strtok(msg_copy, "\n");
+    uint8_t line_count = 0;
+    while (line) {
+        uint8_t line_w = u8g2.getStrWidth(line);
+        if (line_w > max_w) max_w = line_w;
+        line_count++;
+        line = strtok(NULL, "\n");
+    }
+
+    win.w = win.w_trg = max_w + WIN_MSG_PAD * 2;
+    if (win.w_trg < 80) win.w = win.w_trg = 80;
+    win.h = win.h_trg = WIN_MSG_PAD * 2 + LIST_TEXT_H + line_count * LIST_LINE_H + 4 + LIST_LINE_H + WIN_MSG_PAD;
+
+    if (ui.param[WIN_STYLE]) {
+        win.box_H = win.h;
+        win.box_h = 0;
+        win.box_h_trg = win.h + ui.param[WIN_Y_OS];
+        win.w = DISP_W;
+    }
+
+    win.l = (DISP_W - win.w) / 2;
+    win.y = -win.h - 2;
+    win.y_trg = (DISP_H - win.h) / 2;
+    win.u = win.y_trg;
+    ui.state = S_NONE;
+}
+
+/*
+ * 弹窗显示函数
+ * 
+ * 绘制弹窗的所有UI元素，根据弹窗模式（消息/确认/列表/数值）进行不同绘制
+ * 支持虚化背景效果（BOKEH）和拉伸动画（WIN_STYLE）
+ * 
+ * 虚化背景原理：
+ * - 在弹窗下方的背景区域绘制棋盘格遮罩
+ * - 根据弹窗进入进度分步增加虚化强度
+ * - 深色模式和亮色模式使用相反的虚化逻辑
+ */
 void window_show() {
     list_show(win.bg, win.index);
 
@@ -262,6 +382,73 @@ void window_show() {
                 line_y += LIST_LINE_H;
                 line = strtok(NULL, "\n");
             }
+        }
+    } else if (win.confirm_mode) {
+        animation(&win.y, &win.y_trg, WIN_ANI);
+        if (ui.param[HL_ANI_MODE] == 0) {
+            animation(&win.conf_hl_cur, &win.conf_hl_trg, LIST_ANI);
+        } else if (ui.param[HL_ANI_MODE] == 1) {
+            animation_spring(&win.conf_hl_cur, &win.conf_hl_trg, &win.conf_hl_vel, ui.param[SPRING_K] / 100.0f, ui.param[SPRING_D] / 100.0f);
+        } else {
+            animation_bounce(&win.conf_hl_cur, &win.conf_hl_trg, &win.conf_hl_vel, LIST_ANI);
+        }
+
+        if (ui.param[WIN_STYLE]) {
+            animation(&win.box_h, &win.box_h_trg, WIN_ANI);
+            animation(&win.box_h_trg, &win.box_H, WIN_ANI);
+            animation(&win.w, &win.w_trg, WIN_ANI);
+            win.l = (DISP_W - win.w) / 2;
+            if (win.box_h > 2) {
+                u8g2.setDrawColor(bg_color);
+                u8g2.drawBox((int16_t)win.l + 1, (int16_t)win.y + 1, (int16_t)win.w - 2, (int16_t)win.box_h - 2);
+                u8g2.setDrawColor(fg_color);
+                u8g2.drawRFrame((int16_t)win.l, (int16_t)win.y, (int16_t)win.w, (int16_t)win.box_h, 2);
+            }
+        } else {
+            u8g2.setDrawColor(bg_color);
+            u8g2.drawBox((int16_t)win.l + 1, (int16_t)win.y + 1, (int16_t)win.w - 2, (int16_t)win.h - 2);
+            u8g2.setDrawColor(fg_color);
+            u8g2.drawRFrame((int16_t)win.l, (int16_t)win.y, (int16_t)win.w, (int16_t)win.h, 2);
+        }
+
+        if (!ui.param[WIN_STYLE] || win.box_h > WIN_MSG_PAD + LIST_TEXT_H) {
+            uint8_t title_w = u8g2.getStrWidth(win.title);
+            u8g2.setCursor((int16_t)win.l + ((int16_t)win.w - title_w) / 2, (int16_t)win.y + WIN_MSG_PAD + LIST_TEXT_H);
+            u8g2.print(win.title);
+
+            char msg_copy[128];
+            strcpy(msg_copy, win.message);
+            char* line = strtok(msg_copy, "\n");
+            int line_y = (int16_t)win.y + WIN_MSG_PAD + LIST_TEXT_H + LIST_LINE_H;
+            uint8_t line_count = 0;
+            while (line) {
+                uint8_t text_w = u8g2.getStrWidth(line);
+                u8g2.setCursor((int16_t)win.l + ((int16_t)win.w - text_w) / 2, line_y);
+                u8g2.print(line);
+                line_y += LIST_LINE_H;
+                line_count++;
+                line = strtok(NULL, "\n");
+            }
+
+            int16_t btn_y = (int16_t)win.y + WIN_MSG_PAD * 2 + LIST_TEXT_H + line_count * LIST_LINE_H + 4;
+            const char* yes_str = "Yes";
+            const char* no_str = "No";
+            uint8_t yes_w = u8g2.getStrWidth(yes_str);
+            uint8_t no_w = u8g2.getStrWidth(no_str);
+            int16_t yes_x = (int16_t)win.l + (int16_t)win.w / 4 - yes_w / 2;
+            int16_t no_x = (int16_t)win.l + (int16_t)win.w * 3 / 4 - no_w / 2;
+            uint8_t btn_w = ((yes_w > no_w) ? yes_w : no_w) + 8;
+
+            win.conf_hl_trg = win.select == 0 ? (float)(yes_x - 4) : (float)(no_x - 4);
+
+            u8g2.setDrawColor(fg_color);
+            u8g2.setCursor(yes_x, btn_y + LIST_TEXT_H + LIST_TEXT_S);
+            u8g2.print(yes_str);
+            u8g2.setCursor(no_x, btn_y + LIST_TEXT_H + LIST_TEXT_S);
+            u8g2.print(no_str);
+
+            u8g2.setDrawColor(2);
+            u8g2.drawRBox((int16_t)win.conf_hl_cur, btn_y, btn_w, LIST_LINE_H, LIST_BOX_R);
         }
     } else if (win.list_mode) {
         animation(&win.y, &win.y_trg, WIN_ANI);
@@ -379,18 +566,55 @@ void window_show() {
     }
 }
 
+/*
+ * 弹窗处理函数
+ * 
+ * 处理弹窗的输入事件：
+ * - 数值弹窗：旋转调节数值，按键确认/取消
+ * - 消息弹窗：按键关闭
+ * - 列表弹窗：旋转选择项，按键确认
+ * - 确认弹窗：旋转切换Yes/No，按键确认
+ * 
+ * 支持弹窗未完全进入时禁止操作
+ * 弹窗关闭时使用退出音效
+ */
 void window_proc() {
     window_show();
     if (win.y == win.y_trg && win.y_trg < 0) {
         if (!ui.param[WIN_STYLE] || win.box_h == 0) {
             win.list_mode = 0;
+            win.confirm_mode = 0;
             ui.index = win.index;
             ui.state = S_NONE;
         }
     }
     if (btn.pressed && win.y == win.y_trg && win.y_trg > 0) {
         btn.pressed = false;
-        if (win.msg_mode) {
+        if (win.confirm_mode) {
+            switch (btn.id) {
+                case BTN_ID_CW:
+                    win.select = 1;
+                    break;
+                case BTN_ID_CC:
+                    win.select = 0;
+                    break;
+                case BTN_ID_SP:
+                case BTN_ID_LP:
+                    if (win.confirm_on_close) {
+                        win.confirm_on_close(win.select == 0);
+                        win.confirm_on_close = nullptr;
+                    }
+                    win.y_trg = -win.h - 2;
+                    if (ui.param[WIN_STYLE]) {
+                        win.box_H = 0;
+                        win.box_h_trg = 0;
+                        win.w_trg = DISP_W;
+                    }
+                    win.confirm_mode = 0;
+                    buzzer_exit_sound();
+                    break;
+            }
+        } else if (win.msg_mode) {
             win.y_trg = -win.h - 2;
             if (ui.param[WIN_STYLE]) {
                 win.box_H = 0;

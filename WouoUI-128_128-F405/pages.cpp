@@ -289,7 +289,6 @@ void list_rotate_switch() {
             case M_VOLT: current_menu = volt_menu; break;
             case M_SETTING: current_menu = setting_menu; break;
             case M_ABOUT: current_menu = about_menu; break;
-            case M_WIN_LIST_DEMO: current_menu = win_list_demo_menu; break;
         }
         if (!current_menu) return;
         
@@ -665,6 +664,10 @@ void main_proc() {
     }
 }
 
+static void conf_test_callback(bool confirmed) {
+    // 确认弹窗回调：confirmed=true 表示用户选择了 Yes
+}
+
 void editor_proc() {
     list_show(editor_menu, M_EDITOR);
     if (btn.pressed) {
@@ -679,36 +682,17 @@ void editor_proc() {
             case BTN_ID_SP:
                 switch (ui.select[ui.layer]) {
                     case 0: ui.index = M_MAIN; ui.state = S_LAYER_OUT; break;
+                    case 8: window_confirm_init("Conf Test", "Are you sure?\nChoose Yes or No.", editor_menu, M_EDITOR, conf_test_callback); break;
                     case 9: window_list_select_init("Select Item", win_list_test_items, WIN_LIST_TEST_ITEMS_NUM, editor_menu, M_EDITOR); break;
-                    case 10: ui.index = M_WIN_LIST_DEMO; ui.state = S_LAYER_IN; break;
-                    case 11: window_message_init("Message", "Hello World!\nLine 2\nLine 3", editor_menu, M_EDITOR); break;
-                    case 12: ui.index = M_KNOB; ui.state = S_LAYER_IN; break;
+                    case 10: window_message_init("Message", "Hello World!\nLine 2\nLine 3", editor_menu, M_EDITOR); break;
+                    case 11: ui.index = M_KNOB; ui.state = S_LAYER_IN; break;
                 }
                 break;
         }
     }
 }
 
-void win_list_demo_proc() {
-    list_show(win_list_demo_menu, M_WIN_LIST_DEMO);
-    if (btn.pressed) {
-        btn.pressed = false;
-        switch (btn.id) {
-            case BTN_ID_CW:
-            case BTN_ID_CC:
-                list_rotate_switch();
-                break;
-            case BTN_ID_LP:
-                ui.select[ui.layer] = 0;
-            case BTN_ID_SP:
-                switch (ui.select[ui.layer]) {
-                    case 0: ui.index = M_EDITOR; ui.state = S_LAYER_OUT; break;
-                    case 11: window_message_init("Win List Demo", "This is a demo\nof Win List\nanimation!", win_list_demo_menu, M_WIN_LIST_DEMO); break;
-                }
-                break;
-        }
-    }
-}
+
 
 //旋钮设置页面初始化
 void knob_param_init() {
@@ -955,7 +939,6 @@ static void init_list_box_params() {
         case M_VOLT: current_menu = volt_menu; break;
         case M_SETTING: current_menu = setting_menu; break;
         case M_ABOUT: current_menu = about_menu; break;
-        case M_WIN_LIST_DEMO: current_menu = win_list_demo_menu; break;
     }
     if (current_menu) {
         u8g2.setFont(LIST_FONT);
@@ -1059,7 +1042,6 @@ void ui_proc() {
                 case M_MAIN: main_proc(); break;
                 case M_ANIMITION: animition_proc(); break;
                 case M_EDITOR: editor_proc(); break;
-                case M_WIN_LIST_DEMO: win_list_demo_proc(); break;
                 case M_KNOB: knob_proc(); break;
                 case M_KRF: krf_proc(); break;
                 case M_KPF: kpf_proc(); break;

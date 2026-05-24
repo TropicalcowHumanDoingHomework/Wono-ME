@@ -53,8 +53,7 @@ void ui_init() {
     ui.state = S_LAYER_IN;  //触发层级初始化，调用tile_param_init设置动画初始值
     ui.num[M_MAIN] = 5;
     ui.num[M_ANIMITION] = 21;
-    ui.num[M_EDITOR] = 13;
-    ui.num[M_WIN_LIST_DEMO] = 12;
+    ui.num[M_EDITOR] = 12;
     ui.num[M_KNOB] = 3;
     ui.num[M_KRF] = 7;
     ui.num[M_KPF] = 82;

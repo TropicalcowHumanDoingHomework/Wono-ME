@@ -21,6 +21,9 @@ void knob_init(void) {
 }
 
 void knob_inter(void) {
+    /* 按键按住期间屏蔽旋钮事件,防止旋转与按键互相干扰 */
+    if (btn.long_pressed) return;
+    
     btn.alv = PBin(12);
     btn.blv = PBin(13);
     if (!btn.flag && btn.alv == 0) {
@@ -41,28 +44,49 @@ void knob_inter(void) {
     }
 }
 
+/* 非阻塞按键扫描状态机(消除原版delay_ms阻塞) */
 void btn_scan(void) {
-    static int val = 1;
-    static int val_last = 1;
-    static int count = 0;
+    enum { BS_IDLE, BS_DEBOUNCE, BS_PRESSED };
+    static uint8_t state = BS_IDLE;
+    static uint32_t timer = 0;
+    int val;
+
     val = PBin(14);
-    if (val != val_last) {
-        val_last = val;
-        delay_ms(ui.param[BTN_SPT] * 2);
-        val = PBin(14);
-        if (val == 0) {
-            btn.pressed = 1;
-            count = 0;
-            while (PBin(14) == 0) {
-                count++;
-                delay_ms(1);
+
+    switch (state) {
+        case BS_IDLE:
+            if (val == 0) {
+                state = BS_DEBOUNCE;
+                timer = millis();
             }
-            if (count < ui.param[BTN_LPT] * 2) {
-                btn.id = BTN_ID_SP;
-            } else {
-                btn.id = BTN_ID_LP;
+            break;
+
+        case BS_DEBOUNCE:
+            if (millis() - timer >= (uint32_t)(ui.param[BTN_SPT] * 2)) {
+                if (PBin(14) == 0) {
+                    /* 确认按下,标记按钮保持中(屏蔽旋钮事件) */
+                    btn.long_pressed = 1;
+                    timer = millis();
+                    state = BS_PRESSED;
+                } else {
+                    state = BS_IDLE;
+                }
             }
-        }
+            break;
+
+        case BS_PRESSED:
+            if (PBin(14) != 0) {
+                /* 按钮释放,根据保持时长判断短按/长按 */
+                btn.pressed = 1;
+                btn.long_pressed = 0;
+                if (millis() - timer >= (uint32_t)(ui.param[BTN_LPT] * 2)) {
+                    btn.id = BTN_ID_LP;
+                } else {
+                    btn.id = BTN_ID_SP;
+                }
+                state = BS_IDLE;
+            }
+            break;
     }
 }
 

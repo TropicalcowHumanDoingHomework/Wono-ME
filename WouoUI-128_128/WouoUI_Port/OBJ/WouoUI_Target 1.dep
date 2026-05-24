@@ -146,7 +146,7 @@ I (C:\Keil_v5\ARM\ARMCC\include\string.h)(0x5D9AD218)
 I (C:\Keil_v5\ARM\ARMCC\include\stdio.h)(0x5D9AD21A)
 I (C:\Keil_v5\ARM\ARMCC\include\math.h)(0x5D9AD212)
 I (C:\Keil_v5\ARM\ARMCC\include\stdlib.h)(0x5D9AD21A)
-F (..\HARDWARE\WouoUI\knob.c)(0x6A12A6F2)(-c --cpu Cortex-M3 -g -O0 --apcs=interwork --split_sections -I ..\CORE -I ..\STM32F10x_FWLib\inc -I ..\USER -I ..\HARDWARE\OLED -I ..\HARDWARE\WouoUI -I ..\SYSTEM\delay -I ..\SYSTEM\sys-IC:\Users\Lenovo\AppData\Local\Arm\Packs\Keil\STM32F1xx_DFP\2.4.1\Device\Include-D__UVISION_VERSION="540" -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER -DSTM32F10X_MD-o ..\obj\knob.o --omf_browse ..\obj\knob.crf --depend ..\obj\knob.d)
+F (..\HARDWARE\WouoUI\knob.c)(0x6A12B785)(-c --cpu Cortex-M3 -g -O0 --apcs=interwork --split_sections -I ..\CORE -I ..\STM32F10x_FWLib\inc -I ..\USER -I ..\HARDWARE\OLED -I ..\HARDWARE\WouoUI -I ..\SYSTEM\delay -I ..\SYSTEM\sys-IC:\Users\Lenovo\AppData\Local\Arm\Packs\Keil\STM32F1xx_DFP\2.4.1\Device\Include-D__UVISION_VERSION="540" -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER -DSTM32F10X_MD-o ..\obj\knob.o --omf_browse ..\obj\knob.crf --depend ..\obj\knob.d)
 I (..\HARDWARE\WouoUI\knob.h)(0x6A1298DB)
 I (..\HARDWARE\WouoUI\ui_types.h)(0x6A12AB62)
 I (..\HARDWARE\WouoUI\config.h)(0x6A107DDA)

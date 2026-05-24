@@ -3,7 +3,7 @@
 <title>Static Call Graph - [..\OBJ\WouoUI.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image ..\OBJ\WouoUI.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060750: Last Updated: Sun May 24 15:49:43 2026
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060750: Last Updated: Sun May 24 16:35:29 2026
 <BR><P>
 <H3>Maximum Stack Usage =        448 bytes + Unknown(Functions without stacksize, Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
@@ -1054,10 +1054,10 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[49]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 </UL>
 
-<P><STRONG><a name="[b5]"></a>btn_scan</STRONG> (Thumb, 126 bytes, Stack size 8 bytes, knob.o(i.btn_scan))
-<BR><BR>[Stack]<UL><LI>Max Depth = 12<LI>Call Chain = btn_scan &rArr; delay_ms
+<P><STRONG><a name="[b5]"></a>btn_scan</STRONG> (Thumb, 162 bytes, Stack size 8 bytes, knob.o(i.btn_scan))
+<BR><BR>[Stack]<UL><LI>Max Depth = 8<LI>Call Chain = btn_scan
 </UL>
-<BR>[Calls]<UL><LI><a href="#[72]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;delay_ms
+<BR>[Calls]<UL><LI><a href="#[7a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;millis
 </UL>
 <BR>[Called By]<UL><LI><a href="#[49]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 </UL>
@@ -1114,7 +1114,6 @@ Global Symbols
 <BR>[Calls]<UL><LI><a href="#[7a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;millis
 </UL>
 <BR>[Called By]<UL><LI><a href="#[6f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;OLED_Init
-<LI><a href="#[b5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;btn_scan
 </UL>
 
 <P><STRONG><a name="[b8]"></a>editor_proc</STRONG> (Thumb, 142 bytes, Stack size 8 bytes, pages.o(i.editor_proc))
@@ -1187,7 +1186,7 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[b3]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;btn_init
 </UL>
 
-<P><STRONG><a name="[e4]"></a>knob_inter</STRONG> (Thumb, 132 bytes, Stack size 0 bytes, knob.o(i.knob_inter))
+<P><STRONG><a name="[e4]"></a>knob_inter</STRONG> (Thumb, 142 bytes, Stack size 0 bytes, knob.o(i.knob_inter))
 <BR><BR>[Called By]<UL><LI><a href="#[49]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 </UL>
 
@@ -1418,6 +1417,7 @@ Global Symbols
 
 <P><STRONG><a name="[7a]"></a>millis</STRONG> (Thumb, 14 bytes, Stack size 0 bytes, delay.o(i.millis))
 <BR><BR>[Called By]<UL><LI><a href="#[72]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;delay_ms
+<LI><a href="#[b5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;btn_scan
 <LI><a href="#[c1]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;fade_timer_check
 <LI><a href="#[e5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ui_proc
 <LI><a href="#[78]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;sleep_proc()

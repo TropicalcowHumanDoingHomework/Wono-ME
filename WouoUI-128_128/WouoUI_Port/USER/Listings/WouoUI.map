@@ -463,8 +463,8 @@ Section Cross References
     animation.o(i.fade_wake) refers to u8g2_adapter.o(.data) for buf_ptr
     knob.o(i.btn_init) refers to knob.o(i.knob_init) for knob_init
     knob.o(i.btn_init) refers to ui_state.o(.data) for knob
-    knob.o(i.btn_scan) refers to delay.o(i.delay_ms) for delay_ms
-    knob.o(i.btn_scan) refers to knob.o(.data) for val
+    knob.o(i.btn_scan) refers to delay.o(i.millis) for millis
+    knob.o(i.btn_scan) refers to knob.o(.data) for state
     knob.o(i.btn_scan) refers to ui_state.o(.bss) for ui
     knob.o(i.btn_scan) refers to knob.o(.bss) for btn
     knob.o(i.knob_init) refers to stm32f10x_rcc.o(i.RCC_APB2PeriphClockCmd) for RCC_APB2PeriphClockCmd
@@ -1155,29 +1155,29 @@ Image Symbol Table
 
     Symbol Name                              Value     Ov Type        Size  Object(Section)
 
-    ../clib/angel/boardlib.s                 0x00000000   Number         0  boardinit3.o ABSOLUTE
     ../clib/angel/boardlib.s                 0x00000000   Number         0  boardshut.o ABSOLUTE
-    ../clib/angel/boardlib.s                 0x00000000   Number         0  boardinit2.o ABSOLUTE
+    ../clib/angel/boardlib.s                 0x00000000   Number         0  boardinit3.o ABSOLUTE
     ../clib/angel/boardlib.s                 0x00000000   Number         0  boardinit1.o ABSOLUTE
+    ../clib/angel/boardlib.s                 0x00000000   Number         0  boardinit2.o ABSOLUTE
     ../clib/angel/dczerorl2.s                0x00000000   Number         0  __dczerorl2.o ABSOLUTE
     ../clib/angel/handlers.s                 0x00000000   Number         0  __scatter_zi.o ABSOLUTE
-    ../clib/angel/kernel.s                   0x00000000   Number         0  __rtentry.o ABSOLUTE
-    ../clib/angel/kernel.s                   0x00000000   Number         0  __rtentry4.o ABSOLUTE
-    ../clib/angel/kernel.s                   0x00000000   Number         0  rtexit.o ABSOLUTE
     ../clib/angel/kernel.s                   0x00000000   Number         0  __rtentry2.o ABSOLUTE
     ../clib/angel/kernel.s                   0x00000000   Number         0  rtexit2.o ABSOLUTE
-    ../clib/angel/rt.s                       0x00000000   Number         0  rt_errno_addr_intlibspace.o ABSOLUTE
+    ../clib/angel/kernel.s                   0x00000000   Number         0  __rtentry.o ABSOLUTE
+    ../clib/angel/kernel.s                   0x00000000   Number         0  rtexit.o ABSOLUTE
+    ../clib/angel/kernel.s                   0x00000000   Number         0  __rtentry4.o ABSOLUTE
     ../clib/angel/rt.s                       0x00000000   Number         0  rt_raise.o ABSOLUTE
     ../clib/angel/rt.s                       0x00000000   Number         0  rt_errno_addr.o ABSOLUTE
+    ../clib/angel/rt.s                       0x00000000   Number         0  rt_errno_addr_intlibspace.o ABSOLUTE
     ../clib/angel/scatter.s                  0x00000000   Number         0  __scatter.o ABSOLUTE
     ../clib/angel/startup.s                  0x00000000   Number         0  __main.o ABSOLUTE
-    ../clib/angel/sys.s                      0x00000000   Number         0  use_no_semi.o ABSOLUTE
     ../clib/angel/sys.s                      0x00000000   Number         0  libspace.o ABSOLUTE
     ../clib/angel/sys.s                      0x00000000   Number         0  sys_stackheap_outer.o ABSOLUTE
+    ../clib/angel/sys.s                      0x00000000   Number         0  use_no_semi.o ABSOLUTE
     ../clib/angel/sys.s                      0x00000000   Number         0  indicate_semi.o ABSOLUTE
+    ../clib/angel/sysapp.c                   0x00000000   Number         0  sys_exit.o ABSOLUTE
     ../clib/angel/sysapp.c                   0x00000000   Number         0  sys_command.o ABSOLUTE
     ../clib/angel/sysapp.c                   0x00000000   Number         0  sys_wrch.o ABSOLUTE
-    ../clib/angel/sysapp.c                   0x00000000   Number         0  sys_exit.o ABSOLUTE
     ../clib/armsys.c                         0x00000000   Number         0  no_argv.o ABSOLUTE
     ../clib/armsys.c                         0x00000000   Number         0  _get_argv_nomalloc.o ABSOLUTE
     ../clib/armsys.c                         0x00000000   Number         0  argv_veneer.o ABSOLUTE
@@ -1189,52 +1189,52 @@ Image Symbol Table
     ../clib/libinit.s                        0x00000000   Number         0  libshutdown2.o ABSOLUTE
     ../clib/libinit.s                        0x00000000   Number         0  libinit2.o ABSOLUTE
     ../clib/libinit.s                        0x00000000   Number         0  libshutdown.o ABSOLUTE
-    ../clib/memcpset.s                       0x00000000   Number         0  rt_memclr_w.o ABSOLUTE
     ../clib/memcpset.s                       0x00000000   Number         0  strcmpv7m.o ABSOLUTE
     ../clib/memcpset.s                       0x00000000   Number         0  rt_memclr.o ABSOLUTE
+    ../clib/memcpset.s                       0x00000000   Number         0  rt_memclr_w.o ABSOLUTE
     ../clib/misc.s                           0x00000000   Number         0  printf_stubs.o ABSOLUTE
-    ../clib/printf.c                         0x00000000   Number         0  _printf_dec.o ABSOLUTE
-    ../clib/printf.c                         0x00000000   Number         0  __printf_flags.o ABSOLUTE
     ../clib/printf.c                         0x00000000   Number         0  __printf_ss_wp.o ABSOLUTE
-    ../clib/printf.c                         0x00000000   Number         0  __printf_flags_ss_wp.o ABSOLUTE
-    ../clib/printf.c                         0x00000000   Number         0  __printf_ss.o ABSOLUTE
-    ../clib/printf.c                         0x00000000   Number         0  __printf_flags_ss.o ABSOLUTE
-    ../clib/printf.c                         0x00000000   Number         0  __printf_flags_wp.o ABSOLUTE
-    ../clib/printf.c                         0x00000000   Number         0  __printf_wp.o ABSOLUTE
     ../clib/printf.c                         0x00000000   Number         0  _printf_intcommon.o ABSOLUTE
-    ../clib/printf.c                         0x00000000   Number         0  _printf_char_common.o ABSOLUTE
-    ../clib/printf.c                         0x00000000   Number         0  _sputc.o ABSOLUTE
     ../clib/printf.c                         0x00000000   Number         0  __printf_nopercent.o ABSOLUTE
+    ../clib/printf.c                         0x00000000   Number         0  _sputc.o ABSOLUTE
+    ../clib/printf.c                         0x00000000   Number         0  _printf_char_common.o ABSOLUTE
+    ../clib/printf.c                         0x00000000   Number         0  __printf_flags_ss_wp.o ABSOLUTE
     ../clib/printf.c                         0x00000000   Number         0  __2sprintf.o ABSOLUTE
     ../clib/printf.c                         0x00000000   Number         0  noretval__2sprintf.o ABSOLUTE
     ../clib/printf.c                         0x00000000   Number         0  __printf.o ABSOLUTE
     ../clib/printf.c                         0x00000000   Number         0  _printf_pad.o ABSOLUTE
-    ../clib/printf_percent.s                 0x00000000   Number         0  _printf_percent.o ABSOLUTE
+    ../clib/printf.c                         0x00000000   Number         0  _printf_dec.o ABSOLUTE
+    ../clib/printf.c                         0x00000000   Number         0  __printf_flags.o ABSOLUTE
+    ../clib/printf.c                         0x00000000   Number         0  __printf_ss.o ABSOLUTE
+    ../clib/printf.c                         0x00000000   Number         0  __printf_flags_ss.o ABSOLUTE
+    ../clib/printf.c                         0x00000000   Number         0  __printf_wp.o ABSOLUTE
+    ../clib/printf.c                         0x00000000   Number         0  __printf_flags_wp.o ABSOLUTE
+    ../clib/printf_percent.s                 0x00000000   Number         0  _printf_u.o ABSOLUTE
     ../clib/printf_percent.s                 0x00000000   Number         0  _printf_d.o ABSOLUTE
     ../clib/printf_percent.s                 0x00000000   Number         0  _printf_percent_end.o ABSOLUTE
-    ../clib/printf_percent.s                 0x00000000   Number         0  _printf_u.o ABSOLUTE
-    ../clib/signal.c                         0x00000000   Number         0  __raise.o ABSOLUTE
-    ../clib/signal.c                         0x00000000   Number         0  defsig_cppl_inner.o ABSOLUTE
-    ../clib/signal.c                         0x00000000   Number         0  defsig_rtmem_formal.o ABSOLUTE
+    ../clib/printf_percent.s                 0x00000000   Number         0  _printf_percent.o ABSOLUTE
     ../clib/signal.c                         0x00000000   Number         0  defsig_rtmem_outer.o ABSOLUTE
+    ../clib/signal.c                         0x00000000   Number         0  defsig_rtmem_inner.o ABSOLUTE
     ../clib/signal.c                         0x00000000   Number         0  defsig_other.o ABSOLUTE
     ../clib/signal.c                         0x00000000   Number         0  defsig_segv_inner.o ABSOLUTE
-    ../clib/signal.c                         0x00000000   Number         0  defsig_exit.o ABSOLUTE
+    ../clib/signal.c                         0x00000000   Number         0  defsig_cppl_inner.o ABSOLUTE
     ../clib/signal.c                         0x00000000   Number         0  defsig_pvfn_inner.o ABSOLUTE
     ../clib/signal.c                         0x00000000   Number         0  defsig_stak_inner.o ABSOLUTE
     ../clib/signal.c                         0x00000000   Number         0  defsig_rtred_inner.o ABSOLUTE
     ../clib/signal.c                         0x00000000   Number         0  defsig_fpe_inner.o ABSOLUTE
     ../clib/signal.c                         0x00000000   Number         0  defsig_abrt_inner.o ABSOLUTE
-    ../clib/signal.c                         0x00000000   Number         0  defsig_rtmem_inner.o ABSOLUTE
     ../clib/signal.c                         0x00000000   Number         0  defsig_general.o ABSOLUTE
+    ../clib/signal.c                         0x00000000   Number         0  __raise.o ABSOLUTE
+    ../clib/signal.c                         0x00000000   Number         0  defsig_exit.o ABSOLUTE
+    ../clib/signal.c                         0x00000000   Number         0  defsig_rtmem_formal.o ABSOLUTE
     ../clib/signal.s                         0x00000000   Number         0  defsig.o ABSOLUTE
     ../clib/stdlib.c                         0x00000000   Number         0  exit.o ABSOLUTE
-    ../clib/string.c                         0x00000000   Number         0  strcpy.o ABSOLUTE
-    ../clib/string.c                         0x00000000   Number         0  strlen.o ABSOLUTE
     ../clib/string.c                         0x00000000   Number         0  strspn.o ABSOLUTE
-    ../clib/string.c                         0x00000000   Number         0  strcspn.o ABSOLUTE
-    ../clib/string.c                         0x00000000   Number         0  strtok.o ABSOLUTE
     ../clib/string.c                         0x00000000   Number         0  strtok_int.o ABSOLUTE
+    ../clib/string.c                         0x00000000   Number         0  strtok.o ABSOLUTE
+    ../clib/string.c                         0x00000000   Number         0  strlen.o ABSOLUTE
+    ../clib/string.c                         0x00000000   Number         0  strcpy.o ABSOLUTE
+    ../clib/string.c                         0x00000000   Number         0  strcspn.o ABSOLUTE
     ../fplib/dcmpi.s                         0x00000000   Number         0  dcmpi.o ABSOLUTE
     ../fplib/dleqf.s                         0x00000000   Number         0  dleqf.o ABSOLUTE
     ../fplib/dnaninf.s                       0x00000000   Number         0  dnaninf.o ABSOLUTE
@@ -1438,136 +1438,136 @@ Image Symbol Table
     i.animation                              0x080017fc   Section        0  animation.o(i.animation)
     i.btn_init                               0x08001874   Section        0  knob.o(i.btn_init)
     i.btn_scan                               0x0800189c   Section        0  knob.o(i.btn_scan)
-    i.ceilf                                  0x08001934   Section        0  ceilf.o(i.ceilf)
-    i.check_box_m_init                       0x080019ac   Section        0  pages.o(i.check_box_m_init)
-    i.check_box_m_select                     0x080019cc   Section        0  pages.o(i.check_box_m_select)
-    i.check_box_s_init                       0x080019f0   Section        0  pages.o(i.check_box_s_init)
-    i.check_box_s_select                     0x080019fc   Section        0  pages.o(i.check_box_s_select)
-    i.check_box_v_init                       0x08001a18   Section        0  pages.o(i.check_box_v_init)
-    i.delay_init                             0x08001a38   Section        0  delay.o(i.delay_init)
-    i.delay_ms                               0x08001a94   Section        0  delay.o(i.delay_ms)
-    i.editor_proc                            0x08001aac   Section        0  pages.o(i.editor_proc)
-    i.eeprom_init                            0x08001b74   Section        0  eeprom_manager.o(i.eeprom_init)
-    i.eeprom_read_all_data                   0x08001c08   Section        0  eeprom_manager.o(i.eeprom_read_all_data)
-    i.eeprom_write_all_data                  0x08001c68   Section        0  eeprom_manager.o(i.eeprom_write_all_data)
-    i.fade                                   0x08001cf0   Section        0  animation.o(i.fade)
-    i.fade_sleep                             0x08001ee0   Section        0  animation.o(i.fade_sleep)
-    i.fade_timer_check                       0x08001fe8   Section        0  animation.o(i.fade_timer_check)
-    fade_timer_check                         0x08001fe9   Thumb Code    36  animation.o(i.fade_timer_check)
-    i.fade_wake                              0x08002014   Section        0  animation.o(i.fade_wake)
-    i.knob_init                              0x0800216c   Section        0  knob.o(i.knob_init)
-    i.knob_inter                             0x080021b0   Section        0  knob.o(i.knob_inter)
-    i.knob_param_init                        0x08002244   Section        0  pages.o(i.knob_param_init)
-    i.knob_proc                              0x08002254   Section        0  pages.o(i.knob_proc)
-    i.kpf_param_init                         0x08002304   Section        0  pages.o(i.kpf_param_init)
-    i.kpf_proc                               0x08002314   Section        0  pages.o(i.kpf_proc)
-    i.krf_param_init                         0x0800298c   Section        0  pages.o(i.krf_param_init)
-    i.krf_proc                               0x0800299c   Section        0  pages.o(i.krf_proc)
-    i.layer_init_in                          0x08002a58   Section        0  pages.o(i.layer_init_in)
-    i.layer_init_out                         0x08002af8   Section        0  pages.o(i.layer_init_out)
-    i.list_draw_check_box_dot                0x08002b6c   Section        0  pages.o(i.list_draw_check_box_dot)
-    i.list_draw_check_box_frame              0x08002ba0   Section        0  pages.o(i.list_draw_check_box_frame)
-    i.list_draw_kpf                          0x08002be0   Section        0  pages.o(i.list_draw_kpf)
-    i.list_draw_krf                          0x08002c38   Section        0  pages.o(i.list_draw_krf)
-    i.list_draw_text_and_check_box           0x08002c88   Section        0  pages.o(i.list_draw_text_and_check_box)
-    i.list_draw_value                        0x08002d50   Section        0  pages.o(i.list_draw_value)
-    i.list_rotate_switch                     0x08002da0   Section        0  pages.o(i.list_rotate_switch)
-    i.list_show                              0x08002fe4   Section        0  pages.o(i.list_show)
-    i.main                                   0x08003370   Section        0  main.o(i.main)
-    i.main_proc                              0x080033dc   Section        0  pages.o(i.main_proc)
-    i.millis                                 0x080034a8   Section        0  delay.o(i.millis)
-    i.powf                                   0x080034bc   Section        0  powf.o(i.powf)
-    i.setpixel                               0x08003adc   Section        0  u8g2_adapter.o(i.setpixel)
-    setpixel                                 0x08003add   Thumb Code   178  u8g2_adapter.o(i.setpixel)
-    i.setting_param_init                     0x08003b98   Section        0  pages.o(i.setting_param_init)
-    i.setting_proc                           0x08003c68   Section        0  pages.o(i.setting_proc)
-    i.sinf                                   0x08003f44   Section        0  sinf.o(i.sinf)
-    i.sleep_param_init                       0x080040cc   Section        0  pages.o(i.sleep_param_init)
-    i.tile_param_init                        0x080040f0   Section        0  pages.o(i.tile_param_init)
-    i.tile_rotate_switch                     0x08004134   Section        0  pages.o(i.tile_rotate_switch)
-    i.tile_show                              0x08004258   Section        0  pages.o(i.tile_show)
-    i.u8g2_Begin                             0x080044e8   Section        0  u8g2_adapter.o(i.u8g2_Begin)
-    i.u8g2_ClearBuffer                       0x0800450c   Section        0  u8g2_adapter.o(i.u8g2_ClearBuffer)
-    i.u8g2_DrawBox                           0x08004520   Section        0  u8g2_adapter.o(i.u8g2_DrawBox)
-    i.u8g2_DrawFrame                         0x08004558   Section        0  u8g2_adapter.o(i.u8g2_DrawFrame)
-    i.u8g2_DrawHLine                         0x080045c4   Section        0  u8g2_adapter.o(i.u8g2_DrawHLine)
-    i.u8g2_DrawLine                          0x080045e8   Section        0  u8g2_adapter.o(i.u8g2_DrawLine)
-    i.u8g2_DrawRBox                          0x08004614   Section        0  u8g2_adapter.o(i.u8g2_DrawRBox)
-    i.u8g2_DrawRFrame                        0x08004726   Section        0  u8g2_adapter.o(i.u8g2_DrawRFrame)
-    i.u8g2_DrawStr                           0x0800486c   Section        0  u8g2_adapter.o(i.u8g2_DrawStr)
-    i.u8g2_DrawVLine                         0x080048a4   Section        0  u8g2_adapter.o(i.u8g2_DrawVLine)
-    i.u8g2_DrawXBMP                          0x080048c8   Section        0  u8g2_adapter.o(i.u8g2_DrawXBMP)
-    i.u8g2_GetStrWidth                       0x0800493c   Section        0  u8g2_adapter.o(i.u8g2_GetStrWidth)
-    i.u8g2_Print                             0x0800497c   Section        0  u8g2_adapter.o(i.u8g2_Print)
-    i.u8g2_PrintFloat                        0x080049a4   Section        0  u8g2_adapter.o(i.u8g2_PrintFloat)
-    i.u8g2_PrintStr                          0x08004a28   Section        0  u8g2_adapter.o(i.u8g2_PrintStr)
-    i.u8g2_SendBuffer                        0x08004a54   Section        0  u8g2_adapter.o(i.u8g2_SendBuffer)
-    i.u8g2_SetClipWindow                     0x08004a5c   Section        0  u8g2_adapter.o(i.u8g2_SetClipWindow)
-    i.u8g2_SetContrast                       0x08004a80   Section        0  u8g2_adapter.o(i.u8g2_SetContrast)
-    i.u8g2_SetCursor                         0x08004a98   Section        0  u8g2_adapter.o(i.u8g2_SetCursor)
-    i.u8g2_SetDrawColor                      0x08004aa4   Section        0  u8g2_adapter.o(i.u8g2_SetDrawColor)
-    i.u8g2_SetFont                           0x08004ab0   Section        0  u8g2_adapter.o(i.u8g2_SetFont)
-    i.u8g2_SetFontDirection                  0x08004ad0   Section        0  u8g2_adapter.o(i.u8g2_SetFontDirection)
-    i.u8g2_SetMaxClipWindow                  0x08004adc   Section        0  u8g2_adapter.o(i.u8g2_SetMaxClipWindow)
-    i.u8g2_SetPowerSave                      0x08004af4   Section        0  u8g2_adapter.o(i.u8g2_SetPowerSave)
-    i.ui_init                                0x08004b10   Section        0  ui_state.o(i.ui_init)
-    i.ui_param_init                          0x08004b38   Section        0  ui_state.o(i.ui_param_init)
-    i.ui_proc                                0x08004ba8   Section        0  pages.o(i.ui_proc)
-    i.volt_param_init                        0x08004f6c   Section        0  pages.o(i.volt_param_init)
-    i.volt_proc                              0x08004f80   Section        0  pages.o(i.volt_proc)
-    i.volt_show                              0x08004fcc   Section        0  pages.o(i.volt_show)
-    i.window_message_init                    0x080052f4   Section        0  window.o(i.window_message_init)
-    i.window_param_init                      0x0800543c   Section        0  window.o(i.window_param_init)
-    i.window_proc                            0x0800549c   Section        0  window.o(i.window_proc)
-    i.window_show                            0x080055c0   Section        0  window.o(i.window_show)
-    i.window_value_init                      0x080059b0   Section        0  window.o(i.window_value_init)
-    x$fpl$dcmpinf                            0x08005a08   Section       24  dcmpi.o(x$fpl$dcmpinf)
-    x$fpl$dleqf                              0x08005a20   Section      120  dleqf.o(x$fpl$dleqf)
-    x$fpl$dnaninf                            0x08005a98   Section      156  dnaninf.o(x$fpl$dnaninf)
-    x$fpl$dretinf                            0x08005b34   Section       12  dretinf.o(x$fpl$dretinf)
-    x$fpl$f2d                                0x08005b40   Section       86  f2d.o(x$fpl$f2d)
-    x$fpl$fadd                               0x08005b98   Section      196  faddsub_clz.o(x$fpl$fadd)
-    _fadd1                                   0x08005ba7   Thumb Code     0  faddsub_clz.o(x$fpl$fadd)
-    x$fpl$fcheck1                            0x08005c5c   Section       12  fcheck1.o(x$fpl$fcheck1)
-    x$fpl$fcmpinf                            0x08005c68   Section       24  fcmpi.o(x$fpl$fcmpinf)
-    x$fpl$fdiv                               0x08005c80   Section      388  fdiv.o(x$fpl$fdiv)
-    _fdiv1                                   0x08005c81   Thumb Code     0  fdiv.o(x$fpl$fdiv)
-    x$fpl$feqf                               0x08005e04   Section      104  feqf.o(x$fpl$feqf)
-    x$fpl$ffix                               0x08005e6c   Section       54  ffix.o(x$fpl$ffix)
-    x$fpl$ffixr                              0x08005ea4   Section       82  ffix.o(x$fpl$ffixr)
-    x$fpl$ffixu                              0x08005ef8   Section       62  ffixu.o(x$fpl$ffixu)
-    x$fpl$fflt                               0x08005f38   Section       48  fflt_clz.o(x$fpl$fflt)
-    x$fpl$ffltu                              0x08005f68   Section       38  fflt_clz.o(x$fpl$ffltu)
-    x$fpl$fleqf                              0x08005f90   Section      104  fleqf.o(x$fpl$fleqf)
-    x$fpl$fmul                               0x08005ff8   Section      258  fmul.o(x$fpl$fmul)
-    x$fpl$fnaninf                            0x080060fa   Section      140  fnaninf.o(x$fpl$fnaninf)
-    x$fpl$fretinf                            0x08006186   Section       10  fretinf.o(x$fpl$fretinf)
-    x$fpl$frleqf                             0x08006190   Section       98  frleqf.o(x$fpl$frleqf)
-    x$fpl$frnd                               0x080061f4   Section       96  frnd.o(x$fpl$frnd)
-    x$fpl$frsb                               0x08006254   Section       20  faddsub_clz.o(x$fpl$frsb)
-    x$fpl$fsub                               0x08006268   Section      234  faddsub_clz.o(x$fpl$fsub)
-    _fsub1                                   0x08006277   Thumb Code     0  faddsub_clz.o(x$fpl$fsub)
-    x$fpl$retnan                             0x08006352   Section      100  retnan.o(x$fpl$retnan)
-    x$fpl$scalbnf                            0x080063b6   Section       76  scalbnf.o(x$fpl$scalbnf)
-    x$fpl$trapveneer                         0x08006402   Section       48  trapv.o(x$fpl$trapveneer)
-    .constdata                               0x08006432   Section     7696  oled.o(.constdata)
-    x$fpl$usenofp                            0x08006432   Section        0  usenofp.o(x$fpl$usenofp)
-    .constdata                               0x08008242   Section        2  u8g2_adapter.o(.constdata)
-    .constdata                               0x08008244   Section       24  pages.o(.constdata)
-    slp_table                                0x08008244   Data          24  pages.o(.constdata)
-    .constdata                               0x0800825c   Section     1152  menu_data.o(.constdata)
-    .constdata                               0x080086dc   Section       11  eeprom_manager.o(.constdata)
-    default_check                            0x080086dc   Data          11  eeprom_manager.o(.constdata)
-    .constdata                               0x080086e7   Section       17  __printf_flags_ss_wp.o(.constdata)
-    maptable                                 0x080086e7   Data          17  __printf_flags_ss_wp.o(.constdata)
-    .constdata                               0x080086f8   Section      320  powf.o(.constdata)
-    table                                    0x080086f8   Data         128  powf.o(.constdata)
-    powersof2to1over16top                    0x08008778   Data          64  powf.o(.constdata)
-    powersof2to1over16bot                    0x080087b8   Data          64  powf.o(.constdata)
-    powersof2to1over16all                    0x080087f8   Data          64  powf.o(.constdata)
-    .constdata                               0x08008838   Section       32  rredf.o(.constdata)
-    twooverpi                                0x08008838   Data          32  rredf.o(.constdata)
-    .conststring                             0x08008858   Section       29  pages.o(.conststring)
+    i.ceilf                                  0x08001954   Section        0  ceilf.o(i.ceilf)
+    i.check_box_m_init                       0x080019cc   Section        0  pages.o(i.check_box_m_init)
+    i.check_box_m_select                     0x080019ec   Section        0  pages.o(i.check_box_m_select)
+    i.check_box_s_init                       0x08001a10   Section        0  pages.o(i.check_box_s_init)
+    i.check_box_s_select                     0x08001a1c   Section        0  pages.o(i.check_box_s_select)
+    i.check_box_v_init                       0x08001a38   Section        0  pages.o(i.check_box_v_init)
+    i.delay_init                             0x08001a58   Section        0  delay.o(i.delay_init)
+    i.delay_ms                               0x08001ab4   Section        0  delay.o(i.delay_ms)
+    i.editor_proc                            0x08001acc   Section        0  pages.o(i.editor_proc)
+    i.eeprom_init                            0x08001b94   Section        0  eeprom_manager.o(i.eeprom_init)
+    i.eeprom_read_all_data                   0x08001c28   Section        0  eeprom_manager.o(i.eeprom_read_all_data)
+    i.eeprom_write_all_data                  0x08001c88   Section        0  eeprom_manager.o(i.eeprom_write_all_data)
+    i.fade                                   0x08001d10   Section        0  animation.o(i.fade)
+    i.fade_sleep                             0x08001f00   Section        0  animation.o(i.fade_sleep)
+    i.fade_timer_check                       0x08002008   Section        0  animation.o(i.fade_timer_check)
+    fade_timer_check                         0x08002009   Thumb Code    36  animation.o(i.fade_timer_check)
+    i.fade_wake                              0x08002034   Section        0  animation.o(i.fade_wake)
+    i.knob_init                              0x0800218c   Section        0  knob.o(i.knob_init)
+    i.knob_inter                             0x080021d0   Section        0  knob.o(i.knob_inter)
+    i.knob_param_init                        0x08002270   Section        0  pages.o(i.knob_param_init)
+    i.knob_proc                              0x08002280   Section        0  pages.o(i.knob_proc)
+    i.kpf_param_init                         0x08002330   Section        0  pages.o(i.kpf_param_init)
+    i.kpf_proc                               0x08002340   Section        0  pages.o(i.kpf_proc)
+    i.krf_param_init                         0x080029b8   Section        0  pages.o(i.krf_param_init)
+    i.krf_proc                               0x080029c8   Section        0  pages.o(i.krf_proc)
+    i.layer_init_in                          0x08002a84   Section        0  pages.o(i.layer_init_in)
+    i.layer_init_out                         0x08002b24   Section        0  pages.o(i.layer_init_out)
+    i.list_draw_check_box_dot                0x08002b98   Section        0  pages.o(i.list_draw_check_box_dot)
+    i.list_draw_check_box_frame              0x08002bcc   Section        0  pages.o(i.list_draw_check_box_frame)
+    i.list_draw_kpf                          0x08002c0c   Section        0  pages.o(i.list_draw_kpf)
+    i.list_draw_krf                          0x08002c64   Section        0  pages.o(i.list_draw_krf)
+    i.list_draw_text_and_check_box           0x08002cb4   Section        0  pages.o(i.list_draw_text_and_check_box)
+    i.list_draw_value                        0x08002d7c   Section        0  pages.o(i.list_draw_value)
+    i.list_rotate_switch                     0x08002dcc   Section        0  pages.o(i.list_rotate_switch)
+    i.list_show                              0x08003010   Section        0  pages.o(i.list_show)
+    i.main                                   0x0800339c   Section        0  main.o(i.main)
+    i.main_proc                              0x08003408   Section        0  pages.o(i.main_proc)
+    i.millis                                 0x080034d4   Section        0  delay.o(i.millis)
+    i.powf                                   0x080034e8   Section        0  powf.o(i.powf)
+    i.setpixel                               0x08003b08   Section        0  u8g2_adapter.o(i.setpixel)
+    setpixel                                 0x08003b09   Thumb Code   178  u8g2_adapter.o(i.setpixel)
+    i.setting_param_init                     0x08003bc4   Section        0  pages.o(i.setting_param_init)
+    i.setting_proc                           0x08003c94   Section        0  pages.o(i.setting_proc)
+    i.sinf                                   0x08003f70   Section        0  sinf.o(i.sinf)
+    i.sleep_param_init                       0x080040f8   Section        0  pages.o(i.sleep_param_init)
+    i.tile_param_init                        0x0800411c   Section        0  pages.o(i.tile_param_init)
+    i.tile_rotate_switch                     0x08004160   Section        0  pages.o(i.tile_rotate_switch)
+    i.tile_show                              0x08004284   Section        0  pages.o(i.tile_show)
+    i.u8g2_Begin                             0x08004514   Section        0  u8g2_adapter.o(i.u8g2_Begin)
+    i.u8g2_ClearBuffer                       0x08004538   Section        0  u8g2_adapter.o(i.u8g2_ClearBuffer)
+    i.u8g2_DrawBox                           0x0800454c   Section        0  u8g2_adapter.o(i.u8g2_DrawBox)
+    i.u8g2_DrawFrame                         0x08004584   Section        0  u8g2_adapter.o(i.u8g2_DrawFrame)
+    i.u8g2_DrawHLine                         0x080045f0   Section        0  u8g2_adapter.o(i.u8g2_DrawHLine)
+    i.u8g2_DrawLine                          0x08004614   Section        0  u8g2_adapter.o(i.u8g2_DrawLine)
+    i.u8g2_DrawRBox                          0x08004640   Section        0  u8g2_adapter.o(i.u8g2_DrawRBox)
+    i.u8g2_DrawRFrame                        0x08004752   Section        0  u8g2_adapter.o(i.u8g2_DrawRFrame)
+    i.u8g2_DrawStr                           0x08004898   Section        0  u8g2_adapter.o(i.u8g2_DrawStr)
+    i.u8g2_DrawVLine                         0x080048d0   Section        0  u8g2_adapter.o(i.u8g2_DrawVLine)
+    i.u8g2_DrawXBMP                          0x080048f4   Section        0  u8g2_adapter.o(i.u8g2_DrawXBMP)
+    i.u8g2_GetStrWidth                       0x08004968   Section        0  u8g2_adapter.o(i.u8g2_GetStrWidth)
+    i.u8g2_Print                             0x080049a8   Section        0  u8g2_adapter.o(i.u8g2_Print)
+    i.u8g2_PrintFloat                        0x080049d0   Section        0  u8g2_adapter.o(i.u8g2_PrintFloat)
+    i.u8g2_PrintStr                          0x08004a54   Section        0  u8g2_adapter.o(i.u8g2_PrintStr)
+    i.u8g2_SendBuffer                        0x08004a80   Section        0  u8g2_adapter.o(i.u8g2_SendBuffer)
+    i.u8g2_SetClipWindow                     0x08004a88   Section        0  u8g2_adapter.o(i.u8g2_SetClipWindow)
+    i.u8g2_SetContrast                       0x08004aac   Section        0  u8g2_adapter.o(i.u8g2_SetContrast)
+    i.u8g2_SetCursor                         0x08004ac4   Section        0  u8g2_adapter.o(i.u8g2_SetCursor)
+    i.u8g2_SetDrawColor                      0x08004ad0   Section        0  u8g2_adapter.o(i.u8g2_SetDrawColor)
+    i.u8g2_SetFont                           0x08004adc   Section        0  u8g2_adapter.o(i.u8g2_SetFont)
+    i.u8g2_SetFontDirection                  0x08004afc   Section        0  u8g2_adapter.o(i.u8g2_SetFontDirection)
+    i.u8g2_SetMaxClipWindow                  0x08004b08   Section        0  u8g2_adapter.o(i.u8g2_SetMaxClipWindow)
+    i.u8g2_SetPowerSave                      0x08004b20   Section        0  u8g2_adapter.o(i.u8g2_SetPowerSave)
+    i.ui_init                                0x08004b3c   Section        0  ui_state.o(i.ui_init)
+    i.ui_param_init                          0x08004b64   Section        0  ui_state.o(i.ui_param_init)
+    i.ui_proc                                0x08004bd4   Section        0  pages.o(i.ui_proc)
+    i.volt_param_init                        0x08004f98   Section        0  pages.o(i.volt_param_init)
+    i.volt_proc                              0x08004fac   Section        0  pages.o(i.volt_proc)
+    i.volt_show                              0x08004ff8   Section        0  pages.o(i.volt_show)
+    i.window_message_init                    0x08005320   Section        0  window.o(i.window_message_init)
+    i.window_param_init                      0x08005468   Section        0  window.o(i.window_param_init)
+    i.window_proc                            0x080054c8   Section        0  window.o(i.window_proc)
+    i.window_show                            0x080055ec   Section        0  window.o(i.window_show)
+    i.window_value_init                      0x080059dc   Section        0  window.o(i.window_value_init)
+    x$fpl$dcmpinf                            0x08005a34   Section       24  dcmpi.o(x$fpl$dcmpinf)
+    x$fpl$dleqf                              0x08005a4c   Section      120  dleqf.o(x$fpl$dleqf)
+    x$fpl$dnaninf                            0x08005ac4   Section      156  dnaninf.o(x$fpl$dnaninf)
+    x$fpl$dretinf                            0x08005b60   Section       12  dretinf.o(x$fpl$dretinf)
+    x$fpl$f2d                                0x08005b6c   Section       86  f2d.o(x$fpl$f2d)
+    x$fpl$fadd                               0x08005bc4   Section      196  faddsub_clz.o(x$fpl$fadd)
+    _fadd1                                   0x08005bd3   Thumb Code     0  faddsub_clz.o(x$fpl$fadd)
+    x$fpl$fcheck1                            0x08005c88   Section       12  fcheck1.o(x$fpl$fcheck1)
+    x$fpl$fcmpinf                            0x08005c94   Section       24  fcmpi.o(x$fpl$fcmpinf)
+    x$fpl$fdiv                               0x08005cac   Section      388  fdiv.o(x$fpl$fdiv)
+    _fdiv1                                   0x08005cad   Thumb Code     0  fdiv.o(x$fpl$fdiv)
+    x$fpl$feqf                               0x08005e30   Section      104  feqf.o(x$fpl$feqf)
+    x$fpl$ffix                               0x08005e98   Section       54  ffix.o(x$fpl$ffix)
+    x$fpl$ffixr                              0x08005ed0   Section       82  ffix.o(x$fpl$ffixr)
+    x$fpl$ffixu                              0x08005f24   Section       62  ffixu.o(x$fpl$ffixu)
+    x$fpl$fflt                               0x08005f64   Section       48  fflt_clz.o(x$fpl$fflt)
+    x$fpl$ffltu                              0x08005f94   Section       38  fflt_clz.o(x$fpl$ffltu)
+    x$fpl$fleqf                              0x08005fbc   Section      104  fleqf.o(x$fpl$fleqf)
+    x$fpl$fmul                               0x08006024   Section      258  fmul.o(x$fpl$fmul)
+    x$fpl$fnaninf                            0x08006126   Section      140  fnaninf.o(x$fpl$fnaninf)
+    x$fpl$fretinf                            0x080061b2   Section       10  fretinf.o(x$fpl$fretinf)
+    x$fpl$frleqf                             0x080061bc   Section       98  frleqf.o(x$fpl$frleqf)
+    x$fpl$frnd                               0x08006220   Section       96  frnd.o(x$fpl$frnd)
+    x$fpl$frsb                               0x08006280   Section       20  faddsub_clz.o(x$fpl$frsb)
+    x$fpl$fsub                               0x08006294   Section      234  faddsub_clz.o(x$fpl$fsub)
+    _fsub1                                   0x080062a3   Thumb Code     0  faddsub_clz.o(x$fpl$fsub)
+    x$fpl$retnan                             0x0800637e   Section      100  retnan.o(x$fpl$retnan)
+    x$fpl$scalbnf                            0x080063e2   Section       76  scalbnf.o(x$fpl$scalbnf)
+    x$fpl$trapveneer                         0x0800642e   Section       48  trapv.o(x$fpl$trapveneer)
+    .constdata                               0x0800645e   Section     7696  oled.o(.constdata)
+    x$fpl$usenofp                            0x0800645e   Section        0  usenofp.o(x$fpl$usenofp)
+    .constdata                               0x0800826e   Section        2  u8g2_adapter.o(.constdata)
+    .constdata                               0x08008270   Section       24  pages.o(.constdata)
+    slp_table                                0x08008270   Data          24  pages.o(.constdata)
+    .constdata                               0x08008288   Section     1152  menu_data.o(.constdata)
+    .constdata                               0x08008708   Section       11  eeprom_manager.o(.constdata)
+    default_check                            0x08008708   Data          11  eeprom_manager.o(.constdata)
+    .constdata                               0x08008713   Section       17  __printf_flags_ss_wp.o(.constdata)
+    maptable                                 0x08008713   Data          17  __printf_flags_ss_wp.o(.constdata)
+    .constdata                               0x08008724   Section      320  powf.o(.constdata)
+    table                                    0x08008724   Data         128  powf.o(.constdata)
+    powersof2to1over16top                    0x080087a4   Data          64  powf.o(.constdata)
+    powersof2to1over16bot                    0x080087e4   Data          64  powf.o(.constdata)
+    powersof2to1over16all                    0x08008824   Data          64  powf.o(.constdata)
+    .constdata                               0x08008864   Section       32  rredf.o(.constdata)
+    twooverpi                                0x08008864   Data          32  rredf.o(.constdata)
+    .conststring                             0x08008884   Section       29  pages.o(.conststring)
     .data                                    0x20000000   Section       22  u8g2_adapter.o(.data)
     .data                                    0x20000016   Section        1  u8g2_global.o(.data)
     .data                                    0x20000018   Section       36  pages.o(.data)
@@ -1577,28 +1577,27 @@ Image Symbol Table
     .data                                    0x20000040   Section        4  animation.o(.data)
     last_fade_time                           0x20000040   Data           4  animation.o(.data)
     .data                                    0x20000044   Section     4832  menu_data.o(.data)
-    .data                                    0x20001324   Section       12  knob.o(.data)
-    val                                      0x20001324   Data           4  knob.o(.data)
-    val_last                                 0x20001328   Data           4  knob.o(.data)
-    count                                    0x2000132c   Data           4  knob.o(.data)
-    .data                                    0x20001330   Section        1  eeprom_manager.o(.data)
-    eeprom_initialized                       0x20001330   Data           1  eeprom_manager.o(.data)
-    .data                                    0x20001334   Section        4  delay.o(.data)
-    sys_millis                               0x20001334   Data           4  delay.o(.data)
-    .data                                    0x20001338   Section       20  system_stm32f10x.o(.data)
-    .data                                    0x2000134c   Section        4  strtok.o(.data)
-    _strtok_saves1                           0x2000134c   Data           4  strtok.o(.data)
-    .bss                                     0x20001350   Section     2048  oled.o(.bss)
-    .bss                                     0x20001b50   Section     1496  ui_state.o(.bss)
-    .bss                                     0x20002128   Section       28  knob.o(.bss)
-    .bss                                     0x20002144   Section      272  eeprom_manager.o(.bss)
-    eeprom_ram                               0x20002154   Data         256  eeprom_manager.o(.bss)
-    .bss                                     0x20002254   Section       96  libspace.o(.bss)
-    HEAP                                     0x200022b8   Section      512  startup_stm32f10x_md.o(HEAP)
-    Heap_Mem                                 0x200022b8   Data         512  startup_stm32f10x_md.o(HEAP)
-    STACK                                    0x200024b8   Section     1024  startup_stm32f10x_md.o(STACK)
-    Stack_Mem                                0x200024b8   Data        1024  startup_stm32f10x_md.o(STACK)
-    __initial_sp                             0x200028b8   Data           0  startup_stm32f10x_md.o(STACK)
+    .data                                    0x20001324   Section        8  knob.o(.data)
+    state                                    0x20001324   Data           1  knob.o(.data)
+    timer                                    0x20001328   Data           4  knob.o(.data)
+    .data                                    0x2000132c   Section        1  eeprom_manager.o(.data)
+    eeprom_initialized                       0x2000132c   Data           1  eeprom_manager.o(.data)
+    .data                                    0x20001330   Section        4  delay.o(.data)
+    sys_millis                               0x20001330   Data           4  delay.o(.data)
+    .data                                    0x20001334   Section       20  system_stm32f10x.o(.data)
+    .data                                    0x20001348   Section        4  strtok.o(.data)
+    _strtok_saves1                           0x20001348   Data           4  strtok.o(.data)
+    .bss                                     0x2000134c   Section     2048  oled.o(.bss)
+    .bss                                     0x20001b4c   Section     1496  ui_state.o(.bss)
+    .bss                                     0x20002124   Section       28  knob.o(.bss)
+    .bss                                     0x20002140   Section      272  eeprom_manager.o(.bss)
+    eeprom_ram                               0x20002150   Data         256  eeprom_manager.o(.bss)
+    .bss                                     0x20002250   Section       96  libspace.o(.bss)
+    HEAP                                     0x200022b0   Section      512  startup_stm32f10x_md.o(HEAP)
+    Heap_Mem                                 0x200022b0   Data         512  startup_stm32f10x_md.o(HEAP)
+    STACK                                    0x200024b0   Section     1024  startup_stm32f10x_md.o(STACK)
+    Stack_Mem                                0x200024b0   Data        1024  startup_stm32f10x_md.o(STACK)
+    __initial_sp                             0x200028b0   Data           0  startup_stm32f10x_md.o(STACK)
 
     Global Symbols
 
@@ -1837,144 +1836,144 @@ Image Symbol Table
     about_show                               0x080016c1   Thumb Code   292  pages.o(i.about_show)
     animation                                0x080017fd   Thumb Code   106  animation.o(i.animation)
     btn_init                                 0x08001875   Thumb Code    34  knob.o(i.btn_init)
-    btn_scan                                 0x0800189d   Thumb Code   126  knob.o(i.btn_scan)
-    __mathlib_ceilf                          0x08001935   Thumb Code     0  ceilf.o(i.ceilf)
-    ceilf                                    0x08001935   Thumb Code   110  ceilf.o(i.ceilf)
-    check_box_m_init                         0x080019ad   Thumb Code    28  pages.o(i.check_box_m_init)
-    check_box_m_select                       0x080019cd   Thumb Code    28  pages.o(i.check_box_m_select)
-    check_box_s_init                         0x080019f1   Thumb Code     8  pages.o(i.check_box_s_init)
-    check_box_s_select                       0x080019fd   Thumb Code    20  pages.o(i.check_box_s_select)
-    check_box_v_init                         0x08001a19   Thumb Code    28  pages.o(i.check_box_v_init)
-    delay_init                               0x08001a39   Thumb Code    84  delay.o(i.delay_init)
-    delay_ms                                 0x08001a95   Thumb Code    24  delay.o(i.delay_ms)
-    editor_proc                              0x08001aad   Thumb Code   142  pages.o(i.editor_proc)
-    eeprom_init                              0x08001b75   Thumb Code   130  eeprom_manager.o(i.eeprom_init)
-    eeprom_read_all_data                     0x08001c09   Thumb Code    80  eeprom_manager.o(i.eeprom_read_all_data)
-    eeprom_write_all_data                    0x08001c69   Thumb Code   118  eeprom_manager.o(i.eeprom_write_all_data)
-    fade                                     0x08001cf1   Thumb Code   482  animation.o(i.fade)
-    fade_sleep                               0x08001ee1   Thumb Code   252  animation.o(i.fade_sleep)
-    fade_wake                                0x08002015   Thumb Code   298  animation.o(i.fade_wake)
-    knob_init                                0x0800216d   Thumb Code    62  knob.o(i.knob_init)
-    knob_inter                               0x080021b1   Thumb Code   132  knob.o(i.knob_inter)
-    knob_param_init                          0x08002245   Thumb Code    10  pages.o(i.knob_param_init)
-    knob_proc                                0x08002255   Thumb Code   160  pages.o(i.knob_proc)
-    kpf_param_init                           0x08002305   Thumb Code    12  pages.o(i.kpf_param_init)
-    kpf_proc                                 0x08002315   Thumb Code  1652  pages.o(i.kpf_proc)
-    krf_param_init                           0x0800298d   Thumb Code    12  pages.o(i.krf_param_init)
-    krf_proc                                 0x0800299d   Thumb Code   176  pages.o(i.krf_proc)
-    layer_init_in                            0x08002a59   Thumb Code   152  pages.o(i.layer_init_in)
-    layer_init_out                           0x08002af9   Thumb Code   108  pages.o(i.layer_init_out)
-    list_draw_check_box_dot                  0x08002b6d   Thumb Code    42  pages.o(i.list_draw_check_box_dot)
-    list_draw_check_box_frame                0x08002ba1   Thumb Code    58  pages.o(i.list_draw_check_box_frame)
-    list_draw_kpf                            0x08002be1   Thumb Code    72  pages.o(i.list_draw_kpf)
-    list_draw_krf                            0x08002c39   Thumb Code    58  pages.o(i.list_draw_krf)
-    list_draw_text_and_check_box             0x08002c89   Thumb Code   188  pages.o(i.list_draw_text_and_check_box)
-    list_draw_value                          0x08002d51   Thumb Code    68  pages.o(i.list_draw_value)
-    list_rotate_switch                       0x08002da1   Thumb Code   562  pages.o(i.list_rotate_switch)
-    list_show                                0x08002fe5   Thumb Code   884  pages.o(i.list_show)
-    main                                     0x08003371   Thumb Code    86  main.o(i.main)
-    main_proc                                0x080033dd   Thumb Code   180  pages.o(i.main_proc)
-    millis                                   0x080034a9   Thumb Code    14  delay.o(i.millis)
-    __mathlib_powf                           0x080034bd   Thumb Code     0  powf.o(i.powf)
-    powf                                     0x080034bd   Thumb Code  1548  powf.o(i.powf)
-    setting_param_init                       0x08003b99   Thumb Code   162  pages.o(i.setting_param_init)
-    setting_proc                             0x08003c69   Thumb Code   590  pages.o(i.setting_proc)
-    sinf                                     0x08003f45   Thumb Code   338  sinf.o(i.sinf)
-    sleep_param_init                         0x080040cd   Thumb Code    28  pages.o(i.sleep_param_init)
-    tile_param_init                          0x080040f1   Thumb Code    48  pages.o(i.tile_param_init)
-    tile_rotate_switch                       0x08004135   Thumb Code   274  pages.o(i.tile_rotate_switch)
-    tile_show                                0x08004259   Thumb Code   630  pages.o(i.tile_show)
-    u8g2_Begin                               0x080044e9   Thumb Code    32  u8g2_adapter.o(i.u8g2_Begin)
-    u8g2_ClearBuffer                         0x0800450d   Thumb Code    14  u8g2_adapter.o(i.u8g2_ClearBuffer)
-    u8g2_DrawBox                             0x08004521   Thumb Code    56  u8g2_adapter.o(i.u8g2_DrawBox)
-    u8g2_DrawFrame                           0x08004559   Thumb Code   108  u8g2_adapter.o(i.u8g2_DrawFrame)
-    u8g2_DrawHLine                           0x080045c5   Thumb Code    36  u8g2_adapter.o(i.u8g2_DrawHLine)
-    u8g2_DrawLine                            0x080045e9   Thumb Code    38  u8g2_adapter.o(i.u8g2_DrawLine)
-    u8g2_DrawRBox                            0x08004615   Thumb Code   274  u8g2_adapter.o(i.u8g2_DrawRBox)
-    u8g2_DrawRFrame                          0x08004727   Thumb Code   324  u8g2_adapter.o(i.u8g2_DrawRFrame)
-    u8g2_DrawStr                             0x0800486d   Thumb Code    52  u8g2_adapter.o(i.u8g2_DrawStr)
-    u8g2_DrawVLine                           0x080048a5   Thumb Code    36  u8g2_adapter.o(i.u8g2_DrawVLine)
-    u8g2_DrawXBMP                            0x080048c9   Thumb Code   114  u8g2_adapter.o(i.u8g2_DrawXBMP)
-    u8g2_GetStrWidth                         0x0800493d   Thumb Code    58  u8g2_adapter.o(i.u8g2_GetStrWidth)
-    u8g2_Print                               0x0800497d   Thumb Code    32  u8g2_adapter.o(i.u8g2_Print)
-    u8g2_PrintFloat                          0x080049a5   Thumb Code   116  u8g2_adapter.o(i.u8g2_PrintFloat)
-    u8g2_PrintStr                            0x08004a29   Thumb Code    40  u8g2_adapter.o(i.u8g2_PrintStr)
-    u8g2_SendBuffer                          0x08004a55   Thumb Code     8  u8g2_adapter.o(i.u8g2_SendBuffer)
-    u8g2_SetClipWindow                       0x08004a5d   Thumb Code    32  u8g2_adapter.o(i.u8g2_SetClipWindow)
-    u8g2_SetContrast                         0x08004a81   Thumb Code    22  u8g2_adapter.o(i.u8g2_SetContrast)
-    u8g2_SetCursor                           0x08004a99   Thumb Code     8  u8g2_adapter.o(i.u8g2_SetCursor)
-    u8g2_SetDrawColor                        0x08004aa5   Thumb Code     6  u8g2_adapter.o(i.u8g2_SetDrawColor)
-    u8g2_SetFont                             0x08004ab1   Thumb Code    22  u8g2_adapter.o(i.u8g2_SetFont)
-    u8g2_SetFontDirection                    0x08004ad1   Thumb Code     6  u8g2_adapter.o(i.u8g2_SetFontDirection)
-    u8g2_SetMaxClipWindow                    0x08004add   Thumb Code    18  u8g2_adapter.o(i.u8g2_SetMaxClipWindow)
-    u8g2_SetPowerSave                        0x08004af5   Thumb Code    26  u8g2_adapter.o(i.u8g2_SetPowerSave)
-    ui_init                                  0x08004b11   Thumb Code    36  ui_state.o(i.ui_init)
-    ui_param_init                            0x08004b39   Thumb Code   108  ui_state.o(i.ui_param_init)
-    ui_proc                                  0x08004ba9   Thumb Code   918  pages.o(i.ui_proc)
-    volt_param_init                          0x08004f6d   Thumb Code    14  pages.o(i.volt_param_init)
-    volt_proc                                0x08004f81   Thumb Code    68  pages.o(i.volt_proc)
-    volt_show                                0x08004fcd   Thumb Code   768  pages.o(i.volt_show)
-    window_message_init                      0x080052f5   Thumb Code   308  window.o(i.window_message_init)
-    window_param_init                        0x0800543d   Thumb Code    72  window.o(i.window_param_init)
-    window_proc                              0x0800549d   Thumb Code   270  window.o(i.window_proc)
-    window_show                              0x080055c1   Thumb Code   954  window.o(i.window_show)
-    window_value_init                        0x080059b1   Thumb Code    80  window.o(i.window_value_init)
-    __fpl_dcmp_Inf                           0x08005a09   Thumb Code    24  dcmpi.o(x$fpl$dcmpinf)
-    __aeabi_cdcmple                          0x08005a21   Thumb Code     0  dleqf.o(x$fpl$dleqf)
-    _dcmple                                  0x08005a21   Thumb Code   120  dleqf.o(x$fpl$dleqf)
-    __fpl_dcmple_InfNaN                      0x08005a83   Thumb Code     0  dleqf.o(x$fpl$dleqf)
-    __fpl_dnaninf                            0x08005a99   Thumb Code   156  dnaninf.o(x$fpl$dnaninf)
-    __fpl_dretinf                            0x08005b35   Thumb Code    12  dretinf.o(x$fpl$dretinf)
-    __aeabi_f2d                              0x08005b41   Thumb Code     0  f2d.o(x$fpl$f2d)
-    _f2d                                     0x08005b41   Thumb Code    86  f2d.o(x$fpl$f2d)
-    __aeabi_fadd                             0x08005b99   Thumb Code     0  faddsub_clz.o(x$fpl$fadd)
-    _fadd                                    0x08005b99   Thumb Code   196  faddsub_clz.o(x$fpl$fadd)
-    __fpl_fcheck_NaN1                        0x08005c5d   Thumb Code     6  fcheck1.o(x$fpl$fcheck1)
-    __fpl_fcmp_Inf                           0x08005c69   Thumb Code    24  fcmpi.o(x$fpl$fcmpinf)
-    __aeabi_fdiv                             0x08005c81   Thumb Code     0  fdiv.o(x$fpl$fdiv)
-    _fdiv                                    0x08005c81   Thumb Code   384  fdiv.o(x$fpl$fdiv)
-    __aeabi_cfcmpeq                          0x08005e05   Thumb Code     0  feqf.o(x$fpl$feqf)
-    _fcmpeq                                  0x08005e05   Thumb Code   104  feqf.o(x$fpl$feqf)
-    __aeabi_f2iz                             0x08005e6d   Thumb Code     0  ffix.o(x$fpl$ffix)
-    _ffix                                    0x08005e6d   Thumb Code    54  ffix.o(x$fpl$ffix)
-    _ffix_r                                  0x08005ea5   Thumb Code    82  ffix.o(x$fpl$ffixr)
-    __aeabi_f2uiz                            0x08005ef9   Thumb Code     0  ffixu.o(x$fpl$ffixu)
-    _ffixu                                   0x08005ef9   Thumb Code    62  ffixu.o(x$fpl$ffixu)
-    __aeabi_i2f                              0x08005f39   Thumb Code     0  fflt_clz.o(x$fpl$fflt)
-    _fflt                                    0x08005f39   Thumb Code    48  fflt_clz.o(x$fpl$fflt)
-    __aeabi_ui2f                             0x08005f69   Thumb Code     0  fflt_clz.o(x$fpl$ffltu)
-    _ffltu                                   0x08005f69   Thumb Code    38  fflt_clz.o(x$fpl$ffltu)
-    __aeabi_cfcmple                          0x08005f91   Thumb Code     0  fleqf.o(x$fpl$fleqf)
-    _fcmple                                  0x08005f91   Thumb Code   104  fleqf.o(x$fpl$fleqf)
-    __fpl_fcmple_InfNaN                      0x08005fe3   Thumb Code     0  fleqf.o(x$fpl$fleqf)
-    __aeabi_fmul                             0x08005ff9   Thumb Code     0  fmul.o(x$fpl$fmul)
-    _fmul                                    0x08005ff9   Thumb Code   258  fmul.o(x$fpl$fmul)
-    __fpl_fnaninf                            0x080060fb   Thumb Code   140  fnaninf.o(x$fpl$fnaninf)
-    __fpl_fretinf                            0x08006187   Thumb Code    10  fretinf.o(x$fpl$fretinf)
-    __aeabi_cfrcmple                         0x08006191   Thumb Code     0  frleqf.o(x$fpl$frleqf)
-    _frcmple                                 0x08006191   Thumb Code    98  frleqf.o(x$fpl$frleqf)
-    _frnd                                    0x080061f5   Thumb Code    96  frnd.o(x$fpl$frnd)
-    __aeabi_frsub                            0x08006255   Thumb Code     0  faddsub_clz.o(x$fpl$frsb)
-    _frsb                                    0x08006255   Thumb Code    20  faddsub_clz.o(x$fpl$frsb)
-    __aeabi_fsub                             0x08006269   Thumb Code     0  faddsub_clz.o(x$fpl$fsub)
-    _fsub                                    0x08006269   Thumb Code   234  faddsub_clz.o(x$fpl$fsub)
-    __fpl_return_NaN                         0x08006353   Thumb Code   100  retnan.o(x$fpl$retnan)
-    __ARM_scalbnf                            0x080063b7   Thumb Code    76  scalbnf.o(x$fpl$scalbnf)
-    __fpl_cmpreturn                          0x08006403   Thumb Code    48  trapv.o(x$fpl$trapveneer)
-    __I$use$fp                               0x08006432   Number         0  usenofp.o(x$fpl$usenofp)
-    asc2_0806                                0x08006432   Data         552  oled.o(.constdata)
-    asc2_1206                                0x0800665a   Data        1140  oled.o(.constdata)
-    asc2_1608                                0x08006ace   Data        1520  oled.o(.constdata)
-    asc2_2412                                0x080070be   Data        3420  oled.o(.constdata)
-    Hzk1                                     0x08007e1a   Data         352  oled.o(.constdata)
-    Hzk2                                     0x08007f7a   Data          72  oled.o(.constdata)
-    Hzk3                                     0x08007fc2   Data         128  oled.o(.constdata)
-    Hzk4                                     0x08008042   Data         512  oled.o(.constdata)
-    u8g2_font_helvB24_tr                     0x08008242   Data           1  u8g2_adapter.o(.constdata)
-    u8g2_font_HelvetiPixel_tr                0x08008243   Data           1  u8g2_adapter.o(.constdata)
-    main_icon_pic                            0x0800825c   Data        1152  menu_data.o(.constdata)
-    Region$$Table$$Base                      0x08008878   Number         0  anon$$obj.o(Region$$Table)
-    Region$$Table$$Limit                     0x08008898   Number         0  anon$$obj.o(Region$$Table)
+    btn_scan                                 0x0800189d   Thumb Code   162  knob.o(i.btn_scan)
+    __mathlib_ceilf                          0x08001955   Thumb Code     0  ceilf.o(i.ceilf)
+    ceilf                                    0x08001955   Thumb Code   110  ceilf.o(i.ceilf)
+    check_box_m_init                         0x080019cd   Thumb Code    28  pages.o(i.check_box_m_init)
+    check_box_m_select                       0x080019ed   Thumb Code    28  pages.o(i.check_box_m_select)
+    check_box_s_init                         0x08001a11   Thumb Code     8  pages.o(i.check_box_s_init)
+    check_box_s_select                       0x08001a1d   Thumb Code    20  pages.o(i.check_box_s_select)
+    check_box_v_init                         0x08001a39   Thumb Code    28  pages.o(i.check_box_v_init)
+    delay_init                               0x08001a59   Thumb Code    84  delay.o(i.delay_init)
+    delay_ms                                 0x08001ab5   Thumb Code    24  delay.o(i.delay_ms)
+    editor_proc                              0x08001acd   Thumb Code   142  pages.o(i.editor_proc)
+    eeprom_init                              0x08001b95   Thumb Code   130  eeprom_manager.o(i.eeprom_init)
+    eeprom_read_all_data                     0x08001c29   Thumb Code    80  eeprom_manager.o(i.eeprom_read_all_data)
+    eeprom_write_all_data                    0x08001c89   Thumb Code   118  eeprom_manager.o(i.eeprom_write_all_data)
+    fade                                     0x08001d11   Thumb Code   482  animation.o(i.fade)
+    fade_sleep                               0x08001f01   Thumb Code   252  animation.o(i.fade_sleep)
+    fade_wake                                0x08002035   Thumb Code   298  animation.o(i.fade_wake)
+    knob_init                                0x0800218d   Thumb Code    62  knob.o(i.knob_init)
+    knob_inter                               0x080021d1   Thumb Code   142  knob.o(i.knob_inter)
+    knob_param_init                          0x08002271   Thumb Code    10  pages.o(i.knob_param_init)
+    knob_proc                                0x08002281   Thumb Code   160  pages.o(i.knob_proc)
+    kpf_param_init                           0x08002331   Thumb Code    12  pages.o(i.kpf_param_init)
+    kpf_proc                                 0x08002341   Thumb Code  1652  pages.o(i.kpf_proc)
+    krf_param_init                           0x080029b9   Thumb Code    12  pages.o(i.krf_param_init)
+    krf_proc                                 0x080029c9   Thumb Code   176  pages.o(i.krf_proc)
+    layer_init_in                            0x08002a85   Thumb Code   152  pages.o(i.layer_init_in)
+    layer_init_out                           0x08002b25   Thumb Code   108  pages.o(i.layer_init_out)
+    list_draw_check_box_dot                  0x08002b99   Thumb Code    42  pages.o(i.list_draw_check_box_dot)
+    list_draw_check_box_frame                0x08002bcd   Thumb Code    58  pages.o(i.list_draw_check_box_frame)
+    list_draw_kpf                            0x08002c0d   Thumb Code    72  pages.o(i.list_draw_kpf)
+    list_draw_krf                            0x08002c65   Thumb Code    58  pages.o(i.list_draw_krf)
+    list_draw_text_and_check_box             0x08002cb5   Thumb Code   188  pages.o(i.list_draw_text_and_check_box)
+    list_draw_value                          0x08002d7d   Thumb Code    68  pages.o(i.list_draw_value)
+    list_rotate_switch                       0x08002dcd   Thumb Code   562  pages.o(i.list_rotate_switch)
+    list_show                                0x08003011   Thumb Code   884  pages.o(i.list_show)
+    main                                     0x0800339d   Thumb Code    86  main.o(i.main)
+    main_proc                                0x08003409   Thumb Code   180  pages.o(i.main_proc)
+    millis                                   0x080034d5   Thumb Code    14  delay.o(i.millis)
+    __mathlib_powf                           0x080034e9   Thumb Code     0  powf.o(i.powf)
+    powf                                     0x080034e9   Thumb Code  1548  powf.o(i.powf)
+    setting_param_init                       0x08003bc5   Thumb Code   162  pages.o(i.setting_param_init)
+    setting_proc                             0x08003c95   Thumb Code   590  pages.o(i.setting_proc)
+    sinf                                     0x08003f71   Thumb Code   338  sinf.o(i.sinf)
+    sleep_param_init                         0x080040f9   Thumb Code    28  pages.o(i.sleep_param_init)
+    tile_param_init                          0x0800411d   Thumb Code    48  pages.o(i.tile_param_init)
+    tile_rotate_switch                       0x08004161   Thumb Code   274  pages.o(i.tile_rotate_switch)
+    tile_show                                0x08004285   Thumb Code   630  pages.o(i.tile_show)
+    u8g2_Begin                               0x08004515   Thumb Code    32  u8g2_adapter.o(i.u8g2_Begin)
+    u8g2_ClearBuffer                         0x08004539   Thumb Code    14  u8g2_adapter.o(i.u8g2_ClearBuffer)
+    u8g2_DrawBox                             0x0800454d   Thumb Code    56  u8g2_adapter.o(i.u8g2_DrawBox)
+    u8g2_DrawFrame                           0x08004585   Thumb Code   108  u8g2_adapter.o(i.u8g2_DrawFrame)
+    u8g2_DrawHLine                           0x080045f1   Thumb Code    36  u8g2_adapter.o(i.u8g2_DrawHLine)
+    u8g2_DrawLine                            0x08004615   Thumb Code    38  u8g2_adapter.o(i.u8g2_DrawLine)
+    u8g2_DrawRBox                            0x08004641   Thumb Code   274  u8g2_adapter.o(i.u8g2_DrawRBox)
+    u8g2_DrawRFrame                          0x08004753   Thumb Code   324  u8g2_adapter.o(i.u8g2_DrawRFrame)
+    u8g2_DrawStr                             0x08004899   Thumb Code    52  u8g2_adapter.o(i.u8g2_DrawStr)
+    u8g2_DrawVLine                           0x080048d1   Thumb Code    36  u8g2_adapter.o(i.u8g2_DrawVLine)
+    u8g2_DrawXBMP                            0x080048f5   Thumb Code   114  u8g2_adapter.o(i.u8g2_DrawXBMP)
+    u8g2_GetStrWidth                         0x08004969   Thumb Code    58  u8g2_adapter.o(i.u8g2_GetStrWidth)
+    u8g2_Print                               0x080049a9   Thumb Code    32  u8g2_adapter.o(i.u8g2_Print)
+    u8g2_PrintFloat                          0x080049d1   Thumb Code   116  u8g2_adapter.o(i.u8g2_PrintFloat)
+    u8g2_PrintStr                            0x08004a55   Thumb Code    40  u8g2_adapter.o(i.u8g2_PrintStr)
+    u8g2_SendBuffer                          0x08004a81   Thumb Code     8  u8g2_adapter.o(i.u8g2_SendBuffer)
+    u8g2_SetClipWindow                       0x08004a89   Thumb Code    32  u8g2_adapter.o(i.u8g2_SetClipWindow)
+    u8g2_SetContrast                         0x08004aad   Thumb Code    22  u8g2_adapter.o(i.u8g2_SetContrast)
+    u8g2_SetCursor                           0x08004ac5   Thumb Code     8  u8g2_adapter.o(i.u8g2_SetCursor)
+    u8g2_SetDrawColor                        0x08004ad1   Thumb Code     6  u8g2_adapter.o(i.u8g2_SetDrawColor)
+    u8g2_SetFont                             0x08004add   Thumb Code    22  u8g2_adapter.o(i.u8g2_SetFont)
+    u8g2_SetFontDirection                    0x08004afd   Thumb Code     6  u8g2_adapter.o(i.u8g2_SetFontDirection)
+    u8g2_SetMaxClipWindow                    0x08004b09   Thumb Code    18  u8g2_adapter.o(i.u8g2_SetMaxClipWindow)
+    u8g2_SetPowerSave                        0x08004b21   Thumb Code    26  u8g2_adapter.o(i.u8g2_SetPowerSave)
+    ui_init                                  0x08004b3d   Thumb Code    36  ui_state.o(i.ui_init)
+    ui_param_init                            0x08004b65   Thumb Code   108  ui_state.o(i.ui_param_init)
+    ui_proc                                  0x08004bd5   Thumb Code   918  pages.o(i.ui_proc)
+    volt_param_init                          0x08004f99   Thumb Code    14  pages.o(i.volt_param_init)
+    volt_proc                                0x08004fad   Thumb Code    68  pages.o(i.volt_proc)
+    volt_show                                0x08004ff9   Thumb Code   768  pages.o(i.volt_show)
+    window_message_init                      0x08005321   Thumb Code   308  window.o(i.window_message_init)
+    window_param_init                        0x08005469   Thumb Code    72  window.o(i.window_param_init)
+    window_proc                              0x080054c9   Thumb Code   270  window.o(i.window_proc)
+    window_show                              0x080055ed   Thumb Code   954  window.o(i.window_show)
+    window_value_init                        0x080059dd   Thumb Code    80  window.o(i.window_value_init)
+    __fpl_dcmp_Inf                           0x08005a35   Thumb Code    24  dcmpi.o(x$fpl$dcmpinf)
+    __aeabi_cdcmple                          0x08005a4d   Thumb Code     0  dleqf.o(x$fpl$dleqf)
+    _dcmple                                  0x08005a4d   Thumb Code   120  dleqf.o(x$fpl$dleqf)
+    __fpl_dcmple_InfNaN                      0x08005aaf   Thumb Code     0  dleqf.o(x$fpl$dleqf)
+    __fpl_dnaninf                            0x08005ac5   Thumb Code   156  dnaninf.o(x$fpl$dnaninf)
+    __fpl_dretinf                            0x08005b61   Thumb Code    12  dretinf.o(x$fpl$dretinf)
+    __aeabi_f2d                              0x08005b6d   Thumb Code     0  f2d.o(x$fpl$f2d)
+    _f2d                                     0x08005b6d   Thumb Code    86  f2d.o(x$fpl$f2d)
+    __aeabi_fadd                             0x08005bc5   Thumb Code     0  faddsub_clz.o(x$fpl$fadd)
+    _fadd                                    0x08005bc5   Thumb Code   196  faddsub_clz.o(x$fpl$fadd)
+    __fpl_fcheck_NaN1                        0x08005c89   Thumb Code     6  fcheck1.o(x$fpl$fcheck1)
+    __fpl_fcmp_Inf                           0x08005c95   Thumb Code    24  fcmpi.o(x$fpl$fcmpinf)
+    __aeabi_fdiv                             0x08005cad   Thumb Code     0  fdiv.o(x$fpl$fdiv)
+    _fdiv                                    0x08005cad   Thumb Code   384  fdiv.o(x$fpl$fdiv)
+    __aeabi_cfcmpeq                          0x08005e31   Thumb Code     0  feqf.o(x$fpl$feqf)
+    _fcmpeq                                  0x08005e31   Thumb Code   104  feqf.o(x$fpl$feqf)
+    __aeabi_f2iz                             0x08005e99   Thumb Code     0  ffix.o(x$fpl$ffix)
+    _ffix                                    0x08005e99   Thumb Code    54  ffix.o(x$fpl$ffix)
+    _ffix_r                                  0x08005ed1   Thumb Code    82  ffix.o(x$fpl$ffixr)
+    __aeabi_f2uiz                            0x08005f25   Thumb Code     0  ffixu.o(x$fpl$ffixu)
+    _ffixu                                   0x08005f25   Thumb Code    62  ffixu.o(x$fpl$ffixu)
+    __aeabi_i2f                              0x08005f65   Thumb Code     0  fflt_clz.o(x$fpl$fflt)
+    _fflt                                    0x08005f65   Thumb Code    48  fflt_clz.o(x$fpl$fflt)
+    __aeabi_ui2f                             0x08005f95   Thumb Code     0  fflt_clz.o(x$fpl$ffltu)
+    _ffltu                                   0x08005f95   Thumb Code    38  fflt_clz.o(x$fpl$ffltu)
+    __aeabi_cfcmple                          0x08005fbd   Thumb Code     0  fleqf.o(x$fpl$fleqf)
+    _fcmple                                  0x08005fbd   Thumb Code   104  fleqf.o(x$fpl$fleqf)
+    __fpl_fcmple_InfNaN                      0x0800600f   Thumb Code     0  fleqf.o(x$fpl$fleqf)
+    __aeabi_fmul                             0x08006025   Thumb Code     0  fmul.o(x$fpl$fmul)
+    _fmul                                    0x08006025   Thumb Code   258  fmul.o(x$fpl$fmul)
+    __fpl_fnaninf                            0x08006127   Thumb Code   140  fnaninf.o(x$fpl$fnaninf)
+    __fpl_fretinf                            0x080061b3   Thumb Code    10  fretinf.o(x$fpl$fretinf)
+    __aeabi_cfrcmple                         0x080061bd   Thumb Code     0  frleqf.o(x$fpl$frleqf)
+    _frcmple                                 0x080061bd   Thumb Code    98  frleqf.o(x$fpl$frleqf)
+    _frnd                                    0x08006221   Thumb Code    96  frnd.o(x$fpl$frnd)
+    __aeabi_frsub                            0x08006281   Thumb Code     0  faddsub_clz.o(x$fpl$frsb)
+    _frsb                                    0x08006281   Thumb Code    20  faddsub_clz.o(x$fpl$frsb)
+    __aeabi_fsub                             0x08006295   Thumb Code     0  faddsub_clz.o(x$fpl$fsub)
+    _fsub                                    0x08006295   Thumb Code   234  faddsub_clz.o(x$fpl$fsub)
+    __fpl_return_NaN                         0x0800637f   Thumb Code   100  retnan.o(x$fpl$retnan)
+    __ARM_scalbnf                            0x080063e3   Thumb Code    76  scalbnf.o(x$fpl$scalbnf)
+    __fpl_cmpreturn                          0x0800642f   Thumb Code    48  trapv.o(x$fpl$trapveneer)
+    __I$use$fp                               0x0800645e   Number         0  usenofp.o(x$fpl$usenofp)
+    asc2_0806                                0x0800645e   Data         552  oled.o(.constdata)
+    asc2_1206                                0x08006686   Data        1140  oled.o(.constdata)
+    asc2_1608                                0x08006afa   Data        1520  oled.o(.constdata)
+    asc2_2412                                0x080070ea   Data        3420  oled.o(.constdata)
+    Hzk1                                     0x08007e46   Data         352  oled.o(.constdata)
+    Hzk2                                     0x08007fa6   Data          72  oled.o(.constdata)
+    Hzk3                                     0x08007fee   Data         128  oled.o(.constdata)
+    Hzk4                                     0x0800806e   Data         512  oled.o(.constdata)
+    u8g2_font_helvB24_tr                     0x0800826e   Data           1  u8g2_adapter.o(.constdata)
+    u8g2_font_HelvetiPixel_tr                0x0800826f   Data           1  u8g2_adapter.o(.constdata)
+    main_icon_pic                            0x08008288   Data        1152  menu_data.o(.constdata)
+    Region$$Table$$Base                      0x080088a4   Number         0  anon$$obj.o(Region$$Table)
+    Region$$Table$$Limit                     0x080088c4   Number         0  anon$$obj.o(Region$$Table)
     u8g2_state                               0x20000000   Data          16  u8g2_adapter.o(.data)
     buf_ptr                                  0x20000010   Data           4  u8g2_adapter.o(.data)
     buf_len                                  0x20000014   Data           2  u8g2_adapter.o(.data)
@@ -1990,21 +1989,21 @@ Image Symbol Table
     volt_menu                                0x20000e44   Data         320  menu_data.o(.data)
     setting_menu                             0x20000f84   Data         672  menu_data.o(.data)
     about_menu                               0x20001224   Data         256  menu_data.o(.data)
-    SystemCoreClock                          0x20001338   Data           4  system_stm32f10x.o(.data)
-    AHBPrescTable                            0x2000133c   Data          16  system_stm32f10x.o(.data)
-    OLED_GRAM                                0x20001350   Data        2048  oled.o(.bss)
-    ui                                       0x20001b50   Data         156  ui_state.o(.bss)
-    tile                                     0x20001bec   Data          88  ui_state.o(.bss)
-    list                                     0x20001c44   Data         152  ui_state.o(.bss)
-    volt                                     0x20001cdc   Data         536  ui_state.o(.bss)
-    check_box                                0x20001ef4   Data         316  ui_state.o(.bss)
-    win                                      0x20002030   Data         220  ui_state.o(.bss)
-    spot                                     0x2000210c   Data          16  ui_state.o(.bss)
-    about                                    0x2000211c   Data          12  ui_state.o(.bss)
-    btn                                      0x20002128   Data          28  knob.o(.bss)
-    eeprom                                   0x20002144   Data          16  eeprom_manager.o(.bss)
-    __libspace_start                         0x20002254   Data          96  libspace.o(.bss)
-    __temporary_stack_top$libspace           0x200022b4   Data           0  libspace.o(.bss)
+    SystemCoreClock                          0x20001334   Data           4  system_stm32f10x.o(.data)
+    AHBPrescTable                            0x20001338   Data          16  system_stm32f10x.o(.data)
+    OLED_GRAM                                0x2000134c   Data        2048  oled.o(.bss)
+    ui                                       0x20001b4c   Data         156  ui_state.o(.bss)
+    tile                                     0x20001be8   Data          88  ui_state.o(.bss)
+    list                                     0x20001c40   Data         152  ui_state.o(.bss)
+    volt                                     0x20001cd8   Data         536  ui_state.o(.bss)
+    check_box                                0x20001ef0   Data         316  ui_state.o(.bss)
+    win                                      0x2000202c   Data         220  ui_state.o(.bss)
+    spot                                     0x20002108   Data          16  ui_state.o(.bss)
+    about                                    0x20002118   Data          12  ui_state.o(.bss)
+    btn                                      0x20002124   Data          28  knob.o(.bss)
+    eeprom                                   0x20002140   Data          16  eeprom_manager.o(.bss)
+    __libspace_start                         0x20002250   Data          96  libspace.o(.bss)
+    __temporary_stack_top$libspace           0x200022b0   Data           0  libspace.o(.bss)
 
 
 
@@ -2014,9 +2013,9 @@ Memory Map of the image
 
   Image Entry point : 0x080000ed
 
-  Load Region LR_IROM1 (Base: 0x08000000, Size: 0x00009be8, Max: 0x00010000, ABSOLUTE, COMPRESSED[0x00008cd4])
+  Load Region LR_IROM1 (Base: 0x08000000, Size: 0x00009c10, Max: 0x00010000, ABSOLUTE, COMPRESSED[0x00008cfc])
 
-    Execution Region ER_IROM1 (Exec base: 0x08000000, Load base: 0x08000000, Size: 0x00008898, Max: 0x00010000, ABSOLUTE)
+    Execution Region ER_IROM1 (Exec base: 0x08000000, Load base: 0x08000000, Size: 0x000088c4, Max: 0x00010000, ABSOLUTE)
 
     Exec Addr    Load Addr    Size         Type   Attr      Idx    E Section Name        Object
 
@@ -2169,139 +2168,139 @@ Memory Map of the image
     0x080016c0   0x080016c0   0x0000013c   Code   RO          455    i.about_show        pages.o
     0x080017fc   0x080017fc   0x00000078   Code   RO         1058    i.animation         animation.o
     0x08001874   0x08001874   0x00000028   Code   RO         1121    i.btn_init          knob.o
-    0x0800189c   0x0800189c   0x00000098   Code   RO         1122    i.btn_scan          knob.o
-    0x08001934   0x08001934   0x00000078   Code   RO         2612    i.ceilf             m_ws.l(ceilf.o)
-    0x080019ac   0x080019ac   0x00000020   Code   RO          456    i.check_box_m_init  pages.o
-    0x080019cc   0x080019cc   0x00000024   Code   RO          457    i.check_box_m_select  pages.o
-    0x080019f0   0x080019f0   0x0000000c   Code   RO          458    i.check_box_s_init  pages.o
-    0x080019fc   0x080019fc   0x0000001c   Code   RO          459    i.check_box_s_select  pages.o
-    0x08001a18   0x08001a18   0x00000020   Code   RO          460    i.check_box_v_init  pages.o
-    0x08001a38   0x08001a38   0x0000005c   Code   RO         2345    i.delay_init        delay.o
-    0x08001a94   0x08001a94   0x00000018   Code   RO         2346    i.delay_ms          delay.o
-    0x08001aac   0x08001aac   0x000000c8   Code   RO          461    i.editor_proc       pages.o
-    0x08001b74   0x08001b74   0x00000094   Code   RO         1209    i.eeprom_init       eeprom_manager.o
-    0x08001c08   0x08001c08   0x00000060   Code   RO         1210    i.eeprom_read_all_data  eeprom_manager.o
-    0x08001c68   0x08001c68   0x00000088   Code   RO         1211    i.eeprom_write_all_data  eeprom_manager.o
-    0x08001cf0   0x08001cf0   0x000001f0   Code   RO         1059    i.fade              animation.o
-    0x08001ee0   0x08001ee0   0x00000108   Code   RO         1060    i.fade_sleep        animation.o
-    0x08001fe8   0x08001fe8   0x0000002c   Code   RO         1061    i.fade_timer_check  animation.o
-    0x08002014   0x08002014   0x00000158   Code   RO         1062    i.fade_wake         animation.o
-    0x0800216c   0x0800216c   0x00000044   Code   RO         1123    i.knob_init         knob.o
-    0x080021b0   0x080021b0   0x00000094   Code   RO         1124    i.knob_inter        knob.o
-    0x08002244   0x08002244   0x00000010   Code   RO          462    i.knob_param_init   pages.o
-    0x08002254   0x08002254   0x000000b0   Code   RO          463    i.knob_proc         pages.o
-    0x08002304   0x08002304   0x00000010   Code   RO          464    i.kpf_param_init    pages.o
-    0x08002314   0x08002314   0x00000678   Code   RO          465    i.kpf_proc          pages.o
-    0x0800298c   0x0800298c   0x00000010   Code   RO          466    i.krf_param_init    pages.o
-    0x0800299c   0x0800299c   0x000000bc   Code   RO          467    i.krf_proc          pages.o
-    0x08002a58   0x08002a58   0x000000a0   Code   RO          468    i.layer_init_in     pages.o
-    0x08002af8   0x08002af8   0x00000074   Code   RO          469    i.layer_init_out    pages.o
-    0x08002b6c   0x08002b6c   0x00000034   Code   RO          470    i.list_draw_check_box_dot  pages.o
-    0x08002ba0   0x08002ba0   0x00000040   Code   RO          471    i.list_draw_check_box_frame  pages.o
-    0x08002be0   0x08002be0   0x00000058   Code   RO          472    i.list_draw_kpf     pages.o
-    0x08002c38   0x08002c38   0x00000050   Code   RO          473    i.list_draw_krf     pages.o
-    0x08002c88   0x08002c88   0x000000c8   Code   RO          474    i.list_draw_text_and_check_box  pages.o
-    0x08002d50   0x08002d50   0x00000050   Code   RO          475    i.list_draw_value   pages.o
-    0x08002da0   0x08002da0   0x00000244   Code   RO          476    i.list_rotate_switch  pages.o
-    0x08002fe4   0x08002fe4   0x0000038c   Code   RO          477    i.list_show         pages.o
-    0x08003370   0x08003370   0x0000006c   Code   RO         2510    i.main              main.o
-    0x080033dc   0x080033dc   0x000000cc   Code   RO          478    i.main_proc         pages.o
-    0x080034a8   0x080034a8   0x00000014   Code   RO         2348    i.millis            delay.o
-    0x080034bc   0x080034bc   0x00000620   Code   RO         2616    i.powf              m_ws.l(powf.o)
-    0x08003adc   0x08003adc   0x000000bc   Code   RO          214    i.setpixel          u8g2_adapter.o
-    0x08003b98   0x08003b98   0x000000d0   Code   RO          479    i.setting_param_init  pages.o
-    0x08003c68   0x08003c68   0x000002dc   Code   RO          480    i.setting_proc      pages.o
-    0x08003f44   0x08003f44   0x00000188   Code   RO         2626    i.sinf              m_ws.l(sinf.o)
-    0x080040cc   0x080040cc   0x00000024   Code   RO          481    i.sleep_param_init  pages.o
-    0x080040f0   0x080040f0   0x00000044   Code   RO          482    i.tile_param_init   pages.o
-    0x08004134   0x08004134   0x00000124   Code   RO          483    i.tile_rotate_switch  pages.o
-    0x08004258   0x08004258   0x00000290   Code   RO          484    i.tile_show         pages.o
-    0x080044e8   0x080044e8   0x00000024   Code   RO          215    i.u8g2_Begin        u8g2_adapter.o
-    0x0800450c   0x0800450c   0x00000014   Code   RO          216    i.u8g2_ClearBuffer  u8g2_adapter.o
-    0x08004520   0x08004520   0x00000038   Code   RO          217    i.u8g2_DrawBox      u8g2_adapter.o
-    0x08004558   0x08004558   0x0000006c   Code   RO          219    i.u8g2_DrawFrame    u8g2_adapter.o
-    0x080045c4   0x080045c4   0x00000024   Code   RO          220    i.u8g2_DrawHLine    u8g2_adapter.o
-    0x080045e8   0x080045e8   0x0000002c   Code   RO          221    i.u8g2_DrawLine     u8g2_adapter.o
-    0x08004614   0x08004614   0x00000112   Code   RO          223    i.u8g2_DrawRBox     u8g2_adapter.o
-    0x08004726   0x08004726   0x00000144   Code   RO          224    i.u8g2_DrawRFrame   u8g2_adapter.o
-    0x0800486a   0x0800486a   0x00000002   PAD
-    0x0800486c   0x0800486c   0x00000038   Code   RO          225    i.u8g2_DrawStr      u8g2_adapter.o
-    0x080048a4   0x080048a4   0x00000024   Code   RO          227    i.u8g2_DrawVLine    u8g2_adapter.o
-    0x080048c8   0x080048c8   0x00000072   Code   RO          228    i.u8g2_DrawXBMP     u8g2_adapter.o
-    0x0800493a   0x0800493a   0x00000002   PAD
-    0x0800493c   0x0800493c   0x00000040   Code   RO          233    i.u8g2_GetStrWidth  u8g2_adapter.o
-    0x0800497c   0x0800497c   0x00000028   Code   RO          234    i.u8g2_Print        u8g2_adapter.o
-    0x080049a4   0x080049a4   0x00000084   Code   RO          235    i.u8g2_PrintFloat   u8g2_adapter.o
-    0x08004a28   0x08004a28   0x0000002c   Code   RO          236    i.u8g2_PrintStr     u8g2_adapter.o
-    0x08004a54   0x08004a54   0x00000008   Code   RO          237    i.u8g2_SendBuffer   u8g2_adapter.o
-    0x08004a5c   0x08004a5c   0x00000024   Code   RO          238    i.u8g2_SetClipWindow  u8g2_adapter.o
-    0x08004a80   0x08004a80   0x00000016   Code   RO          239    i.u8g2_SetContrast  u8g2_adapter.o
-    0x08004a96   0x08004a96   0x00000002   PAD
-    0x08004a98   0x08004a98   0x0000000c   Code   RO          240    i.u8g2_SetCursor    u8g2_adapter.o
-    0x08004aa4   0x08004aa4   0x0000000c   Code   RO          241    i.u8g2_SetDrawColor  u8g2_adapter.o
-    0x08004ab0   0x08004ab0   0x00000020   Code   RO          242    i.u8g2_SetFont      u8g2_adapter.o
-    0x08004ad0   0x08004ad0   0x0000000c   Code   RO          243    i.u8g2_SetFontDirection  u8g2_adapter.o
-    0x08004adc   0x08004adc   0x00000018   Code   RO          244    i.u8g2_SetMaxClipWindow  u8g2_adapter.o
-    0x08004af4   0x08004af4   0x0000001a   Code   RO          245    i.u8g2_SetPowerSave  u8g2_adapter.o
-    0x08004b0e   0x08004b0e   0x00000002   PAD
-    0x08004b10   0x08004b10   0x00000028   Code   RO          978    i.ui_init           ui_state.o
-    0x08004b38   0x08004b38   0x00000070   Code   RO          979    i.ui_param_init     ui_state.o
-    0x08004ba8   0x08004ba8   0x000003c4   Code   RO          485    i.ui_proc           pages.o
-    0x08004f6c   0x08004f6c   0x00000014   Code   RO          486    i.volt_param_init   pages.o
-    0x08004f80   0x08004f80   0x0000004c   Code   RO          487    i.volt_proc         pages.o
-    0x08004fcc   0x08004fcc   0x00000328   Code   RO          488    i.volt_show         pages.o
-    0x080052f4   0x080052f4   0x00000148   Code   RO         1158    i.window_message_init  window.o
-    0x0800543c   0x0800543c   0x00000060   Code   RO         1159    i.window_param_init  window.o
-    0x0800549c   0x0800549c   0x00000124   Code   RO         1160    i.window_proc       window.o
-    0x080055c0   0x080055c0   0x000003f0   Code   RO         1161    i.window_show       window.o
-    0x080059b0   0x080059b0   0x00000058   Code   RO         1162    i.window_value_init  window.o
-    0x08005a08   0x08005a08   0x00000018   Code   RO         2647    x$fpl$dcmpinf       fz_ws.l(dcmpi.o)
-    0x08005a20   0x08005a20   0x00000078   Code   RO         2575    x$fpl$dleqf         fz_ws.l(dleqf.o)
-    0x08005a98   0x08005a98   0x0000009c   Code   RO         2649    x$fpl$dnaninf       fz_ws.l(dnaninf.o)
-    0x08005b34   0x08005b34   0x0000000c   Code   RO         2651    x$fpl$dretinf       fz_ws.l(dretinf.o)
-    0x08005b40   0x08005b40   0x00000056   Code   RO         2577    x$fpl$f2d           fz_ws.l(f2d.o)
-    0x08005b96   0x08005b96   0x00000002   PAD
-    0x08005b98   0x08005b98   0x000000c4   Code   RO         2579    x$fpl$fadd          fz_ws.l(faddsub_clz.o)
-    0x08005c5c   0x08005c5c   0x0000000c   Code   RO         2711    x$fpl$fcheck1       fz_ws.l(fcheck1.o)
-    0x08005c68   0x08005c68   0x00000018   Code   RO         2653    x$fpl$fcmpinf       fz_ws.l(fcmpi.o)
-    0x08005c80   0x08005c80   0x00000184   Code   RO         2586    x$fpl$fdiv          fz_ws.l(fdiv.o)
-    0x08005e04   0x08005e04   0x00000068   Code   RO         2589    x$fpl$feqf          fz_ws.l(feqf.o)
-    0x08005e6c   0x08005e6c   0x00000036   Code   RO         2591    x$fpl$ffix          fz_ws.l(ffix.o)
-    0x08005ea2   0x08005ea2   0x00000002   PAD
-    0x08005ea4   0x08005ea4   0x00000052   Code   RO         2592    x$fpl$ffixr         fz_ws.l(ffix.o)
-    0x08005ef6   0x08005ef6   0x00000002   PAD
-    0x08005ef8   0x08005ef8   0x0000003e   Code   RO         2595    x$fpl$ffixu         fz_ws.l(ffixu.o)
-    0x08005f36   0x08005f36   0x00000002   PAD
-    0x08005f38   0x08005f38   0x00000030   Code   RO         2600    x$fpl$fflt          fz_ws.l(fflt_clz.o)
-    0x08005f68   0x08005f68   0x00000026   Code   RO         2599    x$fpl$ffltu         fz_ws.l(fflt_clz.o)
-    0x08005f8e   0x08005f8e   0x00000002   PAD
-    0x08005f90   0x08005f90   0x00000068   Code   RO         2605    x$fpl$fleqf         fz_ws.l(fleqf.o)
-    0x08005ff8   0x08005ff8   0x00000102   Code   RO         2607    x$fpl$fmul          fz_ws.l(fmul.o)
-    0x080060fa   0x080060fa   0x0000008c   Code   RO         2655    x$fpl$fnaninf       fz_ws.l(fnaninf.o)
-    0x08006186   0x08006186   0x0000000a   Code   RO         2657    x$fpl$fretinf       fz_ws.l(fretinf.o)
-    0x08006190   0x08006190   0x00000062   Code   RO         2609    x$fpl$frleqf        fz_ws.l(frleqf.o)
-    0x080061f2   0x080061f2   0x00000002   PAD
-    0x080061f4   0x080061f4   0x00000060   Code   RO         2659    x$fpl$frnd          fz_ws.l(frnd.o)
-    0x08006254   0x08006254   0x00000014   Code   RO         2580    x$fpl$frsb          fz_ws.l(faddsub_clz.o)
-    0x08006268   0x08006268   0x000000ea   Code   RO         2581    x$fpl$fsub          fz_ws.l(faddsub_clz.o)
-    0x08006352   0x08006352   0x00000064   Code   RO         2726    x$fpl$retnan        fz_ws.l(retnan.o)
-    0x080063b6   0x080063b6   0x0000004c   Code   RO         2663    x$fpl$scalbnf       fz_ws.l(scalbnf.o)
-    0x08006402   0x08006402   0x00000030   Code   RO         2775    x$fpl$trapveneer    fz_ws.l(trapv.o)
-    0x08006432   0x08006432   0x00000000   Code   RO         2665    x$fpl$usenofp       fz_ws.l(usenofp.o)
-    0x08006432   0x08006432   0x00001e10   Data   RO           47    .constdata          oled.o
-    0x08008242   0x08008242   0x00000002   Data   RO          246    .constdata          u8g2_adapter.o
-    0x08008244   0x08008244   0x00000018   Data   RO          528    .constdata          pages.o
-    0x0800825c   0x0800825c   0x00000480   Data   RO         1108    .constdata          menu_data.o
-    0x080086dc   0x080086dc   0x0000000b   Data   RO         1213    .constdata          eeprom_manager.o
-    0x080086e7   0x080086e7   0x00000011   Data   RO         2555    .constdata          c_w.l(__printf_flags_ss_wp.o)
-    0x080086f8   0x080086f8   0x00000140   Data   RO         2617    .constdata          m_ws.l(powf.o)
-    0x08008838   0x08008838   0x00000020   Data   RO         2683    .constdata          m_ws.l(rredf.o)
-    0x08008858   0x08008858   0x0000001d   Data   RO          529    .conststring        pages.o
-    0x08008875   0x08008875   0x00000003   PAD
-    0x08008878   0x08008878   0x00000020   Data   RO         2854    Region$$Table       anon$$obj.o
+    0x0800189c   0x0800189c   0x000000b8   Code   RO         1122    i.btn_scan          knob.o
+    0x08001954   0x08001954   0x00000078   Code   RO         2612    i.ceilf             m_ws.l(ceilf.o)
+    0x080019cc   0x080019cc   0x00000020   Code   RO          456    i.check_box_m_init  pages.o
+    0x080019ec   0x080019ec   0x00000024   Code   RO          457    i.check_box_m_select  pages.o
+    0x08001a10   0x08001a10   0x0000000c   Code   RO          458    i.check_box_s_init  pages.o
+    0x08001a1c   0x08001a1c   0x0000001c   Code   RO          459    i.check_box_s_select  pages.o
+    0x08001a38   0x08001a38   0x00000020   Code   RO          460    i.check_box_v_init  pages.o
+    0x08001a58   0x08001a58   0x0000005c   Code   RO         2345    i.delay_init        delay.o
+    0x08001ab4   0x08001ab4   0x00000018   Code   RO         2346    i.delay_ms          delay.o
+    0x08001acc   0x08001acc   0x000000c8   Code   RO          461    i.editor_proc       pages.o
+    0x08001b94   0x08001b94   0x00000094   Code   RO         1209    i.eeprom_init       eeprom_manager.o
+    0x08001c28   0x08001c28   0x00000060   Code   RO         1210    i.eeprom_read_all_data  eeprom_manager.o
+    0x08001c88   0x08001c88   0x00000088   Code   RO         1211    i.eeprom_write_all_data  eeprom_manager.o
+    0x08001d10   0x08001d10   0x000001f0   Code   RO         1059    i.fade              animation.o
+    0x08001f00   0x08001f00   0x00000108   Code   RO         1060    i.fade_sleep        animation.o
+    0x08002008   0x08002008   0x0000002c   Code   RO         1061    i.fade_timer_check  animation.o
+    0x08002034   0x08002034   0x00000158   Code   RO         1062    i.fade_wake         animation.o
+    0x0800218c   0x0800218c   0x00000044   Code   RO         1123    i.knob_init         knob.o
+    0x080021d0   0x080021d0   0x000000a0   Code   RO         1124    i.knob_inter        knob.o
+    0x08002270   0x08002270   0x00000010   Code   RO          462    i.knob_param_init   pages.o
+    0x08002280   0x08002280   0x000000b0   Code   RO          463    i.knob_proc         pages.o
+    0x08002330   0x08002330   0x00000010   Code   RO          464    i.kpf_param_init    pages.o
+    0x08002340   0x08002340   0x00000678   Code   RO          465    i.kpf_proc          pages.o
+    0x080029b8   0x080029b8   0x00000010   Code   RO          466    i.krf_param_init    pages.o
+    0x080029c8   0x080029c8   0x000000bc   Code   RO          467    i.krf_proc          pages.o
+    0x08002a84   0x08002a84   0x000000a0   Code   RO          468    i.layer_init_in     pages.o
+    0x08002b24   0x08002b24   0x00000074   Code   RO          469    i.layer_init_out    pages.o
+    0x08002b98   0x08002b98   0x00000034   Code   RO          470    i.list_draw_check_box_dot  pages.o
+    0x08002bcc   0x08002bcc   0x00000040   Code   RO          471    i.list_draw_check_box_frame  pages.o
+    0x08002c0c   0x08002c0c   0x00000058   Code   RO          472    i.list_draw_kpf     pages.o
+    0x08002c64   0x08002c64   0x00000050   Code   RO          473    i.list_draw_krf     pages.o
+    0x08002cb4   0x08002cb4   0x000000c8   Code   RO          474    i.list_draw_text_and_check_box  pages.o
+    0x08002d7c   0x08002d7c   0x00000050   Code   RO          475    i.list_draw_value   pages.o
+    0x08002dcc   0x08002dcc   0x00000244   Code   RO          476    i.list_rotate_switch  pages.o
+    0x08003010   0x08003010   0x0000038c   Code   RO          477    i.list_show         pages.o
+    0x0800339c   0x0800339c   0x0000006c   Code   RO         2510    i.main              main.o
+    0x08003408   0x08003408   0x000000cc   Code   RO          478    i.main_proc         pages.o
+    0x080034d4   0x080034d4   0x00000014   Code   RO         2348    i.millis            delay.o
+    0x080034e8   0x080034e8   0x00000620   Code   RO         2616    i.powf              m_ws.l(powf.o)
+    0x08003b08   0x08003b08   0x000000bc   Code   RO          214    i.setpixel          u8g2_adapter.o
+    0x08003bc4   0x08003bc4   0x000000d0   Code   RO          479    i.setting_param_init  pages.o
+    0x08003c94   0x08003c94   0x000002dc   Code   RO          480    i.setting_proc      pages.o
+    0x08003f70   0x08003f70   0x00000188   Code   RO         2626    i.sinf              m_ws.l(sinf.o)
+    0x080040f8   0x080040f8   0x00000024   Code   RO          481    i.sleep_param_init  pages.o
+    0x0800411c   0x0800411c   0x00000044   Code   RO          482    i.tile_param_init   pages.o
+    0x08004160   0x08004160   0x00000124   Code   RO          483    i.tile_rotate_switch  pages.o
+    0x08004284   0x08004284   0x00000290   Code   RO          484    i.tile_show         pages.o
+    0x08004514   0x08004514   0x00000024   Code   RO          215    i.u8g2_Begin        u8g2_adapter.o
+    0x08004538   0x08004538   0x00000014   Code   RO          216    i.u8g2_ClearBuffer  u8g2_adapter.o
+    0x0800454c   0x0800454c   0x00000038   Code   RO          217    i.u8g2_DrawBox      u8g2_adapter.o
+    0x08004584   0x08004584   0x0000006c   Code   RO          219    i.u8g2_DrawFrame    u8g2_adapter.o
+    0x080045f0   0x080045f0   0x00000024   Code   RO          220    i.u8g2_DrawHLine    u8g2_adapter.o
+    0x08004614   0x08004614   0x0000002c   Code   RO          221    i.u8g2_DrawLine     u8g2_adapter.o
+    0x08004640   0x08004640   0x00000112   Code   RO          223    i.u8g2_DrawRBox     u8g2_adapter.o
+    0x08004752   0x08004752   0x00000144   Code   RO          224    i.u8g2_DrawRFrame   u8g2_adapter.o
+    0x08004896   0x08004896   0x00000002   PAD
+    0x08004898   0x08004898   0x00000038   Code   RO          225    i.u8g2_DrawStr      u8g2_adapter.o
+    0x080048d0   0x080048d0   0x00000024   Code   RO          227    i.u8g2_DrawVLine    u8g2_adapter.o
+    0x080048f4   0x080048f4   0x00000072   Code   RO          228    i.u8g2_DrawXBMP     u8g2_adapter.o
+    0x08004966   0x08004966   0x00000002   PAD
+    0x08004968   0x08004968   0x00000040   Code   RO          233    i.u8g2_GetStrWidth  u8g2_adapter.o
+    0x080049a8   0x080049a8   0x00000028   Code   RO          234    i.u8g2_Print        u8g2_adapter.o
+    0x080049d0   0x080049d0   0x00000084   Code   RO          235    i.u8g2_PrintFloat   u8g2_adapter.o
+    0x08004a54   0x08004a54   0x0000002c   Code   RO          236    i.u8g2_PrintStr     u8g2_adapter.o
+    0x08004a80   0x08004a80   0x00000008   Code   RO          237    i.u8g2_SendBuffer   u8g2_adapter.o
+    0x08004a88   0x08004a88   0x00000024   Code   RO          238    i.u8g2_SetClipWindow  u8g2_adapter.o
+    0x08004aac   0x08004aac   0x00000016   Code   RO          239    i.u8g2_SetContrast  u8g2_adapter.o
+    0x08004ac2   0x08004ac2   0x00000002   PAD
+    0x08004ac4   0x08004ac4   0x0000000c   Code   RO          240    i.u8g2_SetCursor    u8g2_adapter.o
+    0x08004ad0   0x08004ad0   0x0000000c   Code   RO          241    i.u8g2_SetDrawColor  u8g2_adapter.o
+    0x08004adc   0x08004adc   0x00000020   Code   RO          242    i.u8g2_SetFont      u8g2_adapter.o
+    0x08004afc   0x08004afc   0x0000000c   Code   RO          243    i.u8g2_SetFontDirection  u8g2_adapter.o
+    0x08004b08   0x08004b08   0x00000018   Code   RO          244    i.u8g2_SetMaxClipWindow  u8g2_adapter.o
+    0x08004b20   0x08004b20   0x0000001a   Code   RO          245    i.u8g2_SetPowerSave  u8g2_adapter.o
+    0x08004b3a   0x08004b3a   0x00000002   PAD
+    0x08004b3c   0x08004b3c   0x00000028   Code   RO          978    i.ui_init           ui_state.o
+    0x08004b64   0x08004b64   0x00000070   Code   RO          979    i.ui_param_init     ui_state.o
+    0x08004bd4   0x08004bd4   0x000003c4   Code   RO          485    i.ui_proc           pages.o
+    0x08004f98   0x08004f98   0x00000014   Code   RO          486    i.volt_param_init   pages.o
+    0x08004fac   0x08004fac   0x0000004c   Code   RO          487    i.volt_proc         pages.o
+    0x08004ff8   0x08004ff8   0x00000328   Code   RO          488    i.volt_show         pages.o
+    0x08005320   0x08005320   0x00000148   Code   RO         1158    i.window_message_init  window.o
+    0x08005468   0x08005468   0x00000060   Code   RO         1159    i.window_param_init  window.o
+    0x080054c8   0x080054c8   0x00000124   Code   RO         1160    i.window_proc       window.o
+    0x080055ec   0x080055ec   0x000003f0   Code   RO         1161    i.window_show       window.o
+    0x080059dc   0x080059dc   0x00000058   Code   RO         1162    i.window_value_init  window.o
+    0x08005a34   0x08005a34   0x00000018   Code   RO         2647    x$fpl$dcmpinf       fz_ws.l(dcmpi.o)
+    0x08005a4c   0x08005a4c   0x00000078   Code   RO         2575    x$fpl$dleqf         fz_ws.l(dleqf.o)
+    0x08005ac4   0x08005ac4   0x0000009c   Code   RO         2649    x$fpl$dnaninf       fz_ws.l(dnaninf.o)
+    0x08005b60   0x08005b60   0x0000000c   Code   RO         2651    x$fpl$dretinf       fz_ws.l(dretinf.o)
+    0x08005b6c   0x08005b6c   0x00000056   Code   RO         2577    x$fpl$f2d           fz_ws.l(f2d.o)
+    0x08005bc2   0x08005bc2   0x00000002   PAD
+    0x08005bc4   0x08005bc4   0x000000c4   Code   RO         2579    x$fpl$fadd          fz_ws.l(faddsub_clz.o)
+    0x08005c88   0x08005c88   0x0000000c   Code   RO         2711    x$fpl$fcheck1       fz_ws.l(fcheck1.o)
+    0x08005c94   0x08005c94   0x00000018   Code   RO         2653    x$fpl$fcmpinf       fz_ws.l(fcmpi.o)
+    0x08005cac   0x08005cac   0x00000184   Code   RO         2586    x$fpl$fdiv          fz_ws.l(fdiv.o)
+    0x08005e30   0x08005e30   0x00000068   Code   RO         2589    x$fpl$feqf          fz_ws.l(feqf.o)
+    0x08005e98   0x08005e98   0x00000036   Code   RO         2591    x$fpl$ffix          fz_ws.l(ffix.o)
+    0x08005ece   0x08005ece   0x00000002   PAD
+    0x08005ed0   0x08005ed0   0x00000052   Code   RO         2592    x$fpl$ffixr         fz_ws.l(ffix.o)
+    0x08005f22   0x08005f22   0x00000002   PAD
+    0x08005f24   0x08005f24   0x0000003e   Code   RO         2595    x$fpl$ffixu         fz_ws.l(ffixu.o)
+    0x08005f62   0x08005f62   0x00000002   PAD
+    0x08005f64   0x08005f64   0x00000030   Code   RO         2600    x$fpl$fflt          fz_ws.l(fflt_clz.o)
+    0x08005f94   0x08005f94   0x00000026   Code   RO         2599    x$fpl$ffltu         fz_ws.l(fflt_clz.o)
+    0x08005fba   0x08005fba   0x00000002   PAD
+    0x08005fbc   0x08005fbc   0x00000068   Code   RO         2605    x$fpl$fleqf         fz_ws.l(fleqf.o)
+    0x08006024   0x08006024   0x00000102   Code   RO         2607    x$fpl$fmul          fz_ws.l(fmul.o)
+    0x08006126   0x08006126   0x0000008c   Code   RO         2655    x$fpl$fnaninf       fz_ws.l(fnaninf.o)
+    0x080061b2   0x080061b2   0x0000000a   Code   RO         2657    x$fpl$fretinf       fz_ws.l(fretinf.o)
+    0x080061bc   0x080061bc   0x00000062   Code   RO         2609    x$fpl$frleqf        fz_ws.l(frleqf.o)
+    0x0800621e   0x0800621e   0x00000002   PAD
+    0x08006220   0x08006220   0x00000060   Code   RO         2659    x$fpl$frnd          fz_ws.l(frnd.o)
+    0x08006280   0x08006280   0x00000014   Code   RO         2580    x$fpl$frsb          fz_ws.l(faddsub_clz.o)
+    0x08006294   0x08006294   0x000000ea   Code   RO         2581    x$fpl$fsub          fz_ws.l(faddsub_clz.o)
+    0x0800637e   0x0800637e   0x00000064   Code   RO         2726    x$fpl$retnan        fz_ws.l(retnan.o)
+    0x080063e2   0x080063e2   0x0000004c   Code   RO         2663    x$fpl$scalbnf       fz_ws.l(scalbnf.o)
+    0x0800642e   0x0800642e   0x00000030   Code   RO         2775    x$fpl$trapveneer    fz_ws.l(trapv.o)
+    0x0800645e   0x0800645e   0x00000000   Code   RO         2665    x$fpl$usenofp       fz_ws.l(usenofp.o)
+    0x0800645e   0x0800645e   0x00001e10   Data   RO           47    .constdata          oled.o
+    0x0800826e   0x0800826e   0x00000002   Data   RO          246    .constdata          u8g2_adapter.o
+    0x08008270   0x08008270   0x00000018   Data   RO          528    .constdata          pages.o
+    0x08008288   0x08008288   0x00000480   Data   RO         1108    .constdata          menu_data.o
+    0x08008708   0x08008708   0x0000000b   Data   RO         1213    .constdata          eeprom_manager.o
+    0x08008713   0x08008713   0x00000011   Data   RO         2555    .constdata          c_w.l(__printf_flags_ss_wp.o)
+    0x08008724   0x08008724   0x00000140   Data   RO         2617    .constdata          m_ws.l(powf.o)
+    0x08008864   0x08008864   0x00000020   Data   RO         2683    .constdata          m_ws.l(rredf.o)
+    0x08008884   0x08008884   0x0000001d   Data   RO          529    .conststring        pages.o
+    0x080088a1   0x080088a1   0x00000003   PAD
+    0x080088a4   0x080088a4   0x00000020   Data   RO         2854    Region$$Table       anon$$obj.o
 
 
-    Execution Region RW_IRAM1 (Exec base: 0x20000000, Load base: 0x08008898, Size: 0x000028b8, Max: 0x00005000, ABSOLUTE, COMPRESSED[0x0000043c])
+    Execution Region RW_IRAM1 (Exec base: 0x20000000, Load base: 0x080088c4, Size: 0x000028b0, Max: 0x00005000, ABSOLUTE, COMPRESSED[0x00000438])
 
     Exec Addr    Load Addr    Size         Type   Attr      Idx    E Section Name        Object
 
@@ -2312,20 +2311,19 @@ Memory Map of the image
     0x2000003c   COMPRESSED   0x00000004   Data   RW          981    .data               ui_state.o
     0x20000040   COMPRESSED   0x00000004   Data   RW         1063    .data               animation.o
     0x20000044   COMPRESSED   0x000012e0   Data   RW         1109    .data               menu_data.o
-    0x20001324   COMPRESSED   0x0000000c   Data   RW         1126    .data               knob.o
-    0x20001330   COMPRESSED   0x00000001   Data   RW         1214    .data               eeprom_manager.o
-    0x20001331   COMPRESSED   0x00000003   PAD
-    0x20001334   COMPRESSED   0x00000004   Data   RW         2349    .data               delay.o
-    0x20001338   COMPRESSED   0x00000014   Data   RW         2480    .data               system_stm32f10x.o
-    0x2000134c   COMPRESSED   0x00000004   Data   RW         2561    .data               c_w.l(strtok.o)
-    0x20001350        -       0x00000800   Zero   RW           46    .bss                oled.o
-    0x20001b50        -       0x000005d8   Zero   RW          980    .bss                ui_state.o
-    0x20002128        -       0x0000001c   Zero   RW         1125    .bss                knob.o
-    0x20002144        -       0x00000110   Zero   RW         1212    .bss                eeprom_manager.o
-    0x20002254        -       0x00000060   Zero   RW         2714    .bss                c_w.l(libspace.o)
-    0x200022b4   COMPRESSED   0x00000004   PAD
-    0x200022b8        -       0x00000200   Zero   RW           18    HEAP                startup_stm32f10x_md.o
-    0x200024b8        -       0x00000400   Zero   RW           17    STACK               startup_stm32f10x_md.o
+    0x20001324   COMPRESSED   0x00000008   Data   RW         1126    .data               knob.o
+    0x2000132c   COMPRESSED   0x00000001   Data   RW         1214    .data               eeprom_manager.o
+    0x2000132d   COMPRESSED   0x00000003   PAD
+    0x20001330   COMPRESSED   0x00000004   Data   RW         2349    .data               delay.o
+    0x20001334   COMPRESSED   0x00000014   Data   RW         2480    .data               system_stm32f10x.o
+    0x20001348   COMPRESSED   0x00000004   Data   RW         2561    .data               c_w.l(strtok.o)
+    0x2000134c        -       0x00000800   Zero   RW           46    .bss                oled.o
+    0x20001b4c        -       0x000005d8   Zero   RW          980    .bss                ui_state.o
+    0x20002124        -       0x0000001c   Zero   RW         1125    .bss                knob.o
+    0x20002140        -       0x00000110   Zero   RW         1212    .bss                eeprom_manager.o
+    0x20002250        -       0x00000060   Zero   RW         2714    .bss                c_w.l(libspace.o)
+    0x200022b0        -       0x00000200   Zero   RW           18    HEAP                startup_stm32f10x_md.o
+    0x200024b0        -       0x00000400   Zero   RW           17    STACK               startup_stm32f10x_md.o
 
 
 ==============================================================================
@@ -2339,7 +2337,7 @@ Image component sizes
          0          0          0          0          0       4540   core_cm3.o
        192         26          0          4          0      18982   delay.o
        380         52         11          1        272       2994   eeprom_manager.o
-       408         54          0         12         28       2897   knob.o
+       452         52          0          8         28       2981   knob.o
        108         22          0          0          0        595   main.o
          0          0       1152       4832          0       1270   menu_data.o
       1478         62       7696          0       2048     222524   oled.o
@@ -2355,7 +2353,7 @@ Image component sizes
       1812        128          0          0          0       5058   window.o
 
     ----------------------------------------------------------------------
-     18522       1506       9185       4940       5380     367053   Object Totals
+     18566       1504       9185       4936       5380     367137   Object Totals
          0          0         32          0          0          0   (incl. Generated)
         14          0          3          4          0          0   (incl. Padding)
 
@@ -2436,8 +2434,8 @@ Image component sizes
        392         54          0          0          0        124   sinf.o
 
     ----------------------------------------------------------------------
-      6892        354        369          4        100       5064   Library Totals
-        28          0          0          0          4          0   (incl. Padding)
+      6892        354        369          4         96       5064   Library Totals
+        28          0          0          0          0          0   (incl. Padding)
 
     ----------------------------------------------------------------------
 
@@ -2448,7 +2446,7 @@ Image component sizes
       2526        160        352          0          0        996   m_ws.l
 
     ----------------------------------------------------------------------
-      6892        354        369          4        100       5064   Library Totals
+      6892        354        369          4         96       5064   Library Totals
 
     ----------------------------------------------------------------------
 
@@ -2457,15 +2455,15 @@ Image component sizes
 
       Code (inc. data)   RO Data    RW Data    ZI Data      Debug   
 
-     25414       1860       9554       4944       5480     362389   Grand Totals
-     25414       1860       9554       1084       5480     362389   ELF Image Totals (compressed)
-     25414       1860       9554       1084          0          0   ROM Totals
+     25458       1858       9554       4940       5476     362473   Grand Totals
+     25458       1858       9554       1080       5476     362473   ELF Image Totals (compressed)
+     25458       1858       9554       1080          0          0   ROM Totals
 
 ==============================================================================
 
-    Total RO  Size (Code + RO Data)                34968 (  34.15kB)
-    Total RW  Size (RW Data + ZI Data)             10424 (  10.18kB)
-    Total ROM Size (Code + RO Data + RW Data)      36052 (  35.21kB)
+    Total RO  Size (Code + RO Data)                35012 (  34.19kB)
+    Total RW  Size (RW Data + ZI Data)             10416 (  10.17kB)
+    Total ROM Size (Code + RO Data + RW Data)      36092 (  35.25kB)
 
 ==============================================================================
 
