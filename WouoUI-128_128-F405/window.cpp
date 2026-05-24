@@ -268,9 +268,12 @@ void window_show() {
         if (ui.param[HL_ANI_MODE] == 0) {
             animation(&win.list_y, &win.list_y_trg, LIST_ANI);
             animation(&win.hl_sel_cur, &win.hl_sel_trg, LIST_ANI);
+        } else if (ui.param[HL_ANI_MODE] == 1) {
+            animation_spring(&win.list_y, &win.list_y_trg, &win.list_vel, ui.param[SPRING_K] / 100.0f, ui.param[SPRING_D] / 100.0f);
+            animation_spring(&win.hl_sel_cur, &win.hl_sel_trg, &win.hl_vel, ui.param[SPRING_K] / 100.0f, ui.param[SPRING_D] / 100.0f);
         } else {
-            animation_spring(&win.list_y, &win.list_y_trg, &win.list_vel, 0.25f, 0.7f);
-            animation_spring(&win.hl_sel_cur, &win.hl_sel_trg, &win.hl_vel, 0.25f, 0.7f);
+            animation_bounce(&win.list_y, &win.list_y_trg, &win.list_vel, LIST_ANI);
+            animation_bounce(&win.hl_sel_cur, &win.hl_sel_trg, &win.hl_vel, LIST_ANI);
         }
 
         if (ui.param[WIN_STYLE]) {
@@ -309,8 +312,10 @@ void window_show() {
         }
 
         int16_t hl_y = content_top + (int16_t)(win.hl_sel_cur * LIST_LINE_H) + (int16_t)win.list_y;
+        uint8_t need_scroll = (win.list_count > item_rows);
+        int16_t hl_w = need_scroll ? (int16_t)win.w - 8 : (int16_t)win.w - 4;
         u8g2.setDrawColor(2);
-        u8g2.drawRBox((int16_t)win.l + 2, hl_y, (int16_t)win.w - 8, LIST_LINE_H, LIST_BOX_R);
+        u8g2.drawRBox((int16_t)win.l + 2, hl_y, hl_w, LIST_LINE_H, LIST_BOX_R);
 
         u8g2.setMaxClipWindow();
 

@@ -24,3 +24,5 @@
 ..\obj\animation.o: ..\HARDWARE\WouoUI\display.h
 ..\obj\animation.o: ..\HARDWARE\WouoUI\ui_state.h
 ..\obj\animation.o: ..\HARDWARE\WouoUI\ui_types.h
+..\obj\animation.o: ..\HARDWARE\WouoUI\pages.h
+..\obj\animation.o: ..\HARDWARE\WouoUI\menu_data.h

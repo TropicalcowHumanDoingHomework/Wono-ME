@@ -28,3 +28,4 @@
 ..\obj\window.o: ..\HARDWARE\WouoUI\eeprom_manager.h
 ..\obj\window.o: ..\HARDWARE\WouoUI\pages.h
 ..\obj\window.o: ..\HARDWARE\WouoUI\knob.h
+..\obj\window.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h

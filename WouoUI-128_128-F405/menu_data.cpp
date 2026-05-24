@@ -156,7 +156,6 @@ Menu setting_menu[] = {
     {"~ Btn LPT"},
     {"+ Knob Rot Dir"},
     {"+ USB Storage"},
-    {"* HL Ani Mode"},
     {"- [ About ]"}
 };
 
@@ -204,7 +203,10 @@ Menu animition_menu[] = {
     {"+ T Loop Mode"},
     {"+ L Loop Mode"},
     {"+ Win Bokeh Bg"},
-    {"+ Win Stretch"}
+    {"+ Win Stretch"},
+    {"* HL Ani Mode"},
+    {"~ Spring K"},
+    {"~ Spring D"}
 };
 
 //列表选择弹窗测试数据

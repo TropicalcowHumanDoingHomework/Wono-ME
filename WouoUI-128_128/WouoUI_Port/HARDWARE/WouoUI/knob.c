@@ -8,9 +8,9 @@ void knob_init(void) {
     GPIO_InitTypeDef gpio;
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
     
-    /* AIO(PB12), BIO(PB13) 浮空输入 */
+    /* AIO(PB12), BIO(PB13) 上拉输入(匹配Arduino INPUT_PULLUP) */
     gpio.GPIO_Pin = GPIO_Pin_12 | GPIO_Pin_13;
-    gpio.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+    gpio.GPIO_Mode = GPIO_Mode_IPU;
     gpio.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOB, &gpio);
     
@@ -67,5 +67,11 @@ void btn_scan(void) {
 }
 
 void btn_init(void) {
+    uint8_t i;
+    /* 初始化旋钮参数默认值(匹配Arduino: KNOB_DISABLE,KNOB_DISABLE,2,2) */
+    for (i = 0; i < KNOB_PARAM; ++i)
+        knob.param[i] = 0;
+    knob.param[KNOB_ROT_P] = 2;
+    knob.param[KNOB_COD_P] = 2;
     knob_init();
 }

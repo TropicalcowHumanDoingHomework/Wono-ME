@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdio.h>
 
-u8g2_adapter_t u8g2_state = {1, 8, 0, 0, 0};
+u8g2_adapter_t u8g2_state = {1, 8, 0, 0, 0, 0, 0, 0, 127, 127};
 
 uint8_t *buf_ptr = (uint8_t *)OLED_GRAM;
 uint16_t buf_len = 128 * 16;
@@ -13,6 +13,10 @@ const uint8_t u8g2_font_HelvetiPixel_tr = 8;
 
 static void setpixel(int16_t x, int16_t y) {
     uint8_t i, m;
+    if (u8g2_state.clip_active) {
+        if (x < u8g2_state.clip_x0 || x > u8g2_state.clip_x1 ||
+            y < u8g2_state.clip_y0 || y > u8g2_state.clip_y1) return;
+    }
     if (x < 0 || x >= 128 || y < 0 || y >= 128) return;
     if (u8g2_state.draw_color == 1) {
         OLED_DrawPoint((uint8_t)x, (uint8_t)y, 1);
@@ -31,6 +35,11 @@ void u8g2_Begin(void) {
     u8g2_state.cursor_x = 0;
     u8g2_state.cursor_y = 0;
     u8g2_state.font_direction = 0;
+    u8g2_state.clip_active = 0;
+    u8g2_state.clip_x0 = 0;
+    u8g2_state.clip_y0 = 0;
+    u8g2_state.clip_x1 = 127;
+    u8g2_state.clip_y1 = 127;
 }
 
 void u8g2_ClearBuffer(void) {
@@ -139,7 +148,8 @@ void u8g2_DrawXBMP(int16_t x, int16_t y, int16_t w, int16_t h, const uint8_t *bi
     for (py = 0; py < h; py++) {
         for (px = 0; px < w; px++) {
             byte_val = bitmap[py * bytes_per_row + px / 8];
-            if (byte_val & (0x80 >> (px % 8)))
+            /* u8g2以LSB-first读取: mask从1开始左移 */
+            if (byte_val & (1 << (px % 8)))
                 setpixel(x + px, y + py);
         }
     }
@@ -192,6 +202,22 @@ void u8g2_SetPowerSave(uint8_t on) {
         OLED_WR_Byte(0xAE, OLED_CMD);
     else
         OLED_WR_Byte(0xAF, OLED_CMD);
+}
+
+void u8g2_SetClipWindow(int16_t x, int16_t y, int16_t w, int16_t h) {
+    u8g2_state.clip_active = 1;
+    u8g2_state.clip_x0 = x;
+    u8g2_state.clip_y0 = y;
+    u8g2_state.clip_x1 = x + w - 1;
+    u8g2_state.clip_y1 = y + h - 1;
+}
+
+void u8g2_SetMaxClipWindow(void) {
+    u8g2_state.clip_active = 0;
+    u8g2_state.clip_x0 = 0;
+    u8g2_state.clip_y0 = 0;
+    u8g2_state.clip_x1 = 127;
+    u8g2_state.clip_y1 = 127;
 }
 
 void u8g2_PrintStr(const char *str) {

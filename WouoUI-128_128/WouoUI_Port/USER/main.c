@@ -25,9 +25,9 @@ int main(void)
     eeprom_init();
     ui_init();
 
-    /* 初始化动态计算值 */
-    tile.title_y_calc = TILE_ICON_S + TILE_INDI_H + TILE_B_TITLE_H;
-    tile.title_y_trg_calc = TILE_ICON_S + TILE_INDI_H + TILE_B_TITLE_H;
+    /* 初始化动态计算值(Arduino原版公式: TILE_INDI_S + (TILE_INDI_H - TILE_B_TITLE_H)/2 + TILE_B_TITLE_H * N) */
+    tile.title_y_calc = TILE_INDI_S + (TILE_INDI_H - TILE_B_TITLE_H) / 2 + TILE_B_TITLE_H * 2;
+    tile.title_y_trg_calc = TILE_INDI_S + (TILE_INDI_H - TILE_B_TITLE_H) / 2 + TILE_B_TITLE_H;
     list.line_n = DISP_H / LIST_LINE_H;
 
     /* 启动到主页面 */
@@ -38,8 +38,8 @@ int main(void)
 
     while (1)
     {
-        btn_scan();
-        knob_inter();
+        knob_inter();   /* 先处理旋钮中断(轮询) */
+        btn_scan();     /* 后处理按键(覆盖btn.id,保证事件优先) */
 
         ui_proc();
     }

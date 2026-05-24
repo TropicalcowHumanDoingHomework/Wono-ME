@@ -6,7 +6,7 @@ EepromState eeprom;
 static uint8_t eeprom_ram[256];
 static uint8_t eeprom_initialized = 0;
 
-void eeprom_write_all_data() {
+void eeprom_write_all_data(void) {
     uint8_t i;
     eeprom.address = 0;
     for (i = 0; i < EEPROM_CHECK; ++i)
@@ -20,7 +20,7 @@ void eeprom_write_all_data() {
     eeprom.address += KNOB_PARAM;
 }
 
-void eeprom_read_all_data() {
+void eeprom_read_all_data(void) {
     uint8_t i;
     eeprom.address = EEPROM_CHECK;
     for (i = 0; i < UI_PARAM; ++i)
@@ -31,8 +31,12 @@ void eeprom_read_all_data() {
     eeprom.address += KNOB_PARAM;
 }
 
-void eeprom_init() {
+void eeprom_init(void) {
     uint8_t i;
+    /* 初始化EEPROM校验参数(Arduino原版: 'a'~'k') */
+    static const uint8_t default_check[EEPROM_CHECK] = {'a','b','c','d','e','f','g','h','i','j','k'};
+    memcpy(eeprom.check_param, default_check, EEPROM_CHECK);
+
     if (!eeprom_initialized) {
         memset(eeprom_ram, 0, sizeof(eeprom_ram));
         eeprom_initialized = 1;

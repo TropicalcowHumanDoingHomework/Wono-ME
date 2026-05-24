@@ -9,9 +9,9 @@ extern "C" {
 
 extern EepromState eeprom;
 
-void eeprom_write_all_data();
-void eeprom_read_all_data();
-void eeprom_init();
+void eeprom_write_all_data(void);
+void eeprom_read_all_data(void);
+void eeprom_init(void);
 
 #ifdef __cplusplus
 }

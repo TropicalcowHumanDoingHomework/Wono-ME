@@ -24,14 +24,53 @@ static long map(long x, long in_min, long in_max, long out_min, long out_max) {
 }
 
 /* 模拟引脚编号(仅占位,stub用) */
-uint8_t analog_pin[8] = {0, 1, 2, 3, 4, 5, 6, 7};
+uint8_t analog_pin[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+
+/* HID keycode defines (from Arduino HIDKeyboard, for kpf_proc) */
+#define KEY_ESC           0xB1
+#define KEY_F1            0xC2
+#define KEY_F2            0xC3
+#define KEY_F3            0xC4
+#define KEY_F4            0xC5
+#define KEY_F5            0xC6
+#define KEY_F6            0xC7
+#define KEY_F7            0xC8
+#define KEY_F8            0xC9
+#define KEY_F9            0xCA
+#define KEY_F10           0xCB
+#define KEY_F11           0xCC
+#define KEY_F12           0xCD
+#define KEY_LEFT_CTRL     0x80
+#define KEY_LEFT_SHIFT    0x81
+#define KEY_LEFT_ALT      0x82
+#define KEY_LEFT_GUI      0x83
+#define KEY_RIGHT_CTRL    0x84
+#define KEY_RIGHT_SHIFT   0x85
+#define KEY_RIGHT_ALT     0x86
+#define KEY_RIGHT_GUI     0x87
+#define KEY_CAPS_LOCK     0xC1
+#define KEY_BACKSPACE     0xB2
+#define KEY_RETURN        0xB0
+#define KEY_INSERT        0xD1
+#define KEY_DELETE        0xD4
+#define KEY_TAB           0xB3
+#define KEY_HOME          0xD2
+#define KEY_END           0xD5
+#define KEY_PAGE_UP       0xD3
+#define KEY_PAGE_DOWN     0xD6
+#define KEY_UP_ARROW      0xDA
+#define KEY_DOWN_ARROW    0xD9
+#define KEY_LEFT_ARROW    0xD8
+#define KEY_RIGHT_ARROW   0xD7
 
 void check_box_v_init(uint8_t *param) {
     check_box.v = param;
+    for (uint8_t i = 0; i < UI_MNUMB; ++i) check_box.v_map[i] = 0xFF;
 }
 
 void check_box_m_init(uint8_t *param) {
     check_box.m = param;
+    for (uint8_t i = 0; i < UI_MNUMB; ++i) check_box.m_map[i] = 0xFF;
 }
 
 void check_box_s_init(uint8_t *param, uint8_t *param_p) {
@@ -51,15 +90,21 @@ void check_box_s_select(uint8_t val, uint8_t pos) {
 }
 
 void list_draw_value(int n) {
-    u8g2.print(check_box.v[n - 1]);
+    uint8_t idx = check_box.v_map[n] != 0xFF ? check_box.v_map[n] : n - 1;
+    if (idx == SLP_T) {
+        static const char* slp_str[] = {"Off", "10s", "30s", "60s", "180s", "300s"};
+        u8g2.print(slp_str[check_box.v[idx]]);
+    } else {
+        u8g2.print(check_box.v[idx]);
+    }
 }
 
 void list_draw_check_box_frame() {
-    u8g2.drawRFrame(CHECK_BOX_L_S, list.temp + CHECK_BOX_U_S, CHECK_BOX_F_W, CHECK_BOX_F_H, 1);
+    u8g2.drawRFrame(CHECK_BOX_L_S + (int16_t)list.curve, list.temp + CHECK_BOX_U_S, CHECK_BOX_F_W, CHECK_BOX_F_H, 1);
 }
 
 void list_draw_check_box_dot() {
-    u8g2.drawBox(CHECK_BOX_L_S + CHECK_BOX_D_S + 1, list.temp + CHECK_BOX_U_S + CHECK_BOX_D_S + 1, CHECK_BOX_F_W - (CHECK_BOX_D_S + 1) * 2, CHECK_BOX_F_H - (CHECK_BOX_D_S + 1) * 2);
+    u8g2.drawBox(CHECK_BOX_L_S + CHECK_BOX_D_S + 1 + (int16_t)list.curve, list.temp + CHECK_BOX_U_S + CHECK_BOX_D_S + 1, CHECK_BOX_F_W - (CHECK_BOX_D_S + 1) * 2, CHECK_BOX_F_H - (CHECK_BOX_D_S + 1) * 2);
 }
 
 void list_draw_krf(int n) {
@@ -77,11 +122,11 @@ void list_draw_kpf(int n) {
 }
 
 void list_draw_text_and_check_box(Menu* arr, int i) {
-    u8g2.drawStr(LIST_TEXT_S, list.temp + LIST_TEXT_H + LIST_TEXT_S, arr[i].title);
-    u8g2.setCursor(CHECK_BOX_L_S, list.temp + LIST_TEXT_H + LIST_TEXT_S);
+    u8g2.drawStr(LIST_TEXT_S + (int16_t)list.curve, list.temp + LIST_TEXT_H + LIST_TEXT_S, arr[i].title);
+    u8g2.setCursor(CHECK_BOX_L_S + (int16_t)list.curve, list.temp + LIST_TEXT_H + LIST_TEXT_S);
     switch (arr[i].title[0]) {
         case '~': list_draw_value(i); break;
-        case '+': list_draw_check_box_frame(); if (check_box.m[i - 1] == 1) list_draw_check_box_dot(); break;
+        case '+': list_draw_check_box_frame(); if (check_box.m_map[i] != 0xFF && check_box.m[check_box.m_map[i]] == 1) list_draw_check_box_dot(); break;
         case '=': list_draw_check_box_frame(); if (*check_box.s_p == i) list_draw_check_box_dot(); break;
         case '#': list_draw_krf(i); break;
         case '$': list_draw_kpf(i); break;
@@ -98,6 +143,7 @@ void tile_param_init() {
     tile.indi_x_trg = TILE_INDI_W;
     tile.title_y = tile.title_y_calc;
     tile.title_y_trg = tile.title_y_trg_calc;
+    tile.select_flag = true;
 }
 
 void tile_show(Menu* arr_1, Menu* arr_2, const uint8_t icon_pic[][16 * 18]) {
@@ -263,10 +309,12 @@ void list_show(Menu* arr, uint8_t ui_index) {
     u8g2.drawVLine(DISP_W - ceil((float)LIST_BAR_W / 2), 0, DISP_H);
     u8g2.drawBox(DISP_W - LIST_BAR_W, 0, LIST_BAR_W, list.bar_y);
 
+    u8g2.setClipWindow(0, 0, DISP_W - LIST_BAR_W, DISP_H);
     if (!ui.init) {
         for (int i = 0; i < ui.num[ui_index]; ++i) {
             if (ui.param[LIST_UFD]) list.temp = i * list.y - LIST_LINE_H * ui.select[ui.layer] + list.box_y_trg[ui.layer];
             else list.temp = (i - ui.select[ui.layer]) * list.y + list.box_y_trg[ui.layer];
+            list.curve = (ui.param[LIST_CUR] / 1000.0f) * pow(list.temp - list.box_y, 2);
             list_draw_text_and_check_box(arr, i);
         }
         if (list.y == list.y_trg) {
@@ -276,8 +324,10 @@ void list_show(Menu* arr, uint8_t ui_index) {
     }
     else for (int i = 0; i < ui.num[ui_index]; ++i) {
         list.temp = LIST_LINE_H * i + list.y;
+        list.curve = (ui.param[LIST_CUR] / 1000.0f) * pow(list.temp - list.box_y, 2);
         list_draw_text_and_check_box(arr, i);
     }
+    u8g2.setMaxClipWindow();
 
     u8g2.setDrawColor(2);
     u8g2.drawRBox(0, list.box_y, list.box_x, LIST_LINE_H, LIST_BOX_R);
@@ -382,8 +432,9 @@ void sleep_proc() {
     if (!ui.sleep) return;
 
     if (btn.pressed) {
-        btn.pressed = 0;
+        btn.pressed = false;
         if (btn.id == BTN_ID_SP || btn.id == BTN_ID_LP) {
+            u8g2.setPowerSave(0);
             ui.idle_timer = millis();
             if (ui.last_index == M_SLEEP) ui.last_index = M_MAIN;
             ui.index = ui.last_index;
@@ -418,20 +469,7 @@ void sleep_proc() {
                 }
             }
             if (ui.index == M_SETTING) {
-                check_box_v_init(ui.param);
-                check_box_m_init(ui.param);
-                uint8_t pi = TILE_UFD, vi = DISP_BRI;
-                for (uint8_t i = 0; setting_menu[i].title[0] != '-'; ++i) {
-                    if (setting_menu[i].title[0] == '+') {
-                        check_box.m_map[i] = pi;
-                        ++pi;
-                    } else if (setting_menu[i].title[0] == '~') {
-                        if (strcmp(setting_menu[i].title + 2, "List Cur") == 0) check_box.v_map[i] = LIST_CUR;
-                        else if (strcmp(setting_menu[i].title + 2, "Rotate Scr") == 0) check_box.v_map[i] = ROTATE_SCR;
-                        else if (strcmp(setting_menu[i].title + 2, "Sleep") == 0) check_box.v_map[i] = SLP_T;
-                        else check_box.v_map[i] = vi++;
-                    }
-                }
+                setting_param_init();
             } else if (ui.index == M_KNOB) {
                 check_box_v_init(knob.param);
             } else if (ui.index == M_KRF) {
@@ -462,7 +500,7 @@ void main_proc() {
                 break;
             case BTN_ID_SP:
                 switch (ui.select[ui.layer]) {
-                    case 0: ui.last_select = ui.select[ui.layer]; ui.last_box_y_trg = list.box_y_trg[ui.layer]; ui.index = M_SLEEP; ui.state = S_LAYER_OUT; break;
+                    case 0: ui.index = M_SLEEP; ui.state = S_LAYER_OUT; break;
                     case 1: ui.index = M_EDITOR; ui.state = S_LAYER_IN; break;
                     case 2: ui.index = M_VOLT; ui.state = S_LAYER_IN; break;
                     case 3: ui.index = M_SETTING; ui.state = S_LAYER_IN; break;
@@ -473,6 +511,7 @@ void main_proc() {
     if (!tile.select_flag && ui.init) {
         tile.indi_x = 0;
         tile.title_y = tile.title_y_calc;
+        tile.select_flag = true;
     }
 }
 
@@ -490,6 +529,7 @@ void editor_proc() {
             case BTN_ID_SP:
                 switch (ui.select[ui.layer]) {
                     case 0: ui.index = M_MAIN; ui.state = S_LAYER_OUT; break;
+                    case 10: window_message_init("Message Demo", "Hello World!\nLine 2\nLine 3", editor_menu, M_EDITOR); break;
                     case 11: ui.index = M_KNOB; ui.state = S_LAYER_IN; break;
                 }
                 break;
@@ -512,6 +552,18 @@ void kpf_param_init() {
 void setting_param_init() {
     check_box_v_init(ui.param);
     check_box_m_init(ui.param);
+    uint8_t pi = TILE_UFD, vi = DISP_BRI;
+    for (uint8_t i = 0; setting_menu[i].title[0] != '-'; ++i) {
+        if (setting_menu[i].title[0] == '+') {
+            check_box.m_map[i] = pi;
+            ++pi;
+        } else if (setting_menu[i].title[0] == '~') {
+            if (strcmp(setting_menu[i].title + 2, "List Cur") == 0) check_box.v_map[i] = LIST_CUR;
+            else if (strcmp(setting_menu[i].title + 2, "Rotate Scr") == 0) check_box.v_map[i] = ROTATE_SCR;
+            else if (strcmp(setting_menu[i].title + 2, "Sleep") == 0) check_box.v_map[i] = SLP_T;
+            else check_box.v_map[i] = vi++;
+        }
+    }
 }
 
 void knob_proc() {
@@ -617,6 +669,46 @@ void kpf_proc() {
                     case 39: check_box_s_select('8', ui.select[ui.layer]); break;
                     case 40: check_box_s_select('9', ui.select[ui.layer]); break;
                     case 41: break;
+                    case 42: check_box_s_select(KEY_ESC, ui.select[ui.layer]); break;
+                    case 43: check_box_s_select(KEY_F1, ui.select[ui.layer]); break;
+                    case 44: check_box_s_select(KEY_F2, ui.select[ui.layer]); break;
+                    case 45: check_box_s_select(KEY_F3, ui.select[ui.layer]); break;
+                    case 46: check_box_s_select(KEY_F4, ui.select[ui.layer]); break;
+                    case 47: check_box_s_select(KEY_F5, ui.select[ui.layer]); break;
+                    case 48: check_box_s_select(KEY_F6, ui.select[ui.layer]); break;
+                    case 49: check_box_s_select(KEY_F7, ui.select[ui.layer]); break;
+                    case 50: check_box_s_select(KEY_F8, ui.select[ui.layer]); break;
+                    case 51: check_box_s_select(KEY_F9, ui.select[ui.layer]); break;
+                    case 52: check_box_s_select(KEY_F10, ui.select[ui.layer]); break;
+                    case 53: check_box_s_select(KEY_F11, ui.select[ui.layer]); break;
+                    case 54: check_box_s_select(KEY_F12, ui.select[ui.layer]); break;
+                    case 55: break;
+                    case 56: check_box_s_select(KEY_LEFT_CTRL, ui.select[ui.layer]); break;
+                    case 57: check_box_s_select(KEY_LEFT_SHIFT, ui.select[ui.layer]); break;
+                    case 58: check_box_s_select(KEY_LEFT_ALT, ui.select[ui.layer]); break;
+                    case 59: check_box_s_select(KEY_LEFT_GUI, ui.select[ui.layer]); break;
+                    case 60: check_box_s_select(KEY_RIGHT_CTRL, ui.select[ui.layer]); break;
+                    case 61: check_box_s_select(KEY_RIGHT_SHIFT, ui.select[ui.layer]); break;
+                    case 62: check_box_s_select(KEY_RIGHT_ALT, ui.select[ui.layer]); break;
+                    case 63: check_box_s_select(KEY_RIGHT_GUI, ui.select[ui.layer]); break;
+                    case 64: break;
+                    case 65: check_box_s_select(KEY_CAPS_LOCK, ui.select[ui.layer]); break;
+                    case 66: check_box_s_select(KEY_BACKSPACE, ui.select[ui.layer]); break;
+                    case 67: check_box_s_select(KEY_RETURN, ui.select[ui.layer]); break;
+                    case 68: check_box_s_select(KEY_INSERT, ui.select[ui.layer]); break;
+                    case 69: check_box_s_select(KEY_DELETE, ui.select[ui.layer]); break;
+                    case 70: check_box_s_select(KEY_TAB, ui.select[ui.layer]); break;
+                    case 71: break;
+                    case 72: check_box_s_select(KEY_HOME, ui.select[ui.layer]); break;
+                    case 73: check_box_s_select(KEY_END, ui.select[ui.layer]); break;
+                    case 74: check_box_s_select(KEY_PAGE_UP, ui.select[ui.layer]); break;
+                    case 75: check_box_s_select(KEY_PAGE_DOWN, ui.select[ui.layer]); break;
+                    case 76: break;
+                    case 77: check_box_s_select(KEY_UP_ARROW, ui.select[ui.layer]); break;
+                    case 78: check_box_s_select(KEY_DOWN_ARROW, ui.select[ui.layer]); break;
+                    case 79: check_box_s_select(KEY_LEFT_ARROW, ui.select[ui.layer]); break;
+                    case 80: check_box_s_select(KEY_RIGHT_ARROW, ui.select[ui.layer]); break;
+                    case 81: break;
                     default: break;
                 }
                 break;
@@ -672,7 +764,10 @@ void setting_proc() {
                     case 14: check_box_m_select(WIN_BOK); break;
                     case 15: check_box_m_select(KNOB_DIR); break;
                     case 16: check_box_m_select(DARK_MODE); break;
-                    case 17: ui.index = M_ABOUT; ui.state = S_LAYER_IN; break;
+                    case 17: window_value_init("List Cur", LIST_CUR, &ui.param[LIST_CUR], 200, 0, 1, setting_menu, M_SETTING); break;
+                    case 18: window_value_init("Rotate Scr", ROTATE_SCR, &ui.param[ROTATE_SCR], 3, 0, 1, setting_menu, M_SETTING); break;
+                    case 19: window_value_init("Sleep Tm", SLP_T, &ui.param[SLP_T], 5, 0, 1, setting_menu, M_SETTING); break;
+                    case 20: ui.index = M_ABOUT; ui.state = S_LAYER_IN; break;
                 }
                 break;
         }
@@ -695,12 +790,15 @@ void about_proc() {
 
 void layer_init_in() {
     ui.layer++;
+    ui.select[ui.layer] = 0;
+    list.box_y_trg[ui.layer] = 0;
     ui.init = false;
     list.y = 0;
     list.y_trg = LIST_LINE_H;
     list.box_x = 0;
     list.box_y = 0;
     list.bar_y = 0;
+    ui.fade = 1;
     ui.state = S_FADE;
     switch (ui.index) {
         case M_MAIN: tile_param_init(); break;
@@ -721,6 +819,7 @@ void layer_init_out() {
     list.y = 0;
     list.y_trg = LIST_LINE_H;
     list.bar_y = 0;
+    ui.fade = 1;
     ui.state = S_FADE;
     switch (ui.index) {
         case M_SLEEP: sleep_param_init(); break;
@@ -735,10 +834,56 @@ void ui_proc() {
             if (ui.sleep) {
                 if (btn.pressed) {
                     btn.pressed = false;
+                    u8g2.setPowerSave(0);
                     ui.idle_timer = millis();
                     ui.sleep = false;
                     ui.index = ui.last_index;
-                    ui.state = S_LAYER_IN;
+                    ui.layer++;
+                    ui.select[ui.layer] = ui.last_select;
+                    list.box_y_trg[ui.layer] = ui.last_box_y_trg;
+                    if (ui.index == M_MAIN) {
+                        tile.icon_x = -ui.select[ui.layer] * TILE_ICON_S;
+                        tile.icon_x_trg = tile.icon_x;
+                        tile.icon_y = 0;
+                        tile.icon_y_trg = 0;
+                        tile.indi_x = TILE_INDI_W;
+                        tile.indi_x_trg = TILE_INDI_W;
+                        tile.title_y = tile.title_y_calc;
+                        tile.title_y_trg = tile.title_y_trg_calc;
+                        tile.select_flag = 1;
+                    } else {
+                        list.y = -LIST_LINE_H * ui.select[ui.layer] + list.box_y_trg[ui.layer];
+                        list.y_trg = list.y;
+                        list.box_y = list.box_y_trg[ui.layer];
+                        list.box_x = 0;
+                        list.box_x_trg = 0;
+                        list.bar_y = ui.num[ui.index] > 1 ? ceil(ui.select[ui.layer] * ((float)DISP_H / (ui.num[ui.index] - 1))) : 0;
+                        list.bar_y_trg = list.bar_y;
+                        list.loop = 0;
+                        if (ui.index == M_VOLT) {
+                            volt.text_bg_l = DISP_W;
+                            volt.text_bg_l_trg = DISP_W;
+                        } else if (ui.index == M_ABOUT) {
+                            about.indi_x = ABOUT_INDI_S;
+                            about.indi_x_trg = ABOUT_INDI_S;
+                        }
+                    }
+                    if (ui.index == M_SETTING) {
+                        setting_param_init();
+                    } else if (ui.index == M_KNOB) {
+                        check_box_v_init(knob.param);
+                    } else if (ui.index == M_KRF) {
+                        check_box_s_init(&knob.param[KNOB_ROT], &knob.param[KNOB_ROT_P]);
+                    } else if (ui.index == M_KPF) {
+                        check_box_s_init(&knob.param[KNOB_COD], &knob.param[KNOB_COD_P]);
+                    }
+                    if (ui.window_sleep) {
+                        ui.index = M_WINDOW;
+                        ui.window_sleep = 0;
+                    }
+                    ui.init = 1;
+                    ui.wake_fade = 1;
+                    ui.state = S_FADE;
                 } else {
                     fade_sleep();
                 }
@@ -753,7 +898,8 @@ void ui_proc() {
         case S_LAYER_OUT: layer_init_out(); break;
 
         case S_NONE:
-            u8g2.clearBuffer();
+            if (!ui.sleep) u8g2.clearBuffer();
+            if (btn.pressed) ui.idle_timer = millis();
             switch (ui.index) {
                 case M_WINDOW: window_proc(); break;
                 case M_SLEEP: sleep_proc(); break;
@@ -765,6 +911,19 @@ void ui_proc() {
                 case M_VOLT: volt_proc(); break;
                 case M_SETTING: setting_proc(); break;
                 case M_ABOUT: about_proc(); break;
+            }
+            if (!ui.sleep && ui.param[SLP_T] > 0 && ui.index != M_SLEEP) {
+                static const uint32_t slp_table[] = {0, 10, 30, 60, 180, 300};
+                if (btn.pressed) {
+                    ui.idle_timer = millis();
+                } else if (millis() - ui.idle_timer >= slp_table[ui.param[SLP_T]] * 1000UL) {
+                    ui.window_sleep = (ui.index == M_WINDOW);
+                    ui.last_select = ui.select[ui.layer];
+                    ui.last_box_y_trg = list.box_y_trg[ui.layer];
+                    ui.last_index = ui.window_sleep ? win.index : ui.index;
+                    ui.index = M_SLEEP;
+                    ui.state = S_LAYER_OUT;
+                }
             }
             break;
     }

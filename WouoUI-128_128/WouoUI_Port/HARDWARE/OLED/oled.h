@@ -6,10 +6,11 @@
 
 #define USE_HORIZONTAL 0   
 
-#define OLED_SCL_Clr() GPIO_ResetBits(GPIOA,GPIO_Pin_0)
-#define OLED_SCL_Set() GPIO_SetBits(GPIOA,GPIO_Pin_0)
-#define OLED_SDA_Clr() GPIO_ResetBits(GPIOA,GPIO_Pin_1)
-#define OLED_SDA_Set() GPIO_SetBits(GPIOA,GPIO_Pin_1)
+/* 软件I2C引脚 - SH1107 128x128, 与Arduino硬件I2C(PB6/PB7)一致 */
+#define OLED_SCL_Clr() GPIO_ResetBits(GPIOB,GPIO_Pin_6)
+#define OLED_SCL_Set() GPIO_SetBits(GPIOB,GPIO_Pin_6)
+#define OLED_SDA_Clr() GPIO_ResetBits(GPIOB,GPIO_Pin_7)
+#define OLED_SDA_Set() GPIO_SetBits(GPIOB,GPIO_Pin_7)
 #define OLED_RES_Clr() GPIO_ResetBits(GPIOA,GPIO_Pin_2)
 #define OLED_RES_Set() GPIO_SetBits(GPIOA,GPIO_Pin_2)
 

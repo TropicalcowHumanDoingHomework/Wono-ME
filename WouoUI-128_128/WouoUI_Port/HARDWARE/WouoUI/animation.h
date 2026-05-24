@@ -12,9 +12,9 @@ extern "C" {
 //动画函数
 void animation(float *a, float *a_trg, uint8_t n);
 //消失函数
-void fade();
-void fade_sleep();
-void fade_wake();
+void fade(void);
+void fade_sleep(void);
+void fade_wake(void);
 
 #ifdef __cplusplus
 }

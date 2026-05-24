@@ -162,6 +162,9 @@ Menu setting_menu[] = {
     {"+ Win Bokeh Bg"},
     {"+ Knob Rot Dir"},
     {"+ Dark Mode"},
+    {"~ List Cur"},
+    {"~ Rotate Scr"},
+    {"~ Sleep Tm"},
     {"- [ About ]"}
 };
 

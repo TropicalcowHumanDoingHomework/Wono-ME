@@ -12,9 +12,9 @@ extern "C" {
 //按钮变量
 extern ButtonState btn;
 
-void knob_inter();
-void btn_scan();
-void btn_init();
+void knob_inter(void);
+void btn_scan(void);
+void btn_init(void);
 
 #ifdef __cplusplus
 }

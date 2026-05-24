@@ -23,8 +23,10 @@ uint8_t analog_pin[10] = {PA0, PA1, PA2, PA3, PA4, PA5, PA6, PA7, PB0, PB1};
 static void hl_ani(float *a, float *a_trg, float *vel, uint8_t n) {
     if (ui.param[HL_ANI_MODE] == 0) {
         animation(a, a_trg, n);
+    } else if (ui.param[HL_ANI_MODE] == 1) {
+        animation_spring(a, a_trg, vel, ui.param[SPRING_K] / 100.0f, ui.param[SPRING_D] / 100.0f);
     } else {
-        animation_spring(a, a_trg, vel, 0.25f, 0.7f);
+        animation_bounce(a, a_trg, vel, n);
     }
 }
 
@@ -32,9 +34,12 @@ static void hl_ani_cascade(float *a, float *a_trg, float *a_final, float *vel, f
     if (ui.param[HL_ANI_MODE] == 0) {
         animation(a, a_trg, n);
         animation(a_trg, a_final, n);
+    } else if (ui.param[HL_ANI_MODE] == 1) {
+        animation_spring(a_trg, a_final, vel_trg, (ui.param[SPRING_K] / 100.0f) * 1.4f, (ui.param[SPRING_D] / 100.0f) * 0.857f);
+        animation_spring(a, a_trg, vel, (ui.param[SPRING_K] / 100.0f) * 1.8f, (ui.param[SPRING_D] / 100.0f) * 1.071f);
     } else {
-        animation_spring(a_trg, a_final, vel_trg, 0.35f, 0.60f);
-        animation_spring(a, a_trg, vel, 0.45f, 0.75f);
+        animation_bounce(a_trg, a_final, vel_trg, n);
+        animation_bounce(a, a_trg, vel, n);
     }
 }
 
@@ -108,7 +113,7 @@ void list_draw_text_and_check_box(Menu* arr, int i) {
         case '=': list_draw_check_box_frame(); if (*check_box.s_p == i) list_draw_check_box_dot(); break;
         case '#': list_draw_krf(i); break;
         case '$': list_draw_kpf(i); break;
-        case '*': { static const char* hl_labels[] = {"Ease", "Spring"}; uint8_t pi = check_box.map ? check_box.map[i - 1] : (uint8_t)(i - 1); u8g2.print(hl_labels[ui.param[pi]]); } break;
+        case '*': { static const char* hl_labels[] = {"Ease", "Spring", "Bounce"}; uint8_t pi = check_box.map ? check_box.map[i - 1] : (uint8_t)(i - 1); u8g2.print(hl_labels[ui.param[pi]]); } break;
     }
 }
 
@@ -130,13 +135,13 @@ static const uint8_t setting_param_map[] = {
     0    // 10: [ About ] → 无显示（占位）
 };
 
-static const char* hl_ani_mode_items[] = { "Ease", "Spring" };
-static void setting_hl_ani_callback(uint8_t select) {
+static const char* hl_ani_mode_items[] = { "Ease", "Spring", "Bounce" };
+static void hl_ani_callback(uint8_t select) {
     ui.param[HL_ANI_MODE] = select;
 }
 
 // Animi 页面：菜单项位置 → 参数索引映射
-// 菜单项 1~17 对应的 ParamIndex
+// 菜单项 1~20 对应的 ParamIndex
 static const uint8_t animi_param_map[] = {
     1,   // 1: Tile Ani  → TILE_ANI
     2,   // 2: List Cur  → LIST_CUR
@@ -154,7 +159,10 @@ static const uint8_t animi_param_map[] = {
     15,  // 14: T Loop Mode → TILE_LOOP
     16,  // 15: L Loop Mode → LIST_LOOP
     17,  // 16: Win Bokeh Bg → WIN_BOK
-    23   // 17: Win Stretch → WIN_STYLE
+    23,  // 17: Win Stretch → WIN_STYLE
+    25,  // 18: HL Ani Mode → HL_ANI_MODE
+    26,  // 19: Spring K → SPRING_K
+    27   // 20: Spring D → SPRING_D
 };
 
 
@@ -558,6 +566,9 @@ void animition_proc() {
                     case 15: check_box_m_select(LIST_LOOP); break;
                     case 16: check_box_m_select(WIN_BOK); break;
                     case 17: check_box_m_select(WIN_STYLE); break;
+                    case 18: window_list_select_init("HL Ani Mode", hl_ani_mode_items, 3, animition_menu, M_ANIMITION); window_set_list_callback(hl_ani_callback); break;
+                    case 19: window_value_init("Spring K", SPRING_K, &ui.param[SPRING_K], 100, 10, 1, animition_menu, M_ANIMITION); break;
+                    case 20: window_value_init("Spring D", SPRING_D, &ui.param[SPRING_D], 100, 10, 1, animition_menu, M_ANIMITION); break;
                 }
                 break;
         }
@@ -911,7 +922,7 @@ void setting_proc() {
                     case 6: window_value_init("Btn LPT", BTN_LPT, &ui.param[BTN_LPT], 255, 0, 1, setting_menu, M_SETTING); break;
                     case 7: check_box_m_select(KNOB_DIR); break;
                     case 8: check_box_m_select(USB_ENABLE); break;
-                    case 9: window_list_select_init("HL Ani Mode", hl_ani_mode_items, 2, setting_menu, M_SETTING); window_set_list_callback(setting_hl_ani_callback); break;
+                    case 9: window_list_select_init("HL Ani Mode", hl_ani_mode_items, 3, setting_menu, M_SETTING); window_set_list_callback(hl_ani_callback); break;
                     case 10: ui.index = M_ABOUT; ui.state = S_LAYER_IN; break;
                 }
                 break;

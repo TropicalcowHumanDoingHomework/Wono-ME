@@ -28,6 +28,27 @@ void animation_spring(float *a, float *a_trg, float *vel, float stiffness, float
     }
 }
 
+//弹跳动画函数（阻尼振荡解析公式，vel兼作速度）
+void animation_bounce(float *a, float *a_trg, float *vel, uint8_t n) {
+    if (*a != *a_trg || fabs(*vel) > 0.01f) {
+        float k = ui.param[SPRING_K] / 100.0f;
+        float d = ui.param[SPRING_D] / 100.0f;
+        if (k < 0.1f) k = 0.1f;
+        float w = 4.0f * sqrtf(k);
+        float damp = (1.0f - d * 0.4f);
+        if (damp < 0.5f) damp = 0.5f;
+        if (damp > 0.99f) damp = 0.99f;
+        float force = (*a_trg - *a) * k * 0.5f;
+        *vel = (*vel + force) * damp;
+        *vel += (*a_trg - *a) * 0.03f * w;
+        *a += *vel;
+        if (fabs(*a - *a_trg) < 0.05f && fabs(*vel) < 0.05f) {
+            *a = *a_trg;
+            *vel = 0;
+        }
+    }
+}
+
 //消失函数
 void fade() {
     static uint32_t last_fade_time = 0;

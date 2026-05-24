@@ -43,6 +43,8 @@ void ui_param_init() {
     ui.param[USB_ENABLE] = 0;     //USB存储开关
     ui.param[WIN_STYLE] = 0;      //弹窗动画样式：0=简单滑动
     ui.param[FADE_MODE] = 0;      //消失动画模式：0=棋盘格
+    ui.param[SPRING_K] = 25;      //弹簧刚度：25（实际0.25）
+    ui.param[SPRING_D] = 70;      //弹簧阻尼：70（实际0.70）
 }
 
 //列表类页面列表行数初始化，必须初始化的参数
@@ -50,7 +52,7 @@ void ui_init() {
     ui.index = M_MAIN;      //启动时进入主菜单
     ui.state = S_LAYER_IN;  //触发层级初始化，调用tile_param_init设置动画初始值
     ui.num[M_MAIN] = 5;
-    ui.num[M_ANIMITION] = 18;
+    ui.num[M_ANIMITION] = 21;
     ui.num[M_EDITOR] = 13;
     ui.num[M_WIN_LIST_DEMO] = 12;
     ui.num[M_KNOB] = 3;

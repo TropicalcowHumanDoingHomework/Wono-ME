@@ -49,7 +49,7 @@ struct TileState {
     float title_y_trg;
     float title_y_calc;
     float title_y_trg_calc;
-    float temp;
+    int16_t temp;
     uint8_t select_flag;
 };
 typedef struct TileState TileState;
@@ -72,7 +72,8 @@ struct ListState {
     float bar_y_trg;
     uint8_t loop;
     int line_n;
-    float temp;
+    int16_t temp;
+    float curve;
 };
 typedef struct ListState ListState;
 

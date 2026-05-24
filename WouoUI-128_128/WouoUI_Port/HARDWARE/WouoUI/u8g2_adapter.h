@@ -21,6 +21,11 @@ typedef struct {
     int16_t cursor_x;
     int16_t cursor_y;
     uint8_t font_direction;
+    uint8_t clip_active;
+    int16_t clip_x0;
+    int16_t clip_y0;
+    int16_t clip_x1;
+    int16_t clip_y1;
 } u8g2_adapter_t;
 
 /* 全局适配器实例 */
@@ -60,6 +65,8 @@ int16_t u8g2_GetStrWidth(const char *str);
 void u8g2_SetDrawColor(uint8_t color);
 void u8g2_SetContrast(uint8_t value);
 void u8g2_SetPowerSave(uint8_t on);
+void u8g2_SetClipWindow(int16_t x, int16_t y, int16_t w, int16_t h);
+void u8g2_SetMaxClipWindow(void);
 uint8_t* u8g2_GetBufferPtr(void);
 uint8_t u8g2_GetBufferTileHeight(void);
 uint8_t u8g2_GetBufferTileWidth(void);
@@ -112,6 +119,8 @@ public:
     uint8_t getBufferTileWidth() { return u8g2_GetBufferTileWidth(); }
 
     void setBusClock(uint32_t clock) { (void)clock; }
+    void setClipWindow(int16_t x, int16_t y, int16_t w, int16_t h) { u8g2_SetClipWindow(x, y, w, h); }
+    void setMaxClipWindow() { u8g2_SetMaxClipWindow(); }
 };
 
 extern U8G2 u8g2;

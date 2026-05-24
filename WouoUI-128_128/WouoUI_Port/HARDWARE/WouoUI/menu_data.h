@@ -3,6 +3,10 @@
 
 #include "ui_types.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /************************************* 文字内容 *************************************/
 
 extern Menu main_menu[];
@@ -18,5 +22,9 @@ extern Menu about_menu[];
 /************************************* 图片内容 *************************************/
 
 extern const uint8_t main_icon_pic[][16 * 18];
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
