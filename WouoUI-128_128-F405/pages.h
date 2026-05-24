@@ -59,9 +59,6 @@ void volt_param_init();
 //电压测量显示函数：绘制ADC波形和电压值
 void volt_show();
 
-//睡眠参数初始化：进入睡眠时的处理（清屏、关显示、保存EEPROM）
-void sleep_param_init();
-
 //关于页面参数初始化：设置关于页面的初始动画位置
 void about_param_init();
 
