@@ -63,10 +63,12 @@
 - **弹簧物理动画** — 新增基于弹簧-阻尼模型的物理动画系统：
   - `animation_spring()` — 弹簧力驱动 + 阻尼衰减，产生真实弹性的过冲-回弹效果
   - `animation_bounce()` — 阻尼振荡解析公式，专为弹跳效果优化
-- **高亮条动画模式（`HL_ANI_MODE`）** — 三种模式切换：
+  - `animation_gravity()` — 重力落体物理模拟，刚体在地面一侧反复弹跳直至静止
+- **高亮条动画模式（`HL_ANI_MODE`）** — 四种模式切换：
   - `0` = Ease（传统缓动，平滑无过冲）
   - `1` = Spring（弹簧物理，带弹性过冲回弹）
   - `2` = Bounce（阻尼振荡，多次来回衰减）
+  - `3` = Gravity（重力弹跳，仅在地面一侧弹跳）
 - **弹簧参数** — `SPRING_K`（刚度/100）和 `SPRING_D`（阻尼/100）独立可调
 - **列表弯曲（`LIST_CUR`）** — 选中行居中突显，非选中行向两侧弯曲淡出
 - **选择框过伸（`BOX_X_OS` / `BOX_Y_OS`）** — 选择框入场时可在水平/竖直方向超出最终尺寸再回弹
@@ -91,7 +93,7 @@
   - **多选框（+）** — 存储数组与列表行数对应
   - **数值显示（~）** — 显示参数值
   - **旋钮功能（#/$）** — 显示音量/亮度/按键功能
-  - **模式选择（*）** — 显示 Ease/Spring/Bounce 等文字标签
+  - **模式选择（*）** — 显示 Ease/Spring/Bounce/Gravity 等文字标签
 - 列表展开动画起始位置可配置，支持循环模式
 
 ### 弹出窗口
@@ -342,7 +344,7 @@ git clone <repo-url>
 | `LIST_LOOP` | 列表循环模式 | 开/关 | 关 |
 | `WIN_BOK` | 弹窗背景虚化 | 开/关 | 关 |
 | `WIN_STYLE` | 弹窗动画样式 | `0`=滑动 / `1`=拉伸 | `0` |
-| `HL_ANI_MODE` | 高亮条动画模式 | `0`=Ease / `1`=Spring / `2`=Bounce | `0` |
+| `HL_ANI_MODE` | 高亮条动画模式 | `0`=Ease / `1`=Spring / `2`=Bounce / `3`=Gravity | `0` |
 | `SPRING_K` | 弹簧刚度（/100） | `10` ~ `100` | `25` |
 | `SPRING_D` | 弹簧阻尼（/100） | `10` ~ `100` | `70` |
 
@@ -430,7 +432,7 @@ Setting → 打开"旋钮方向"开关即可反转，无需改硬件。
 <details>
 <summary><b>页面切换闪烁/卡顿？</b></summary>
 
-关闭弹窗背景虚化（WIN_BOK）；检查 SPI 时钟是否满足 2MHz 最低要求。弹簧动画（Spring/Bounce）比 Ease 模式计算量大，可切回 Ease 模式。
+关闭弹窗背景虚化（WIN_BOK）；检查 SPI 时钟是否满足 2MHz 最低要求。弹簧动画（Spring/Bounce/Gravity）比 Ease 模式计算量大，可切回 Ease 模式。
 </details>
 
 <details>
@@ -467,7 +469,7 @@ Setting → 打开"旋钮方向"开关即可反转，无需改硬件。
 
 | 版本 | 说明 |
 |:-----|:------|
-| **v2.4** | 引入弹簧物理动画系统（Spring / Bounce）；`HL_ANI_MODE` 三种高亮条模式；`FADE_MODE` 两种消失模式；列表选择弹窗 + 确认弹窗（异步回调）；参数映射数组 `map` 实现灵活索引；`M_ANIMITION` 独立动画调节页面；Setting 重组精简为 10 项；新增 `SPRING_K` / `SPRING_D` / `FADE_MODE` / `HL_ANI_MODE` 参数；`UI_PARAM` 扩展至 28 |
+| **v2.4** | 引入弹簧物理动画系统（Spring / Bounce / Gravity）；`HL_ANI_MODE` 四种高亮条模式（新增 Gravity 重力弹跳）；`FADE_MODE` 两种消失模式；列表选择弹窗 + 确认弹窗（异步回调）；参数映射数组 `map` 实现灵活索引；`M_ANIMITION` 独立动画调节页面；Setting 重组精简为 10 项；新增 `SPRING_K` / `SPRING_D` / `FADE_MODE` / `HL_ANI_MODE` 参数；`UI_PARAM` 扩展至 28 |
 | **v2.3** | F405 移植版：STM32F4xx 自动检测、USB MSC、RGB LED 呼吸灯、蜂鸣器、Apache 2.0 许可；新增 `LIST_CUR` / `BOX_X_OS` / `BOX_Y_OS` / `WIN_Y_OS` / `WIN_STYLE` |
 | **v2.0** | 重构动画引擎，新增磁贴界面、电压测量、弹窗系统、EEPROM 存储 |
 | **v1.0** | 基础列表 UI 框架 |

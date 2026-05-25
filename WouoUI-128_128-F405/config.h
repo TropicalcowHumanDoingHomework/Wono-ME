@@ -349,7 +349,7 @@ enum ParamIndex {
     USB_ENABLE,   //USB存储开关：0禁用，1启用
     WIN_STYLE,    //弹窗动画样式：0=简单滑动 1=拉伸效果
     FADE_MODE,    //消失动画模式：0=棋盘格 1=整体遮罩
-    HL_ANI_MODE,  //高亮条动画模式：0=Ease 1=Spring 2=Bounce
+    HL_ANI_MODE,  //高亮条动画模式：0=Ease 1=Spring 2=Bounce 3=Gravity
     SPRING_K,     //弹簧刚度：10~100（实际值=参数/100）
     SPRING_D      //弹簧阻尼：10~100（实际值=参数/100）
 };

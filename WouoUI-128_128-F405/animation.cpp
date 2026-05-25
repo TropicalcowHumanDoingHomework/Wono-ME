@@ -119,6 +119,100 @@ void animation_bounce(float *a, float *a_trg, float *vel, uint8_t n) {
     }
 }
 
+/************************************* 重力弹跳动画 *************************************/
+
+/*
+ * 重力弹跳动画
+ * 
+ * 原理：
+ * 模拟球体从高处自由落体，碰到地面后弹跳的物理过程
+ * 目标位置 = "地面"，球只在地面上方弹跳，不会穿过地面
+ * 
+ * 物理参数（由用户可调的 SPRING_K 和 SPRING_D 控制）：
+ * - gravity = k * 1.5：重力加速度（刚度越大，下落越快）
+ * - restitution = 1.0 - d * 0.6：弹跳恢复系数（阻尼越大，每次弹跳损失越多能量）
+ * 
+ * 运动过程：
+ * 1. 首帧：给予指向地面的初速度（模拟从高处抛出的球）
+ * 2. 每帧：施加重力 vel += gravity，更新位置 a += vel
+ * 3. 地面碰撞检测：当球穿过地面时，速度反向并乘以恢复系数
+ * 4. 弹跳次数增加 → 弹跳高度降低 → 最终静止在地面
+ * 
+ * 与 Spring 的区别：
+ * Spring 是弹性回复力模型，会在目标值两侧振荡
+ * Gravity 是重力+碰撞模型，严格在地面一侧弹跳，更像真实物理
+ * 
+ * 参数：
+ *   a - 当前位置指针
+ *   a_trg - 目标位置指针（地面）
+ *   vel - 速度状态变量指针
+ *   n - 未使用（保留接口一致性）
+ */
+void animation_gravity(float *a, float *a_trg, float *vel, uint8_t n) {
+    if (*a != *a_trg || fabs(*vel) > 0.01f) {
+        float k = ui.param[SPRING_K] / 100.0f;
+        float d = ui.param[SPRING_D] / 100.0f;
+        if (k < 0.1f) k = 0.1f;
+
+        // 重力加速度（刚度控制强度）
+        float gravity = k * 1.5f;
+        // 弹跳恢复系数：每次碰撞后保留的速度比例
+        float restitution = 1.0f - d * 0.6f;
+        if (restitution < 0.15f) restitution = 0.15f;
+        if (restitution > 0.9f) restitution = 0.9f;
+
+        // 保存旧位置用于碰撞检测
+        float old_a = *a;
+
+        // 首帧：给予指向目标（地面）的初速度
+        if (fabs(*vel) < 0.001f && fabs(*a - *a_trg) > 1.0f) {
+            *vel = (*a_trg - *a) * 0.35f;
+        }
+
+        // 重力始终指向目标位置（地面方向）
+        float dir = *a_trg - *a;
+        if (dir > 0.001f) {
+            *vel += gravity;
+        } else if (dir < -0.001f) {
+            *vel -= gravity;
+        }
+
+        // 更新位置
+        *a += *vel;
+
+        // 碰撞检测：判断是否越过地面
+        bool crossed = (old_a < *a_trg && *a >= *a_trg) ||
+                       (old_a > *a_trg && *a <= *a_trg);
+
+        if (crossed) {
+            // 速度反向，能量损失
+            *vel = -*vel * restitution;
+            // 贴回地面
+            *a = *a_trg;
+
+            // 弹跳幅度足够小时锁定到地面
+            if (fabs(*vel) < 0.3f) {
+                *a = *a_trg;
+                *vel = 0;
+            }
+        }
+    }
+}
+
+/************************************* 高亮条动画统一调度 *************************************/
+
+void hl_ani(float *a, float *a_trg, float *vel, uint8_t n) {
+    if (ui.param[HL_ANI_MODE] == 0) {
+        animation(a, a_trg, n);
+    } else if (ui.param[HL_ANI_MODE] == 1) {
+        animation_spring(a, a_trg, vel, ui.param[SPRING_K] / 100.0f, ui.param[SPRING_D] / 100.0f);
+    } else if (ui.param[HL_ANI_MODE] == 2) {
+        animation_bounce(a, a_trg, vel, n);
+    } else {
+        animation_gravity(a, a_trg, vel, n);
+    }
+}
+
 /************************************* 页面切换过渡 *************************************/
 
 /*
@@ -155,7 +249,7 @@ void fade() {
     }
     last_fade_time = now;
 
-    bool dark = ui.param[DARK_MODE];
+    bool dark = ui.param[DARK_MODE] || ui.index == M_SLEEP;
 
     switch (ui.param[FADE_MODE]) {
         case 0:
@@ -238,12 +332,12 @@ void fade() {
                 case 3:
                     for (uint16_t y = 0; y < 128; y += 2)
                         for (uint16_t x = 0; x < 16; ++x)
-                            buf_ptr[y * 16 + x] = 0xFF;
+                            buf_ptr[y * 16 + x] = dark ? 0x00 : 0xFF;
                     break;
                 case 4:
                     for (uint16_t y = 1; y < 128; y += 2)
                         for (uint16_t x = 0; x < 16; ++x)
-                            buf_ptr[y * 16 + x] = 0xFF;
+                            buf_ptr[y * 16 + x] = dark ? 0x00 : 0xFF;
                     ui.state = S_NONE;
                     ui.fade = 0;
                     break;

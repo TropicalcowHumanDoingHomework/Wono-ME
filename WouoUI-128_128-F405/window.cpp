@@ -385,13 +385,7 @@ void window_show() {
         }
     } else if (win.confirm_mode) {
         animation(&win.y, &win.y_trg, WIN_ANI);
-        if (ui.param[HL_ANI_MODE] == 0) {
-            animation(&win.conf_hl_cur, &win.conf_hl_trg, LIST_ANI);
-        } else if (ui.param[HL_ANI_MODE] == 1) {
-            animation_spring(&win.conf_hl_cur, &win.conf_hl_trg, &win.conf_hl_vel, ui.param[SPRING_K] / 100.0f, ui.param[SPRING_D] / 100.0f);
-        } else {
-            animation_bounce(&win.conf_hl_cur, &win.conf_hl_trg, &win.conf_hl_vel, LIST_ANI);
-        }
+        hl_ani(&win.conf_hl_cur, &win.conf_hl_trg, &win.conf_hl_vel, LIST_ANI);
 
         if (ui.param[WIN_STYLE]) {
             animation(&win.box_h, &win.box_h_trg, WIN_ANI);
@@ -452,16 +446,8 @@ void window_show() {
         }
     } else if (win.list_mode) {
         animation(&win.y, &win.y_trg, WIN_ANI);
-        if (ui.param[HL_ANI_MODE] == 0) {
-            animation(&win.list_y, &win.list_y_trg, LIST_ANI);
-            animation(&win.hl_sel_cur, &win.hl_sel_trg, LIST_ANI);
-        } else if (ui.param[HL_ANI_MODE] == 1) {
-            animation_spring(&win.list_y, &win.list_y_trg, &win.list_vel, ui.param[SPRING_K] / 100.0f, ui.param[SPRING_D] / 100.0f);
-            animation_spring(&win.hl_sel_cur, &win.hl_sel_trg, &win.hl_vel, ui.param[SPRING_K] / 100.0f, ui.param[SPRING_D] / 100.0f);
-        } else {
-            animation_bounce(&win.list_y, &win.list_y_trg, &win.list_vel, LIST_ANI);
-            animation_bounce(&win.hl_sel_cur, &win.hl_sel_trg, &win.hl_vel, LIST_ANI);
-        }
+        hl_ani(&win.list_y, &win.list_y_trg, &win.list_vel, LIST_ANI);
+        hl_ani(&win.hl_sel_cur, &win.hl_sel_trg, &win.hl_vel, LIST_ANI);
 
         if (ui.param[WIN_STYLE]) {
             animation(&win.box_h, &win.box_h_trg, WIN_ANI);

@@ -61,6 +61,45 @@ void animation_spring(float *a, float *a_trg, float *vel, float stiffness, float
 void animation_bounce(float *a, float *a_trg, float *vel, uint8_t n);
 
 /*
+ * 重力弹跳动画函数
+ * 
+ * 模拟球体受重力作用下落并在地面弹跳的物理过程
+ * 目标位置(a_trg)相当于"地面"，当前值只能在地面上方弹跳
+ * 
+ * 物理模型：
+ * 1. 首帧给予一个指向目标的初速度（模拟从高处落下）
+ * 2. 每帧施加重力加速度：vel += gravity
+ * 3. 位置更新：a += vel
+ * 4. 当穿过地面（越过目标）时：速度反向并乘以恢复系数（能量损失）
+ * 5. 恢复系数由阻尼参数控制，每次弹跳高度逐渐降低
+ * 6. 当弹跳幅度足够小时直接锁定到地面
+ * 
+ * 与Spring的区别：Spring会产生上下振荡（可穿过目标），
+ * Gravity严格在地面一侧弹跳，模拟真实的落体物理
+ * 
+ * 参数：
+ *   a - 当前位置指针
+ *   a_trg - 目标位置指针（地面位置）
+ *   vel - 速度状态变量指针
+ *   n - 未使用（保留参数接口一致性）
+ */
+void animation_gravity(float *a, float *a_trg, float *vel, uint8_t n);
+
+/*
+ * 高亮条动画统一调度函数
+ * 
+ * 根据 ui.param[HL_ANI_MODE] 自动选择动画算法：
+ *   0=Ease → animation()
+ *   1=Spring → animation_spring()
+ *   2=Bounce → animation_bounce()
+ *   3=Gravity → animation_gravity()
+ * 
+ * 参数签名与各底层动画函数兼容：
+ *   n 在 Ease/Bounce/Gravity 模式下作为 ui.param[]速度索引使用
+ */
+void hl_ani(float *a, float *a_trg, float *vel, uint8_t n);
+
+/*
  * 消失/渐入函数
  * 
  * 页面切换时的过渡效果：

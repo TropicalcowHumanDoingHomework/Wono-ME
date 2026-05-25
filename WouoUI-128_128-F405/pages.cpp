@@ -45,16 +45,6 @@ uint8_t analog_pin[10] = {PA0, PA1, PA2, PA3, PA4, PA5, PA6, PA7, PB0, PB1};
  * Spring和Bounce模式使用SPRING_K（刚度）和SPRING_D（阻尼）参数
  * 所有模式均使用统一的n参数（对应ui.param中的速度索引）
  */
-static void hl_ani(float *a, float *a_trg, float *vel, uint8_t n) {
-    if (ui.param[HL_ANI_MODE] == 0) {
-        animation(a, a_trg, n);
-    } else if (ui.param[HL_ANI_MODE] == 1) {
-        animation_spring(a, a_trg, vel, ui.param[SPRING_K] / 100.0f, ui.param[SPRING_D] / 100.0f);
-    } else {
-        animation_bounce(a, a_trg, vel, n);
-    }
-}
-
 /*
  * 级联高亮条动画包装函数
  * 
@@ -73,9 +63,12 @@ static void hl_ani_cascade(float *a, float *a_trg, float *a_final, float *vel, f
     } else if (ui.param[HL_ANI_MODE] == 1) {
         animation_spring(a_trg, a_final, vel_trg, (ui.param[SPRING_K] / 100.0f) * 1.4f, (ui.param[SPRING_D] / 100.0f) * 0.857f);
         animation_spring(a, a_trg, vel, (ui.param[SPRING_K] / 100.0f) * 1.8f, (ui.param[SPRING_D] / 100.0f) * 1.071f);
-    } else {
+    } else if (ui.param[HL_ANI_MODE] == 2) {
         animation_bounce(a_trg, a_final, vel_trg, n);
         animation_bounce(a, a_trg, vel, n);
+    } else {
+        animation_gravity(a_trg, a_final, vel_trg, n);
+        animation_gravity(a, a_trg, vel, n);
     }
 }
 
@@ -220,7 +213,7 @@ void list_draw_text_and_check_box(Menu* arr, int i) {
         case '=': list_draw_check_box_frame(); if (*check_box.s_p == i) list_draw_check_box_dot(); break;
         case '#': list_draw_krf(i); break;
         case '$': list_draw_kpf(i); break;
-        case '*': { static const char* hl_labels[] = {"Ease", "Spring", "Bounce"}; uint8_t pi = check_box.map ? check_box.map[i - 1] : (uint8_t)(i - 1); u8g2.print(hl_labels[ui.param[pi]]); } break;
+        case '*': { static const char* hl_labels[] = {"Ease", "Spring", "Bounce", "Gravity"}; uint8_t pi = check_box.map ? check_box.map[i - 1] : (uint8_t)(i - 1); u8g2.print(hl_labels[ui.param[pi]]); } break;
     }
 }
 
@@ -241,7 +234,7 @@ static const uint8_t setting_param_map[] = {
     0    // 9: [ About ] → 无显示（占位）
 };
 
-static const char* hl_ani_mode_items[] = { "Ease", "Spring", "Bounce" };
+static const char* hl_ani_mode_items[] = { "Ease", "Spring", "Bounce", "Gravity" };
 static void hl_ani_callback(uint8_t select) {
     ui.param[HL_ANI_MODE] = select;
 }
@@ -817,7 +810,7 @@ void animition_proc() {
                     case 15: check_box_m_select(LIST_LOOP); break;
                     case 16: check_box_m_select(WIN_BOK); break;
                     case 17: check_box_m_select(WIN_STYLE); break;
-                    case 18: window_list_select_init("HL Ani Mode", hl_ani_mode_items, 3, animition_menu, M_ANIMITION); window_set_list_callback(hl_ani_callback); break;
+                    case 18: window_list_select_init("HL Ani Mode", hl_ani_mode_items, 4, animition_menu, M_ANIMITION); window_set_list_callback(hl_ani_callback); break;
                     case 19: window_value_init("Spring K", SPRING_K, &ui.param[SPRING_K], 100, 10, 1, animition_menu, M_ANIMITION); break;
                     case 20: window_value_init("Spring D", SPRING_D, &ui.param[SPRING_D], 100, 10, 1, animition_menu, M_ANIMITION); break;
                 }
