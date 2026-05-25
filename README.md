@@ -33,7 +33,7 @@
 **Wonome** 是以 **WouoUI** 为核心的嵌入式 UI 生态合集，旨在低性能 MCU 上复现 **UltraLink** 风格的丝滑动画界面（类似 Windows Phone 7 Metro 磁贴效果）。
 
 - **WouoUI 原版**由 B 站 UP 主 [音游玩的人](https://space.bilibili.com/9182439) 开发，灵感来源于稚晖君的 MonoUI 设计理念
-- **F103 移植版**（v2.3）基于 STM32F103C8（72MHz / 20KB SRAM / 64KB Flash），驱动 OLED 128x128（I2C），Keil MDK 工程
+- **F103 移植版**（v2.3）基于 STM32F103C8（72MHz / 20KB SRAM / 64KB Flash），驱动 OLED 128x128（I2C），Arduino 工程
 - **F405 移植增强版**（v2.4）基于 STM32F405（168MHz / 192KB SRAM / 1024KB Flash），驱动 Sharp Memory LCD 128x128（SPI），Arduino 工程
 - **图标编辑器**为配套的像素图标绘制工具（Python / tkinter），支持 PNG 导入/导出、C 代码生成
 
@@ -43,13 +43,13 @@
 
 | 项目 | 平台 | 版本 | 工程类型 | 说明 |
 |:-----|:-----|:----:|:---------|:------|
-| [**WouoUI-128_128-F103**](WouoUI-128_128-F103/) | STM32F103C8 | v2.3 | Keil MDK | F103 移植版，驱动 OLED 128x128（I2C），72MHz / 20KB SRAM / 64KB Flash |
+| [**WouoUI-128_128-F103**](WouoUI-128_128-F103/) | STM32F103C8 | v2.3 | Arduino | F103 移植版，驱动 OLED 128x128（I2C），72MHz / 20KB SRAM / 64KB Flash |
 | [**WouoUI-128_128-F405**](WouoUI-128_128-F405/) | STM32F405 | v2.4 | Arduino | F405 移植增强版，驱动 Sharp LS013B7DH03 Memory LCD，168MHz / 192KB SRAM / 1024KB Flash |
 | [**图标编辑器**](icon_editor.py) | Python 3.8+ | — | 脚本 | 配套像素图标编辑工具，支持 PNG 导入/导出、C 代码生成、可变画布 |
 
 ### WouoUI-128_128-F103（F103 移植版 v2.3）
 
-基于 **STM32F103C8**（72MHz / 20KB SRAM / 64KB Flash）的嵌入式 UI 框架，驱动 **OLED 128x128**（I2C 接口），Keil MDK 工程，完整复现 WouoUI 的动画页面系统。
+基于 **STM32F103C8**（72MHz / 20KB SRAM / 64KB Flash）的嵌入式 UI 框架，驱动 **OLED 128x128**（I2C 接口），Arduino 工程，完整复现 WouoUI 的动画页面系统。
 
 > 详细文档见 [WouoUI-128_128-F103/README.md](WouoUI-128_128-F103/README.md)
 
@@ -74,11 +74,11 @@ python icon_editor.py
 ```
 Wonome/
 │
-├── WouoUI-128_128-F103/            # STM32F103C8 移植版（Keil MDK）
-│   ├── WouoUI-128_128.ino          # Arduino 框架入口（功能参考，实际编译用 Keil）
+├── WouoUI-128_128-F103/            # STM32F103C8 移植版（Arduino）
+│   ├── WouoUI-128_128.ino          # 主程序入口（Arduino Sketch）
 │   ├── README.md                   # 详细文档
 │   │
-│   └── WouoUI_Port/                # 原版 WouoUI 移植层（Keil MDK 工程）
+│   └── WouoUI_Port/                # 原版 WouoUI 移植层
 │       ├── USER/                   # 启动文件、中断服务、系统配置
 │       │   ├── startup_stm32f10x_md.s
 │       │   ├── startup_stm32f10x_hd.s
@@ -225,10 +225,10 @@ WouoUI 的核心亮点 —— 在极低硬件资源上实现流畅的动画效�
 
 | 依赖 | 说明 |
 |:-----|:------|
-| Keil MDK（F103） | 用于 F103 版编译（Keil MDK-ARM v5+） |
-| Arduino IDE（F405） | 下载 [arduino.cc](https://www.arduino.cc/en/software) |
+| Arduino IDE | 下载 [arduino.cc](https://www.arduino.cc/en/software) |
+| STM32F1 支持包（F103） | Arduino Board Manager 安装 |
 | STM32F4 支持包（F405） | Arduino Board Manager 安装 |
-| U8g2 库（F405） | Arduino Library Manager 安装 |
+| U8g2 库 | Arduino Library Manager 安装 |
 | USBComposite 库（F405 可选） | USB 功能需要 |
 | Python 3.8+ | 图标编辑器运行环境 |
 | Pillow 库（可选） | 图标编辑器 PNG 导入/导出 |
@@ -236,13 +236,13 @@ WouoUI 的核心亮点 —— 在极低硬件资源上实现流畅的动画效�
 ### F103 版
 
 ```bash
-# Keil MDK 打开 WouoUI_Port/ 下的 uVision 工程
-# 选择 STM32F103C8 目标
-# 连接 ST-Link 下载器
-# 编译并下载
+# 1. Arduino IDE 打开 WouoUI-128_128-F103/WouoUI-128_128.ino
+# 2. 安装 STM32F1 支持包（Board Manager）
+# 3. 安装 U8g2 库（Library Manager）
+# 4. 工具 → 开发板 → STM32F1xx → STM32F103C8
+# 5. 连接 ST-Link 下载器
+# 6. 点击上传
 ```
-
-> 也可用 `WouoUI-128_128.ino` 在 Arduino IDE 中编译（需安装 STM32F1 支持包和 U8g2 库），但推荐使用 Keil MDK 原版工程。
 
 ### F405 版
 
@@ -315,7 +315,7 @@ pip install Pillow
 | | F405: Sharp LS013B7DH03 Memory LCD 128x128（硬件 SPI3） |
 | 图形库 | **U8g2**（olikraus 单色图形库） |
 | 输入设备 | **EC11 / SIQ-02FVS3** 旋转编码器 |
-| 开发环境 | F103: **Keil MDK-ARM** / F405: **Arduino IDE** |
+| 开发环境 | **Arduino IDE**（F103 + F405 均适用） |
 | USB（F405） | **USBComposite** 库 |
 | 工具脚本 | **Python 3.8+**（tkinter + Pillow） |
 | 许可证 | **Apache 2.0** |
