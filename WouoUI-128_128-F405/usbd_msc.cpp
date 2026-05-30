@@ -96,7 +96,7 @@ static uint8_t default_inquiry[36] = {
     0x80,                   /* 可移动介质 */
     0x04,                   /* SPC-2 */
     0x02,                   /* 响应格式 */
-    36 - 4,                 /* 附加长度 */
+    36 - 5,                 /* 附加长度 */
     0x00, 0x00, 0x00,       /* 特性标志 */
     'W','o','u','o','U','I',' ',' ',              /* Vendor 8B */
     'W','2','5','Q','5','1','2',' ',' ',' ',' ',' ',' ',' ',' ',' ',  /* Product 16B */
@@ -230,14 +230,14 @@ static void scsi_process_cmd(uint8_t lun, const uint8_t *cb, uint8_t cb_len, uin
     case SCSI_MODE_SENSE6:
         memset(scsi_buf, 0, 4);
         scsi_buf[0] = 3;
-        scsi_buf[2] = 0x80;
+        scsi_buf[2] = 0x00;       /* WP=0: 未写保护 */
         *data_len = 4;
         break;
 
     case SCSI_MODE_SENSE10:
         memset(scsi_buf, 0, 8);
         scsi_buf[0] = 0; scsi_buf[1] = 6;
-        scsi_buf[3] = 0x80;
+        scsi_buf[3] = 0x00;       /* WP=0: 未写保护 */
         *data_len = 8;
         break;
 
@@ -337,7 +337,7 @@ static uint8_t msc_cfg_desc[32] = {
     0x05,
     MSC_EP_OUT,
     0x02,
-    (uint8_t)MSC_EP_SIZE, 0x00,
+    (uint8_t)(MSC_EP_SIZE & 0xFF), (uint8_t)((MSC_EP_SIZE >> 8) & 0xFF),
     0x00,
 
     /* Endpoint IN */
@@ -345,7 +345,7 @@ static uint8_t msc_cfg_desc[32] = {
     0x05,
     MSC_EP_IN,
     0x02,
-    (uint8_t)MSC_EP_SIZE, 0x00,
+    (uint8_t)(MSC_EP_SIZE & 0xFF), (uint8_t)((MSC_EP_SIZE >> 8) & 0xFF),
     0x00,
 };
 

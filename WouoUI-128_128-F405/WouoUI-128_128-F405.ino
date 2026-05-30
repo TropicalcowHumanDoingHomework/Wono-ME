@@ -68,6 +68,13 @@
 #include "usb_debug.h"
 #include "led.h"
 
+/* ==================== USB 非阻塞轮询状态 ==================== */
+#if USB_MSC_ENABLE
+static uint32_t usb_poll_start  = 0;
+static bool     usb_poll_active = false;
+static bool     usb_mounted     = false;
+#endif
+
 /* ==================== 硬件早期初始化 ==================== */
 
 /*
@@ -192,27 +199,9 @@ void setup() {
     usb_debug_refresh();
     delay(50);
 
-    /* 阻塞等待枚举完成 */
-    uint32_t usb_wait_start = millis();
-    bool usb_timed_out = false;
-    while (!USBManager::poll()) {
-      if (millis() - usb_wait_start > 3000) {
-        usb_timed_out = true;
-        break;
-      }
-      delay(10);
-    }
-
-    /* 超时则立即显示失败结果（含寄存器诊断） */
-    if (usb_timed_out) {
-        usb_debug_set_step(USB_STEP_DONE, USB_STATUS_FAIL);
-
-        /* 使用统一的寄存器读取函数，采集完整寄存器快照 */
-        usb_regs_t reg_snapshot;
-        usb_debug_read_regs(&reg_snapshot);
-
-        usb_debug_final(false, "Enumeration timeout!", &reg_snapshot);
-    }
+    /* 非阻塞：显示等待后直接进入 UI，轮询逻辑交给 loop() */
+    usb_poll_start  = millis();
+    usb_poll_active = true;
   } else {
     usb_debug_set_msg("USB disabled in settings");
     usb_debug_refresh();
@@ -224,24 +213,6 @@ void setup() {
   delay(800);
 #endif
   /* ================================================= */
-
-  /* USB 初始化失败时等待按键，5 秒超时后自动进入 UI */
-#if USB_MSC_ENABLE
-  if (ui.param[USB_ENABLE] && !USBManager::isEnabled()) {
-    /* 用 REG32 直读按键 (SW=PC14)，无需 btn_init() */
-    GPIO_PUPDR(GPIOC_BASE)  &= ~(0x3u << 28);
-    GPIO_PUPDR(GPIOC_BASE)  |=  (0x1u << 28);   /* PC14 pull-up */
-    GPIO_MODER(GPIOC_BASE)  &= ~(0x3u << 28);   /* PC14 input */
-    __asm volatile ("dsb");
-    /* 等待按键按下（PC14=0），最多等 5 秒后自动继续 */
-    uint32_t btn_wait_start = millis();
-    while ((REG32(GPIOC_BASE + 0x10) >> 14) & 1) {
-      if (millis() - btn_wait_start > 5000) break;
-      delay(50);
-    }
-    delay(100);  /* 消抖 */
-  }
-#endif
 
   btn_init();
 
@@ -258,7 +229,17 @@ void loop() {
     buzzer_proc();
     led_proc();
 #if USB_MSC_ENABLE
-    USBManager::poll();  /* 非阻塞轮询 USB 枚举状态 */
+    if (usb_poll_active) {
+        if (USBManager::poll()) {
+            usb_mounted = true;
+            usb_poll_active = false;
+        } else if (millis() - usb_poll_start > 20000) {
+            usb_poll_active = false;
+        }
+    }
+    if (usb_mounted) {
+        led_set_green();        /* USB 成功 → 覆盖为绿色（不影响 UI 原有 LED 逻辑） */
+    }
 #endif
 }
 

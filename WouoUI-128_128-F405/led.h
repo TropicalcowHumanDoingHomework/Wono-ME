@@ -42,6 +42,8 @@ extern LedColor led_color;
 void led_init();
 //设置LED为红色（常亮模式）
 void led_set_red();
+//设置LED为绿色（常亮模式）
+void led_set_green();
 //设置LED为白色（常亮模式）
 void led_set_white();
 //关闭LED（注意：不修改breathing状态，保持呼吸模式继续工作）
