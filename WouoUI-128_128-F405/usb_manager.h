@@ -3,95 +3,74 @@
 
 #include "config.h"
 
+/*
+ * USB磁盘大小配置（W25Q512JVEIQ 512Mbit = 64MB）
+ *
+ * USB_DISK_SIZE = 64MB：W25Q512全容量
+ * USB_DISK_BLOCK_SIZE = 512：标准U盘扇区
+ * USB_DISK_BLOCK_COUNT = 131072：64MB / 512B
+ */
+#define USB_DISK_SIZE           (64U * 1024U * 1024U)
+#define USB_DISK_BLOCK_SIZE     512U
+#define USB_DISK_BLOCK_COUNT    (USB_DISK_SIZE / USB_DISK_BLOCK_SIZE)
+
 #if USB_MSC_ENABLE
 
 /*
- * USB磁盘大小配置
- * 
- * USB_DISK_SIZE = 64KB：虚拟U盘总容量
- * USB_DISK_BLOCK_SIZE = 512：每块大小（标准U盘扇区大小）
- * USB_DISK_BLOCK_COUNT = 128：总块数（64KB / 512B）
- * USB_DISK_FLASH_ADDR = 0x080C0000：Flash中存储磁盘数据的起始地址
- *   - 对应STM32F405的8号扇区（128KB大小）
- *   - 64KB磁盘数据存储在扇区前半部分
- */
-#define USB_DISK_SIZE           (64U * 1024U)
-#define USB_DISK_BLOCK_SIZE     512U
-#define USB_DISK_BLOCK_COUNT    (USB_DISK_SIZE / USB_DISK_BLOCK_SIZE)
-#define USB_DISK_FLASH_ADDR     0x080C0000U
-
-/*
  * USB大容量存储管理器
- * 
- * 实现基于Flash模拟的U盘功能：
- * - 在RAM中维护64KB磁盘缓冲区以提供快速读写
- * - 通过Flash扇区擦写实现数据持久化
- * - 支持USB连接/断开时的数据同步
- * 
- * 使用场景：
- * - 用户通过USB连接电脑时，虚拟U盘可在文件管理器中访问
- * - 断开USB或进入睡眠时，RAM数据自动写入Flash
+ *
+ * 基于USB_OTG_HS + USB3300 ULPI PHY + W25Q512 SPI Flash
+ * - W25Q512作为存储后端，4KB扇区缓存写入
+ * - 自包含USBD MSC类驱动处理BOT/SCSI协议
  */
 class USBManager {
 public:
     /*
-     * 注册USB MSC组件到USBComposite框架
-     * 设置容量回调、读写回调
-     * 首次注册时从Flash加载磁盘数据
+     * 注册USB MSC组件
+     * 初始化W25Q512 SPI Flash并验证器件ID
      */
     static void registerComponent();
-    
+
     /*
-     * 启动USB连接
-     * 调用USBComposite.begin()使USB设备上线
-     * 在此之前必须先调用registerComponent()
+     * 启动USB MSC设备
+     * 通过usbd_msc_reinit()初始化为MSC模式
+     * 立即返回，status 通过 poll() 或 isEnabled() 查询
      */
     static void begin();
-    
+
+    /*
+     * 轮询 USB 枚举状态（在 loop() 中调用）
+     * 在 begin() 之后定期调用，不再阻塞
+     * 返回 true 表示已枚举完成
+     */
+    static bool poll();
+
     /*
      * 断开USB连接
-     * 先将RAM缓冲区数据刷入Flash，再断开USB
-     * 确保数据完整性
      */
     static void end();
-    
+
     /*
      * 查询USB连接状态
-     * 返回true表示USB设备已连接并处于活动状态
      */
     static bool isEnabled();
-    
+
     /*
-     * 将RAM缓冲区数据写入Flash
-     * 执行扇区擦除和逐字编程
-     * 在USB断开或进入睡眠前调用
+     * 查询是否有未完成的写入操作
      */
-    static void flushToFlash();
-    
-    /*
-     * 从Flash加载数据到RAM缓冲区
-     * 检查Flash区域是否为空（未擦写过），是则初始化空磁盘
-     * 否则逐字复制到RAM缓冲区
-     */
-    static void loadFromFlash();
+    static bool isDirty();
 };
 
 #else
 
-/*
- * USB禁用时的空实现
- * 
- * 当USB_MSC_ENABLE=0时，所有方法均为空操作
- * 确保调用代码无需条件编译
- */
 class USBManager {
 public:
     static void registerComponent() {}
     static void begin() {}
+    static bool poll() { return false; }
     static void end() {}
     static bool isEnabled() { return false; }
-    static void flushToFlash() {}
-    static void loadFromFlash() {}
+    static bool isDirty() { return false; }
 };
 
 #endif

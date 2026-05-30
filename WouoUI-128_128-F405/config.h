@@ -415,28 +415,58 @@ enum KnobParamIndex {
 /************************************* HID配置 *************************************/
 
 // ==================== HID配置 ====================
-//0=禁用USB HID（如未安装USBComposite库），1=启用
+//0=禁用USB HID，1=启用（需配套HID类驱动）
 #define HID_ENABLE 0
 
 /************************************* USB MSC配置 *************************************/
 
 /*
  * USB大容量存储设备（MSC）配置
- * 
- * 使用STM32F405的USB_OTG_FS外设模拟U盘
- * 通过Flash模拟磁盘存储，实现文件传输功能
- * 
+ *
+ * 硬件平台：STM32F405RGT6 + USB3300-EZK-TR (ULPI HS PHY) + USB Type-C
+ * 使用 USB_OTG_HS 内核，通过 ULPI 8-bit 接口连接外部 PHY
+ * 存储后端：W25Q512JVEIQ (512Mbit SPI NOR Flash)
+ *
  * USB_MSC_ENABLE：
- * 0=禁用USB大容量存储（如未安装USBComposite库）
+ * 0=禁用USB大容量存储
  * 1=启用（需在设置页面打开"USB Storage"开关）
- * 
+ *
  * 磁盘特性：
- * - 64KB大小，512字节/块（标准U盘块大小）
- * - 使用Flash地址0x080C0000（8号扇区）作为存储介质
- * - 通过RAM缓冲区（usb_disk_buffer）提供快速读写
- * - 进入睡眠时自动同步到Flash
+ * - 64MB大小（W25Q512全容量），512字节/块
+ * - 高速USB (480Mbps)，MSC端点包大小512B
+ * - 4KB扇区缓存写入策略（读-改-擦-写）
  */
-#define USB_MSC_ENABLE 0
+#define USB_MSC_ENABLE 1
+
+/* ==================== W25Q512 SPI Flash 引脚定义 ==================== */
+#define W25Q_SPI              SPI1
+#define W25Q_SCK_PIN          PB3
+#define W25Q_MISO_PIN         PA6
+#define W25Q_MOSI_PIN         PA7
+#define W25Q_CS_PIN           PA4
+
+/* ==================== USB HS ULPI 引脚映射 ==================== */
+/*
+ * USB3300 ULPI 8-bit 接口引脚：
+ * D[0:7] → PA3, PB0, PB1, PB10, PB11, PB12, PB13, PB5
+ * STP → PC0, DIR → PC2, NXT → PC3, CLK(60MHz) → PA5
+ * 全部使用 AF10 (GPIO_AFMODE_OTG_FS = OTG_HS)
+ */
+#define ULPI_D0_PIN           PA3
+#define ULPI_D1_PIN           PB0
+#define ULPI_D2_PIN           PB1
+#define ULPI_D3_PIN           PB10
+#define ULPI_D4_PIN           PB11
+#define ULPI_D5_PIN           PB12
+#define ULPI_D6_PIN           PB13
+#define ULPI_D7_PIN           PB5
+#define ULPI_CLK_PIN          PA5
+#define ULPI_STP_PIN          PC0
+#define ULPI_DIR_PIN          PC2
+#define ULPI_NXT_PIN          PC3
+
+/* OTG_HS IRQ号（STM32F405） */
+#define OTG_HS_IRQn           77
 
 /************************************* USB HID 键码 *************************************/
 
@@ -452,7 +482,7 @@ enum KnobParamIndex {
  * 41-78：功能键和控制键（Esc, F1-F12, Enter等）
  * 79-82：方向键
  * 
- * 注意：键码定义用#ifndef包裹，防止与USBComposite库重复定义
+ * 注意：键码定义用#ifndef包裹，防止与其他库重复定义
  */
 #ifndef KEY_ESC
 #define KEY_ESC          41     //Esc键

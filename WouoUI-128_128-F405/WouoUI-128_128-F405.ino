@@ -65,24 +65,188 @@
 #include "pages.h"
 #include "hid_manager.h"
 #include "usb_manager.h"
+#include "usb_debug.h"
 #include "led.h"
 
+/* ==================== 硬件早期初始化 ==================== */
+
+/*
+ * 在 setup() 最开头调用，抢占变体初始化可能的 GPIO 冲突
+ *
+ * DISCO_F407VG 变体初始化会将部分 ULPI 引脚配为其他功能：
+ *   PB5  → 音频 DAC (I2S3_SD)
+ *   PB10 → I2C2_SCL
+ *   PB11 → I2C2_SDA
+ * 此函数强制将它们重新配为 AF10 (OTG_HS ULPI)
+ *
+ * 使用与 display.cpp 同风格的直接寄存器访问（REG32 宏）
+ * 避免 STM32duino 核心的 GPIO 抽象层差异
+ */
+
+#define REG32(addr) (*(volatile uint32_t *)(addr))
+#define RCC_BASE    0x40023800u
+#undef GPIOA_BASE
+#define GPIOA_BASE  0x40020000u
+#undef GPIOB_BASE
+#define GPIOB_BASE  0x40020400u
+#undef GPIOC_BASE
+#define GPIOC_BASE  0x40020800u
+
+#define GPIO_MODER(b)   REG32((b) + 0x00u)
+#define GPIO_OSPEEDR(b) REG32((b) + 0x08u)
+#define GPIO_PUPDR(b)   REG32((b) + 0x0Cu)
+#define GPIO_AFRL(b)    REG32((b) + 0x20u)
+#define GPIO_AFRH(b)    REG32((b) + 0x24u)
+
+/* AF10 = OTG_HS ULPI, MODE=2=AF, SPEED=3=100MHz */
+#define ULPI_AF_VAL  (10u)
+#define AF_MODE_VAL  (2u)
+#define HS_SPEED_VAL (3u)
+
+static void ulpi_pin_cfg(uint32_t gpio, uint8_t pin)
+{
+    uint32_t s2 = (uint32_t)pin * 2u;
+    /* MODER: 10 = Alternate Function */
+    GPIO_MODER(gpio)   = (GPIO_MODER(gpio)   & ~(0x3u << s2)) | (AF_MODE_VAL << s2);
+    /* OSPEEDR: 11 = Very High */
+    GPIO_OSPEEDR(gpio) = (GPIO_OSPEEDR(gpio) & ~(0x3u << s2)) | (HS_SPEED_VAL << s2);
+    /* AFR: 1010 = AF10 */
+    if (pin < 8u) {
+        uint32_t s4 = (uint32_t)pin * 4u;
+        GPIO_AFRL(gpio) = (GPIO_AFRL(gpio) & ~(0xFu << s4)) | ((uint32_t)ULPI_AF_VAL << s4);
+    } else {
+        uint32_t s4 = ((uint32_t)pin - 8u) * 4u;
+        GPIO_AFRH(gpio) = (GPIO_AFRH(gpio) & ~(0xFu << s4)) | ((uint32_t)ULPI_AF_VAL << s4);
+    }
+}
+
+static void hardware_early_init(void)
+{
+    /* ──── 使能 GPIO 时钟 ──── */
+    REG32(RCC_BASE + 0x30u) |= (1u << 0) | (1u << 1) | (1u << 2);
+    __asm volatile ("dsb");
+    __asm volatile ("isb");
+
+    /* Port A: PA3(D0), PA5(CLK) */
+    ulpi_pin_cfg(GPIOA_BASE, 3);
+    ulpi_pin_cfg(GPIOA_BASE, 5);
+
+    /* Port B: PB0(D1), PB1(D2), PB5(D7), PB10(D3), PB11(D4), PB12(D5), PB13(D6) */
+    ulpi_pin_cfg(GPIOB_BASE, 0);
+    ulpi_pin_cfg(GPIOB_BASE, 1);
+    ulpi_pin_cfg(GPIOB_BASE, 5);
+    ulpi_pin_cfg(GPIOB_BASE, 10);
+    ulpi_pin_cfg(GPIOB_BASE, 11);
+    ulpi_pin_cfg(GPIOB_BASE, 12);
+    ulpi_pin_cfg(GPIOB_BASE, 13);
+
+    /* Port C: PC0(STP), PC2(DIR), PC3(NXT) */
+    ulpi_pin_cfg(GPIOC_BASE, 0);
+    ulpi_pin_cfg(GPIOC_BASE, 2);
+    ulpi_pin_cfg(GPIOC_BASE, 3);
+
+    __asm volatile ("dsb");
+    __asm volatile ("isb");
+}
+
 void setup() {
+  hardware_early_init();  /* 第一行：抢占变体初始化 */
 
   led_init();
   eeprom_init();
   ui_init();
   lcd_init();
+
+  /* ========== 系统启动第一阶段：USB 调试屏幕 ==========
+   * 屏幕点亮后立即渲染 USB 初始化进度
+   * 等枚举完成（或超时）后才继续进入 UI 初始化
+   */
+  usb_debug_reset();
+  usb_debug_refresh();
+
+#if USB_MSC_ENABLE
+  if (ui.param[USB_ENABLE]) {
+    usb_debug_set_msg("Init W25Q512...");
+    usb_debug_refresh();
+    USBManager::registerComponent();
+
+    /* === 诊断：progress 变量跟踪 usbd_msc_reinit 执行进度 === */
+    #define USB_DBG_SET_STEP(n,s) do { usb_debug_set_step(n,s); usb_debug_refresh(); delay(50); } while(0)
+
+    usb_debug_reset();
+    usb_debug_set_msg("USB init...");
+    USB_DBG_SET_STEP(USB_STEP_CLOCK, USB_STATUS_BUSY); // step0=[**]
+
+    USBManager::begin();   // 内部会调用 usbd_msc_reinit
+
+    /* begin() 返回表示 usbd_msc_reinit 执行完毕 */
+    USB_DBG_SET_STEP(USB_STEP_CLOCK,   USB_STATUS_OK);
+    USB_DBG_SET_STEP(USB_STEP_GPIO,    USB_STATUS_OK);
+    USB_DBG_SET_STEP(USB_STEP_PHY,     USB_STATUS_OK);
+    USB_DBG_SET_STEP(USB_STEP_DCD,     USB_STATUS_OK);
+    USB_DBG_SET_STEP(USB_STEP_SPEED,   USB_STATUS_OK);
+    USB_DBG_SET_STEP(USB_STEP_VBUS,    USB_STATUS_OK);
+    USB_DBG_SET_STEP(USB_STEP_CONNECT, USB_STATUS_OK);
+    USB_DBG_SET_STEP(USB_STEP_DONE,    USB_STATUS_BUSY);  // 等待枚举
+    usb_debug_set_msg("Waiting enumeration...");
+    usb_debug_refresh();
+    delay(50);
+
+    /* 阻塞等待枚举完成 */
+    uint32_t usb_wait_start = millis();
+    bool usb_timed_out = false;
+    while (!USBManager::poll()) {
+      if (millis() - usb_wait_start > 3000) {
+        usb_timed_out = true;
+        break;
+      }
+      delay(10);
+    }
+
+    /* 超时则立即显示失败结果（含寄存器诊断） */
+    if (usb_timed_out) {
+        usb_debug_set_step(USB_STEP_DONE, USB_STATUS_FAIL);
+
+        /* 使用统一的寄存器读取函数，采集完整寄存器快照 */
+        usb_regs_t reg_snapshot;
+        usb_debug_read_regs(&reg_snapshot);
+
+        usb_debug_final(false, "Enumeration timeout!", &reg_snapshot);
+    }
+  } else {
+    usb_debug_set_msg("USB disabled in settings");
+    usb_debug_refresh();
+    delay(800);
+  }
+#else
+  usb_debug_set_msg("USB_MSC not compiled in");
+  usb_debug_refresh();
+  delay(800);
+#endif
+  /* ================================================= */
+
+  /* USB 初始化失败时等待按键，5 秒超时后自动进入 UI */
+#if USB_MSC_ENABLE
+  if (ui.param[USB_ENABLE] && !USBManager::isEnabled()) {
+    /* 用 REG32 直读按键 (SW=PC14)，无需 btn_init() */
+    GPIO_PUPDR(GPIOC_BASE)  &= ~(0x3u << 28);
+    GPIO_PUPDR(GPIOC_BASE)  |=  (0x1u << 28);   /* PC14 pull-up */
+    GPIO_MODER(GPIOC_BASE)  &= ~(0x3u << 28);   /* PC14 input */
+    __asm volatile ("dsb");
+    /* 等待按键按下（PC14=0），最多等 5 秒后自动继续 */
+    uint32_t btn_wait_start = millis();
+    while ((REG32(GPIOC_BASE + 0x10) >> 14) & 1) {
+      if (millis() - btn_wait_start > 5000) break;
+      delay(50);
+    }
+    delay(100);  /* 消抖 */
+  }
+#endif
+
   btn_init();
 
 #if HID_ENABLE
-  //hid_init();
-#endif
-#if USB_MSC_ENABLE
-  if (ui.param[USB_ENABLE]) {
-    USBManager::registerComponent();
-    USBComposite.begin();
-  }
+  hid_init();
 #endif
 
   buzzer_boot_sound();
@@ -93,5 +257,8 @@ void loop() {
     ui_proc();
     buzzer_proc();
     led_proc();
+#if USB_MSC_ENABLE
+    USBManager::poll();  /* 非阻塞轮询 USB 枚举状态 */
+#endif
 }
 

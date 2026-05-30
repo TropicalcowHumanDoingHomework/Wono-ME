@@ -133,15 +133,17 @@
 - 屏幕旋转：0° / 90° / 180° / 270°
 - 黑暗模式 / 白天模式切换
 
-### USB 功能
+### USB 功能（基于 TinyUSB）
 
 | 功能 | 说明 | 默认 |
 |:-----|:-----|:----:|
+| **USB CDC** | 虚拟串口，提供 Serial 调试功能 | 启用 |
 | **USB HID** | 模拟键盘 + 多媒体控制器，旋钮控制音量/亮度，按键发送键值 | 禁用 |
 | **USB MSC** | 大容量存储，Flash 模拟 64KB U 盘 | 禁用 |
 
-> 启用：`config.h` 中设 `HID_ENABLE 1` / `USB_MSC_ENABLE 1`，重新编译烧录，BOOT0/BOOT1 置 0 后重新上电。
-> **HID 额外步骤**：启用后还需在 `WouoUI-128_128-F405.ino` 的 `setup()` 中取消 `//hid_init();` 的注释。
+> 启用：需先安装 [Adafruit TinyUSB](https://github.com/adafruit/Adafruit_TinyUSB_Arduino) 库，
+> 在 `config.h` 中设 `HID_ENABLE 1` / `USB_MSC_ENABLE 1`，重新编译烧录。
+> 三者可同时启用，作为复合USB设备工作。
 
 ### 数据存储
 
@@ -256,7 +258,7 @@ WouoUI-128_128-F405/
 2. 安装 STM32F4 支持包：工具 → 开发板管理器 → 搜索 `STM32`
 3. 安装所需库：
    - [U8g2](https://github.com/olikraus/u8g2) — OLED/LCD 绘图库
-   - [USBComposite](https://github.com/arpruss/USBComposite_stm32f1) — USB 功能（可选）
+   - [Adafruit TinyUSB](https://github.com/adafruit/Adafruit_TinyUSB_Arduino) — USB 复合设备（CDC + MSC + HID，可选）
 4. 准备烧录工具：ST-Link / USB 串口模块 / [STM32 Cube Programmer](https://www.st.com/en/development-tools/stm32cubeprog.html)
 
 ### 编译烧录
