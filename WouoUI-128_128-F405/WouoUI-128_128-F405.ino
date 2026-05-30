@@ -229,6 +229,13 @@ void loop() {
     buzzer_proc();
     led_proc();
 #if USB_MSC_ENABLE
+    if (!ui.param[USB_ENABLE]) {
+        usb_mounted = false;       /* USB 被禁用 → 清除历史成功标志 */
+    }
+    if (ui.param[USB_ENABLE] && !usb_mounted && !usb_poll_active) {
+        usb_poll_active = true;    /* USB 刚被启用 → 启动轮询 */
+        usb_poll_start  = millis();
+    }
     if (usb_poll_active) {
         if (USBManager::poll()) {
             usb_mounted = true;
@@ -238,7 +245,7 @@ void loop() {
         }
     }
     if (usb_mounted) {
-        led_set_green();        /* USB 成功 → 覆盖为绿色（不影响 UI 原有 LED 逻辑） */
+        led_set_green();           /* USB 成功 → 覆盖为绿色 */
     }
 #endif
 }
