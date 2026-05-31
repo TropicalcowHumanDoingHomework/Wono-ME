@@ -16,6 +16,10 @@
 #include "usbd_msc.h"
 #include <string.h>
 #include "usb_debug.h"
+#include "ui_state.h"
+#include "usbd_hid.h"
+
+extern USB_OTG_CORE_HANDLE USB_OTG_dev;
 
 /* ==================== 全局状态 ==================== */
 
@@ -55,7 +59,7 @@ static int8_t storage_is_ready(uint8_t lun)
 static int8_t storage_is_write_protected(uint8_t lun)
 {
     (void)lun;
-    return 0;  /* 未写保护 */
+    return ui.param[USB_WP] ? 1 : 0;
 }
 
 /*
@@ -148,19 +152,34 @@ void USBManager::begin()
     }
     s_first_init = false;
 
-    if (!usb_reg) {
-        registerComponent();
+    w25q_failed = false;
+
+    bool need_msc = ui.param[USB_ENABLE];
+
+    if (need_msc) {
+        if (!usb_reg) {
+            registerComponent();
+        }
+        if (!usb_reg) {
+            w25q_failed = true;
+            usb_poll_timeout = USB_POLL_ERROR_TIMEOUT;
+            usb_pending = true;
+            return;
+        }
+        USBD_STORAGE_fops = &usb_storage_fops;
     }
 
-    if (!usb_reg) {
-        w25q_failed = true;
-        usb_poll_timeout = USB_POLL_ERROR_TIMEOUT;
-        usb_pending = true;
-        return;
+    if (ui.param[HID_ENABLE_SW] && !ui.param[USB_ENABLE]) {
+        usb_debug_set_title("USB HID Init");
+        usbd_hid_reinit();
+    } else if (ui.param[USB_ENABLE] && ui.param[HID_ENABLE_SW]) {
+        usb_debug_set_title("USB Composite Init");
+        usbd_composite_reinit();
+    } else {
+        usb_debug_set_title("USB MSC Init");
+        usbd_msc_reinit();
     }
-
-    USBD_STORAGE_fops = &usb_storage_fops;
-    usbd_msc_reinit();
+    usb_active = true;
     usb_poll_timeout = USB_POLL_TIMEOUT;
     usb_pending = true;
 }
@@ -196,7 +215,15 @@ bool USBManager::poll()
         usb_active = true;
         usb_pending = false;
         usb_debug_set_step(USB_STEP_DONE, USB_STATUS_OK);
-        usb_debug_final(true, "USB MSC Ready", NULL);
+        const char *ready_msg;
+        if (ui.param[HID_ENABLE_SW] && !ui.param[USB_ENABLE]) {
+            ready_msg = "USB HID Ready";
+        } else if (ui.param[USB_ENABLE] && ui.param[HID_ENABLE_SW]) {
+            ready_msg = "USB Composite Ready";
+        } else {
+            ready_msg = "USB MSC Ready";
+        }
+        usb_debug_final(true, ready_msg, NULL);
         return true;
     }
 
@@ -226,7 +253,7 @@ void USBManager::end()
 
 bool USBManager::isEnabled()
 {
-    return usb_active;
+    return usb_active && (USB_OTG_dev.dev.device_status == USB_OTG_CONFIGURED);
 }
 
 bool USBManager::isDirty()

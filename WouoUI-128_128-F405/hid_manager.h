@@ -12,8 +12,8 @@
  *   Report ID 2: Keyboard（6键无冲 + 修饰键）
  *
  * 当前状态：
- * - HID_ENABLE=0（默认）时，所有方法为空操作，不依赖任何USB库
- * - HID_ENABLE=1 需要对应的HID类驱动（usbd_hid），与MSC类似的独立实现
+ * - HID_ENABLE=0 时，所有方法为空操作
+ * - HID_ENABLE=1 时，通过 usbd_hid 类驱动发送真实 HID 报告
  */
 
 /* ==================== Consumer 使用码 ==================== */

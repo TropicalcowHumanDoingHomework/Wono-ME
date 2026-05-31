@@ -68,6 +68,8 @@ static void validate_ui_params() {
   ui.param[ROTATE_SCR] = validate_param(eeprom_ui_params[ROTATE_SCR], 0, 3, ui.param[ROTATE_SCR]);
   ui.param[BUZ_VOL] = validate_param(eeprom_ui_params[BUZ_VOL], 0, 4, ui.param[BUZ_VOL]);
   ui.param[USB_ENABLE] = validate_param(eeprom_ui_params[USB_ENABLE], 0, 1, ui.param[USB_ENABLE]);
+  ui.param[USB_WP] = validate_param(eeprom_ui_params[USB_WP], 0, 1, ui.param[USB_WP]);
+  ui.param[HID_ENABLE_SW] = validate_param(eeprom_ui_params[HID_ENABLE_SW], 0, 1, ui.param[HID_ENABLE_SW]);
   ui.param[WIN_STYLE] = validate_param(eeprom_ui_params[WIN_STYLE], 0, 1, ui.param[WIN_STYLE]);
   ui.param[FADE_MODE] = validate_param(eeprom_ui_params[FADE_MODE], 0, 1, ui.param[FADE_MODE]);
   ui.param[HL_ANI_MODE] = validate_param(eeprom_ui_params[HL_ANI_MODE], 0, 3, ui.param[HL_ANI_MODE]);

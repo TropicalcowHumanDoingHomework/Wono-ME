@@ -29,6 +29,9 @@ extern Menu volt_menu[];
 //设置菜单数组：系统参数配置页面
 extern Menu setting_menu[];
 
+//USB菜单数组：USB存储配置页面
+extern Menu usb_menu[];
+
 //关于本机菜单数组：显示设备信息
 extern Menu about_menu[];
 

@@ -327,14 +327,13 @@ void window_show() {
                     }
                 }
             } else {
-                if (win.bokeh_step >= 2) {
-                    for (uint16_t y = 1; y < 128; y += 2)
-                        for (uint16_t x = 0; x < 16; ++x)
-                            buf_ptr[y * 16 + x] = 0x55;
-                }
                 for (uint16_t y = 0; y < 128; y += 2)
                     for (uint16_t x = 0; x < 16; ++x)
-                        buf_ptr[y * 16 + x] = 0xAA;
+                        buf_ptr[y * 16 + x] &= 0xAA;
+                if (win.bokeh_step >= 2)
+                    for (uint16_t y = 1; y < 128; y += 2)
+                        for (uint16_t x = 0; x < 16; ++x)
+                            buf_ptr[y * 16 + x] &= 0x55;
             }
         }
     }

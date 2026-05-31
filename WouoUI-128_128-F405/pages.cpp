@@ -221,17 +221,22 @@ void list_draw_text_and_check_box(Menu* arr, int i) {
 /********************************* 映射数组 *********************************/
 
 // Setting 页面：菜单项位置 → 参数索引映射
-// 菜单项 1~9 对应的 ParamIndex
 static const uint8_t setting_param_map[] = {
-    0,   // 1: Disp Bri  → DISP_BRI
-    19,  // 2: Dark Mode → DARK_MODE
-    20,  // 3: Rotate Scr → ROTATE_SCR
-    21,  // 4: Buzzer Vol → BUZ_VOL
-    11,  // 5: Btn SPT   → BTN_SPT
-    12,  // 6: Btn LPT   → BTN_LPT
+    0,   // 1: Disp Bri     → DISP_BRI
+    19,  // 2: Dark Mode    → DARK_MODE
+    20,  // 3: Rotate Scr   → ROTATE_SCR
+    21,  // 4: Buzzer Vol   → BUZ_VOL
+    11,  // 5: Btn SPT      → BTN_SPT
+    12,  // 6: Btn LPT      → BTN_LPT
     18,  // 7: Knob Rot Dir → KNOB_DIR
-    22,  // 8: USB Storage → USB_ENABLE
-    0    // 9: [ About ] → 无显示（占位）
+    0    // 8: [ About ]    → 占位
+};
+
+// USB 页面：菜单项位置 → 参数索引映射
+static const uint8_t usb_param_map[] = {
+    22,  // 1: USB Storage   → USB_ENABLE
+    23,  // 2: Write Protect → USB_WP
+    24   // 3: HID Enable    → HID_ENABLE_SW
 };
 
 static const char* hl_ani_mode_items[] = { "Ease", "Spring", "Bounce", "Gravity" };
@@ -441,6 +446,7 @@ void list_rotate_switch() {
             case M_KPF: current_menu = kpf_menu; break;
             case M_VOLT: current_menu = volt_menu; break;
             case M_SETTING: current_menu = setting_menu; break;
+            case M_USB: current_menu = usb_menu; break;
             case M_ABOUT: current_menu = about_menu; break;
         }
         if (!current_menu) return;
@@ -860,7 +866,7 @@ void sleep_proc() {
         TIM12_CCR1 = 0;
         TIM12_CR1 &= ~(1u << 0);
 
-        if (USBManager::isEnabled()) {
+        if (USBManager::isEnabled() && !ui.param[HID_ENABLE_SW]) {
             USBManager::end();
         }
 
@@ -883,8 +889,8 @@ void sleep_proc() {
                 case BTN_ID_CW:
 #if HID_ENABLE
                     switch (knob.param[KNOB_ROT]) {
-                        case KNOB_ROT_VOL: Consumer.press(HIDConsumer::VOLUME_UP); Consumer.release(); break;
-                        case KNOB_ROT_BRI: Consumer.press(HIDConsumer::BRIGHTNESS_UP); Consumer.release(); break;
+                        case KNOB_ROT_VOL: Consumer.press(HIDConsumer::VOLUME_UP); delay(5); Consumer.release(); break;
+                        case KNOB_ROT_BRI: Consumer.press(HIDConsumer::BRIGHTNESS_UP); delay(5); Consumer.release(); break;
                     }
 #endif
                     break;
@@ -892,19 +898,19 @@ void sleep_proc() {
                 case BTN_ID_CC:
 #if HID_ENABLE
                     switch (knob.param[KNOB_ROT]) {
-                        case KNOB_ROT_VOL: Consumer.press(HIDConsumer::VOLUME_DOWN); Consumer.release(); break;
-                        case KNOB_ROT_BRI: Consumer.press(HIDConsumer::BRIGHTNESS_DOWN); Consumer.release(); break;
+                        case KNOB_ROT_VOL: Consumer.press(HIDConsumer::VOLUME_DOWN); delay(5); Consumer.release(); break;
+                        case KNOB_ROT_BRI: Consumer.press(HIDConsumer::BRIGHTNESS_DOWN); delay(5); Consumer.release(); break;
                     }
 #endif
                     break;
 
                 case BTN_ID_SP:
 #if HID_ENABLE
-                    Keyboard.press(knob.param[KNOB_COD]); Keyboard.release(knob.param[KNOB_COD]);
+                    Keyboard.press(knob.param[KNOB_COD]); delay(10); Keyboard.release(knob.param[KNOB_COD]);
 #endif
                     break;
 
-                case BTN_ID_LP: buzzer_exit_sound(); if (ui.param[USB_ENABLE]) { USBManager::begin(); } ui.index = M_MAIN; ui.state = S_LAYER_IN; u8g2.setPowerSave(0); ui.sleep = false; break;
+                case BTN_ID_LP: buzzer_exit_sound(); if (ui.param[USB_ENABLE] || ui.param[HID_ENABLE_SW]) { USBManager::begin(); } ui.index = M_MAIN; ui.state = S_LAYER_IN; u8g2.setPowerSave(0); ui.sleep = false; break;
             }
         }
     }
@@ -938,8 +944,9 @@ void main_proc() {
                     case 0: ui.index = M_SLEEP; ui.state = S_LAYER_OUT; break;
                     case 1: ui.index = M_EDITOR; ui.state = S_LAYER_IN; break;
                     case 2: ui.index = M_VOLT; ui.state = S_LAYER_IN; break;
-                    case 3: ui.index = M_ANIMITION; ui.state = S_LAYER_IN; break;
-                    case 4: ui.index = M_SETTING; ui.state = S_LAYER_IN; break;
+                    case 3: ui.index = M_USB; ui.state = S_LAYER_IN; break;
+                    case 4: ui.index = M_ANIMITION; ui.state = S_LAYER_IN; break;
+                    case 5: ui.index = M_SETTING; ui.state = S_LAYER_IN; break;
                 }
                 break;
         }
@@ -1035,6 +1042,12 @@ void setting_param_init() {
     check_box_v_init(ui.param);
     check_box_m_init(ui.param);
     check_box.map = (uint8_t*)setting_param_map;
+}
+
+void usb_param_init() {
+    check_box_v_init(ui.param);
+    check_box_m_init(ui.param);
+    check_box.map = (uint8_t*)usb_param_map;
 }
 
 /********************************* 页面主循环函数 *********************************/
@@ -1283,8 +1296,41 @@ void setting_proc() {
                     case 5: window_value_init("Btn SPT", BTN_SPT, &ui.param[BTN_SPT], 255, 0, 1, setting_menu, M_SETTING); break;
                     case 6: window_value_init("Btn LPT", BTN_LPT, &ui.param[BTN_LPT], 255, 0, 1, setting_menu, M_SETTING); break;
                     case 7: check_box_m_select(KNOB_DIR); break;
-                    case 8: check_box_m_select(USB_ENABLE); break;
-                    case 9: ui.index = M_ABOUT; ui.state = S_LAYER_IN; break;
+                    case 8: ui.index = M_ABOUT; ui.state = S_LAYER_IN; break;
+                }
+                break;
+        }
+    }
+}
+
+/*
+ * USB设置页面主循环
+ * 
+ * 显示USB存储配置列表：
+ * - 0：返回主菜单
+ * - 1：USB存储开关
+ * - 2：写保护开关
+ * 
+ * LP（长按）：返回主菜单，选中项重置
+ * SP（短按）：开关项直接切换
+ */
+void usb_proc() {
+    list_show(usb_menu, M_USB);
+    if (btn.pressed) {
+        btn.pressed = false;
+        switch (btn.id) {
+            case BTN_ID_CW:
+            case BTN_ID_CC:
+                list_rotate_switch();
+                break;
+            case BTN_ID_LP:
+                ui.select[ui.layer] = 0;
+            case BTN_ID_SP:
+                switch (ui.select[ui.layer]) {
+                    case 0: ui.index = M_MAIN; ui.state = S_LAYER_OUT; break;
+                    case 1: check_box_m_select(USB_ENABLE); break;
+                    case 2: check_box_m_select(USB_WP); break;
+                    case 3: check_box_m_select(HID_ENABLE_SW); break;
                 }
                 break;
         }
@@ -1332,6 +1378,7 @@ static void init_list_box_params() {
         case M_KRF: current_menu = krf_menu; break;
         case M_KPF: current_menu = kpf_menu; break;
         case M_VOLT: current_menu = volt_menu; break;
+        case M_USB: current_menu = usb_menu; break;
         case M_SETTING: current_menu = setting_menu; break;
         case M_ABOUT: current_menu = about_menu; break;
     }
@@ -1401,6 +1448,7 @@ void layer_init_in() {
         case M_KRF: krf_param_init(); break;
         case M_KPF: kpf_param_init(); break;
         case M_VOLT: volt_param_init(); break;
+        case M_USB: usb_param_init(); break;
         case M_SETTING: setting_param_init(); break;
         case M_ABOUT: about_param_init(); break;
     }
@@ -1492,6 +1540,7 @@ void ui_proc() {
                 case M_KRF: krf_proc(); break;
                 case M_KPF: kpf_proc(); break;
                 case M_VOLT: volt_proc(); break;
+                case M_USB: usb_proc(); break;
                 case M_SETTING: setting_proc(); break;
                 case M_ABOUT: about_proc(); break;
             }

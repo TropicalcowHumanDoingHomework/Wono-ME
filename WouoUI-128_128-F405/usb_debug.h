@@ -65,6 +65,7 @@ void usb_debug_read_regs(usb_regs_t *regs);
 /* 初始化阶段步骤控制 */
 void usb_debug_set_step(int step, int status);
 void usb_debug_set_msg(const char *msg);
+void usb_debug_set_title(const char *title);
 void usb_debug_refresh(void);
 void usb_debug_reset(void);
 

@@ -8,11 +8,15 @@
  *
  * 当前状态：
  * - HID_ENABLE=0：所有USB发送操作被跳过，仅更新内部状态
- * - HID_ENABLE=1：需要对应的HID类驱动（usbd_hid）实现后启用
+ * - HID_ENABLE=1：通过usbd_hid类驱动发送真实HID报告
  */
 
 #include "hid_manager.h"
 #include <string.h>
+
+#if HID_ENABLE
+#include "usbd_hid.h"
+#endif
 
 /* ==================== HID报告描述符 ==================== */
 
@@ -87,10 +91,8 @@ void HIDConsumer::press(uint16_t usage)
 {
     _usage = usage;
 #if HID_ENABLE
-    /* Consumer报告格式: [ReportID=1][Usage低字节][Usage高字节]
-     * TODO: 实现HID类驱动后，通过USBD_HID_SendReport发送 */
-    // uint8_t report[3] = {0x01, (uint8_t)(usage & 0xFF), (uint8_t)(usage >> 8)};
-    // HID发送report...
+    uint8_t report[3] = {0x01, (uint8_t)(usage & 0xFF), (uint8_t)(usage >> 8)};
+    usbd_hid_send_report(report, 3);
 #endif
 }
 
@@ -98,9 +100,8 @@ void HIDConsumer::release()
 {
     _usage = 0;
 #if HID_ENABLE
-    /* TODO: 发送usage=0的释放报告 */
-    // uint8_t report[3] = {0x01, 0x00, 0x00};
-    // HID发送report...
+    uint8_t report[3] = {0x01, 0x00, 0x00};
+    usbd_hid_send_report(report, 3);
 #endif
 }
 
@@ -180,15 +181,14 @@ void HIDKeyboard::releaseAll()
 void HIDKeyboard::_send_report()
 {
 #if HID_ENABLE
-    /* TODO: 实现HID类驱动后，通过USBD_HID_SendReport发送 */
-    // uint8_t report[9];
-    // report[0] = 0x02;
-    // report[1] = _modifier;
-    // report[2] = 0x00;
-    // memcpy(&report[3], _keys, 6);
-    // HID发送report...
+    uint8_t report[9];
+    report[0] = 0x02;
+    report[1] = _modifier;
+    report[2] = 0x00;
+    memcpy(&report[3], _keys, 6);
+    usbd_hid_send_report(report, 9);
 #else
-    (void)_modifier;  /* 未使用时消除警告 */
+    (void)_modifier;
 #endif
 }
 

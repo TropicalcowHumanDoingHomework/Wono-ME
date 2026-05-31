@@ -34,6 +34,7 @@ static const char *step_names[USB_STEP_TOTAL] = {
 /* ==================== 状态缓存 ==================== */
 static int step_status[USB_STEP_TOTAL];
 static char status_msg[32];
+static char debug_title[32] = "USB MSC Init";
 static bool final_shown = false;
 
 void usb_debug_reset(void)
@@ -48,6 +49,12 @@ void usb_debug_reset(void)
 void usb_debug_mark_done(void)
 {
     final_shown = true;
+}
+
+void usb_debug_set_title(const char *title)
+{
+    strncpy(debug_title, title, sizeof(debug_title) - 1);
+    debug_title[sizeof(debug_title) - 1] = '\0';
 }
 
 void usb_debug_set_step(int step, int status)
@@ -109,7 +116,7 @@ void usb_debug_refresh(void)
     do {
         /* 标题 */
         u8g2.setFont(u8g2_font_helvB08_tr);
-        u8g2.drawStr(2, 12, "USB MSC Init");
+        u8g2.drawStr(2, 12, debug_title);
 
         /* 步骤列表 */
         u8g2.setFont(u8g2_font_helvR08_tr);

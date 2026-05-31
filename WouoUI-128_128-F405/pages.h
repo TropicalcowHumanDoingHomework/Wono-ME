@@ -92,6 +92,9 @@ void volt_proc();
 //设置处理函数：显示和控制系统设置页面
 void setting_proc();
 
+//USB设置处理函数：显示和控制USB存储配置页面
+void usb_proc();
+
 //关于页面处理函数：显示和控制关于本机页面
 void about_proc();
 
@@ -139,5 +142,8 @@ void kpf_param_init();
 
 //设置页面初始化：绑定设置页面的参数和复选框
 void setting_param_init();
+
+//USB页面初始化：绑定USB页面的参数和复选框
+void usb_param_init();
 
 #endif

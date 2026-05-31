@@ -69,6 +69,8 @@ void ui_param_init() {
     ui.param[ROTATE_SCR] = 0;      //屏幕旋转：0=正常
     ui.param[BUZ_VOL] = 2;         //嗡鸣器音量：0~4
     ui.param[USB_ENABLE] = 0;      //USB存储开关
+    ui.param[USB_WP] = 0;          //USB写保护：0可写
+    ui.param[HID_ENABLE_SW] = 1;   //HID开关：默认开启
     ui.param[WIN_STYLE] = 0;       //弹窗动画样式：0=简单滑动
     ui.param[FADE_MODE] = 0;       //消失动画模式：0=棋盘格
     ui.param[HL_ANI_MODE] = 0;     //高亮条动画模式：0=Ease
@@ -100,14 +102,15 @@ void ui_param_init() {
 void ui_init() {
     ui.index = M_MAIN;      //启动时进入主菜单
     ui.state = S_LAYER_IN;  //触发层级初始化，调用tile_param_init设置动画初始值
-    ui.num[M_MAIN] = 5;
+    ui.num[M_MAIN] = 6;
     ui.num[M_ANIMITION] = 21;
     ui.num[M_EDITOR] = 12;
     ui.num[M_KNOB] = 3;
     ui.num[M_KRF] = 7;
     ui.num[M_KPF] = 82;
     ui.num[M_VOLT] = 10;
-    ui.num[M_SETTING] = 10;
+    ui.num[M_USB] = 4;
+    ui.num[M_SETTING] = 9;
     ui.num[M_ABOUT] = 8;
     list.line_n = DISP_H / LIST_LINE_H;
 }

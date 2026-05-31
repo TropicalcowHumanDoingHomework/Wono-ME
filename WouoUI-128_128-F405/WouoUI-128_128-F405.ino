@@ -74,6 +74,8 @@ static uint32_t usb_poll_start  = 0;
 static bool     usb_poll_active = false;
 static bool     usb_mounted     = false;
 static bool     prev_usb_enable = false;
+static bool     prev_usb_wp     = false;
+static bool     prev_hid_enable = false;
 #endif
 
 /* ==================== 硬件早期初始化 ==================== */
@@ -216,7 +218,9 @@ void setup() {
   /* ================================================= */
 
 #if USB_MSC_ENABLE
-  prev_usb_enable = ui.param[USB_ENABLE];
+  prev_usb_enable = false;
+  prev_usb_wp     = false;
+  prev_hid_enable = false;
 #endif
 
   btn_init();
@@ -229,44 +233,84 @@ void setup() {
 }
 
 void loop() {
+#if USB_MSC_ENABLE
+    {
+        bool usb_should_run = ui.param[USB_ENABLE] || ui.param[HID_ENABLE_SW];
+        bool was_running     = prev_usb_enable || prev_hid_enable;
+
+        if (!usb_should_run) {
+            if (was_running) {
+                USBManager::end();
+            }
+            usb_mounted = false;
+            usb_poll_active = false;
+        } else {
+            if (!was_running) {
+                USBManager::begin();
+            }
+            if (!USBManager::isEnabled()) {
+                usb_mounted = false;
+            }
+        }
+
+        if (usb_should_run && !usb_mounted && !usb_poll_active) {
+            usb_poll_active = true;
+            usb_poll_start  = millis();
+        }
+        if (usb_poll_active) {
+            USBManager::poll();
+            if (USBManager::isEnabled()) {
+                usb_mounted = true;
+                usb_poll_active = false;
+            } else if (millis() - usb_poll_start > 20000) {
+                usb_poll_active = false;
+            }
+        }
+    }
+#endif
+
     btn_scan();
     ui_proc();
     buzzer_proc();
     led_proc();
-#if USB_MSC_ENABLE
-    if (!ui.param[USB_ENABLE]) {
-        if (prev_usb_enable) {
-            USBManager::end();
-        }
-        usb_mounted = false;
-        usb_poll_active = false;
-    } else {
-        if (!prev_usb_enable) {
-            USBManager::begin();
-        }
-        if (!USBManager::isEnabled()) {
-            usb_mounted = false;
-        }
-    }
-    prev_usb_enable = ui.param[USB_ENABLE];
 
-    if (ui.param[USB_ENABLE] && !usb_mounted && !usb_poll_active) {
-        usb_poll_active = true;
-        usb_poll_start  = millis();
-    }
-    if (usb_poll_active) {
-        if (USBManager::poll()) {
-            usb_mounted = true;
+#if USB_MSC_ENABLE
+    {
+        bool param_changed = (ui.param[USB_ENABLE]    != prev_usb_enable)
+                          || (ui.param[USB_WP]        != prev_usb_wp)
+                          || (ui.param[HID_ENABLE_SW] != prev_hid_enable);
+
+        if (usb_mounted && param_changed) {
+            USBManager::end();
+            usb_mounted = false;
             usb_poll_active = false;
-        } else if (millis() - usb_poll_start > 20000) {
-            usb_poll_active = false;
+            USBManager::begin();
+            usb_poll_active = true;
+            usb_poll_start = millis();
         }
-    }
-    if (!ui.sleep) {
-        if (usb_mounted) {
-            led_set_green();
-        } else {
-            led_set_red();
+        prev_usb_enable = ui.param[USB_ENABLE];
+        prev_usb_wp     = ui.param[USB_WP];
+        prev_hid_enable = ui.param[HID_ENABLE_SW];
+
+        if (usb_poll_active) {
+            USBManager::poll();
+            if (USBManager::isEnabled()) {
+                usb_mounted = true;
+                usb_poll_active = false;
+            } else if (millis() - usb_poll_start > 20000) {
+                usb_poll_active = false;
+            }
+        }
+        if (!ui.sleep) {
+            if (usb_mounted) {
+                if (ui.param[USB_WP] && ui.param[USB_ENABLE]) {
+                    led_set_yellow();
+                } else {
+                    led_set_green();
+                }
+            } else {
+                led_set_red();
+            }
         }
     }
 #endif

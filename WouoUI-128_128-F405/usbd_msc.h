@@ -102,4 +102,10 @@ bool usbd_msc_is_mounted();
  */
 void usbd_msc_disconnect();
 
+/*
+ * 复合设备重初始化（MSC + HID）
+ * HID_ENABLE=0 时等同于 usbd_msc_reinit()
+ */
+void usbd_composite_reinit();
+
 #endif

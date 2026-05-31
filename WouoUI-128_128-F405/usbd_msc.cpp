@@ -22,6 +22,10 @@
 
 #if USB_MSC_ENABLE
 
+#if HID_ENABLE
+#include "usbd_hid.h"
+#endif
+
 /* ==================== 核心库头文件 ==================== */
 extern "C" {
 #include <STM32_USB_Device_Library/Core/inc/usbd_core.h>
@@ -83,6 +87,11 @@ typedef struct {
 static MSC_BOT_CBW_TypeDef bot_cbw;
 static MSC_BOT_CSW_TypeDef bot_csw;
 static uint8_t bot_state = BOT_STATE_IDLE;
+
+static uint8_t scsi_sense_key  = 0;
+static uint8_t scsi_sense_asc  = 0;
+static uint8_t scsi_sense_ascq = 0;
+static bool    scsi_cmd_failed = false;
 
 /* 读写缓冲区（512B — 一个扇区） */
 static uint8_t scsi_buf[512];
@@ -148,7 +157,13 @@ static void bot_process_cbw(USB_OTG_CORE_HANDLE *pdev)
     }
 
     /* 处理SCSI命令 */
+    scsi_cmd_failed = false;
     scsi_process_cmd(bot_cbw.bLUN, bot_cbw.CB, bot_cbw.bCBLength, &data_len);
+
+    if (scsi_cmd_failed) {
+        bot_send_csw(pdev, CSW_CMD_FAILED);
+        return;
+    }
 
     if (bot_state == BOT_STATE_ERROR) {
         bot_abort(pdev);
@@ -184,10 +199,18 @@ static void bot_process_cbw(USB_OTG_CORE_HANDLE *pdev)
 
 /* ==================== SCSI 命令处理 ==================== */
 
+static void scsi_sense_save(uint8_t key, uint8_t asc, uint8_t ascq)
+{
+    scsi_sense_key  = key;
+    scsi_sense_asc  = asc;
+    scsi_sense_ascq = ascq;
+    scsi_cmd_failed = true;
+}
+
 static void scsi_sense_fail(uint8_t key, uint8_t asc, uint8_t ascq)
 {
+    scsi_sense_save(key, asc, ascq);
     bot_state = BOT_STATE_ERROR;
-    (void)key; (void)asc; (void)ascq;
 }
 
 static void scsi_process_cmd(uint8_t lun, const uint8_t *cb, uint8_t cb_len, uint32_t *data_len)
@@ -204,17 +227,18 @@ static void scsi_process_cmd(uint8_t lun, const uint8_t *cb, uint8_t cb_len, uin
 
     case SCSI_TEST_UNIT_READY:
         if (USBD_STORAGE_fops->IsReady(lun) != 0) {
-            scsi_sense_fail(0x02, 0x3A, 0x00);
+            scsi_sense_save(0x02, 0x3A, 0x00);
         }
         break;
 
     case SCSI_REQUEST_SENSE:
         memset(scsi_buf, 0, 18);
         scsi_buf[0] = 0x70;
-        scsi_buf[2] = 0x02;
+        scsi_buf[2] = scsi_sense_key  ? scsi_sense_key  : 0x02;
         scsi_buf[7] = 10;
-        scsi_buf[12] = 0x3A;
-        scsi_buf[13] = 0x00;
+        scsi_buf[12] = scsi_sense_asc  ? scsi_sense_asc  : 0x3A;
+        scsi_buf[13] = scsi_sense_ascq ? scsi_sense_ascq : 0x00;
+        scsi_cmd_failed = false;
         *data_len = 18;
         break;
 
@@ -230,22 +254,38 @@ static void scsi_process_cmd(uint8_t lun, const uint8_t *cb, uint8_t cb_len, uin
     case SCSI_MODE_SENSE6:
         memset(scsi_buf, 0, 4);
         scsi_buf[0] = 3;
-        scsi_buf[2] = 0x00;       /* WP=0: 未写保护 */
+        if (USBD_STORAGE_fops->IsWriteProtected(lun)) {
+            scsi_buf[2] = 0x80;
+        }
         *data_len = 4;
         break;
 
     case SCSI_MODE_SENSE10:
         memset(scsi_buf, 0, 8);
         scsi_buf[0] = 0; scsi_buf[1] = 6;
-        scsi_buf[3] = 0x00;       /* WP=0: 未写保护 */
+        if (USBD_STORAGE_fops->IsWriteProtected(lun)) {
+            scsi_buf[3] = 0x80;
+        }
         *data_len = 8;
         break;
 
-    case SCSI_READ_FORMAT_CAP:
+    case SCSI_READ_FORMAT_CAP: {
+        uint32_t blk_num = 0, blk_size_val = 512;
+        USBD_STORAGE_fops->GetCapacity(lun, &blk_num, &blk_size_val);
+        uint32_t last_blk = blk_num - 1;
         memset(scsi_buf, 0, 12);
         scsi_buf[3] = 8;
+        scsi_buf[4] = (uint8_t)(last_blk >> 24);
+        scsi_buf[5] = (uint8_t)(last_blk >> 16);
+        scsi_buf[6] = (uint8_t)(last_blk >> 8);
+        scsi_buf[7] = (uint8_t)(last_blk);
+        scsi_buf[8] = 0x02;
+        scsi_buf[9]  = (uint8_t)(blk_size_val >> 16);
+        scsi_buf[10] = (uint8_t)(blk_size_val >> 8);
+        scsi_buf[11] = (uint8_t)(blk_size_val);
         *data_len = 12;
         break;
+    }
 
     case SCSI_READ_CAPACITY10: {
         uint32_t blk_num = 0, blk_size = 512;
@@ -491,22 +531,9 @@ static uint8_t *msc_get_other_cfg_desc(uint8_t speed, uint16_t *length)
     return msc_cfg_desc;
 }
 
-/* ==================== MSC 类回调结构体（13成员，用于HS） ==================== */
+/* ==================== MSC 类回调结构体（12成员，用于HS） ==================== */
 
-static struct {
-    uint8_t  (*Init)         (void *pdev, uint8_t cfgidx);
-    uint8_t  (*DeInit)       (void *pdev, uint8_t cfgidx);
-    uint8_t  (*Setup)        (void *pdev, USB_SETUP_REQ *req);
-    uint8_t  (*EP0_TxSent)   (void *pdev);
-    uint8_t  (*EP0_RxReady)  (void *pdev);
-    uint8_t  (*DataIn)       (void *pdev, uint8_t epnum);
-    uint8_t  (*DataOut)      (void *pdev, uint8_t epnum);
-    uint8_t  (*SOF)          (void *pdev);
-    uint8_t  (*IsoINIncomplete)(void *pdev);
-    uint8_t  (*IsoOUTIncomplete)(void *pdev);
-    uint8_t  *(*GetConfigDescriptor)(uint8_t speed, uint16_t *length);
-    uint8_t  *(*GetOtherConfigDescriptor)(uint8_t speed, uint16_t *length);
-} MSC_cb = {
+USBD_Class_cb_TypeDef MSC_cb = {
     msc_init,
     msc_deinit,
     msc_setup,
@@ -1191,5 +1218,367 @@ void usbd_msc_disconnect()
     hspi_clk_disable();
     hspi_gpio_deinit();
 }
+
+/* ==================== 复合设备 MSC + HID ==================== */
+
+#if HID_ENABLE
+
+/* MSC接口描述符 */
+static const uint8_t msc_iface_desc[23] = {
+    /* 接口描述符 */
+    0x09, 0x04, 0x00, 0x00, 0x02, 0x08, 0x06, 0x50, 0x00,
+    /* Endpoint OUT */
+    0x07, 0x05, MSC_EP_OUT, 0x02,
+    (uint8_t)(MSC_EP_SIZE & 0xFF), (uint8_t)((MSC_EP_SIZE >> 8) & 0xFF),
+    0x00,
+    /* Endpoint IN */
+    0x07, 0x05, MSC_EP_IN, 0x02,
+    (uint8_t)(MSC_EP_SIZE & 0xFF), (uint8_t)((MSC_EP_SIZE >> 8) & 0xFF),
+    0x00,
+};
+
+/* HID接口描述符 */
+static const uint8_t hid_iface_desc[25] = {
+    /* 接口描述符 */
+    0x09, 0x04, 0x01, 0x00, 0x01,
+    0x03,        /* bInterfaceClass = HID */
+    0x00,        /* bInterfaceSubClass = 0 (无子类) */
+    0x00,        /* bInterfaceProtocol = 0 (无协议) */
+    0x00,
+    /* HID 描述符 */
+    0x09, 0x21, 0x10, 0x01, 0x00, 0x01,
+    0x22,        /* bDescriptorType = HID_REPORT_DESC */
+    HID_REPORT_DESC_LEN & 0xFF, (HID_REPORT_DESC_LEN >> 8) & 0xFF,
+    /* Endpoint IN (中断) */
+    0x07, 0x05, HID_EP_IN, 0x03,
+    (uint8_t)(HID_EP_SIZE & 0xFF), (uint8_t)((HID_EP_SIZE >> 8) & 0xFF),
+    HID_HS_BINTERVAL,
+};
+
+/* 复合配置描述符: [配置头 9] + [MSC接口 23] + [HID接口 25] = 57 */
+#define COMPOSITE_CFG_DESC_SIZE  57
+
+static uint8_t composite_cfg_desc[COMPOSITE_CFG_DESC_SIZE] = {
+    0x09, 0x02,
+    (uint8_t)(COMPOSITE_CFG_DESC_SIZE & 0xFF),
+    (uint8_t)((COMPOSITE_CFG_DESC_SIZE >> 8) & 0xFF),
+    0x02,
+    0x01, 0x00, 0xC0, 0x32,
+};
+
+/* ==================== 复合类回调 ==================== */
+
+static uint8_t composite_init(void *pdev, uint8_t cfgidx)
+{
+    if (MSC_cb.Init)       MSC_cb.Init(pdev, cfgidx);
+    if (USBD_HID_cb.Init)  USBD_HID_cb.Init(pdev, cfgidx);
+    return 0;
+}
+
+static uint8_t composite_deinit(void *pdev, uint8_t cfgidx)
+{
+    if (MSC_cb.DeInit)       MSC_cb.DeInit(pdev, cfgidx);
+    if (USBD_HID_cb.DeInit)  USBD_HID_cb.DeInit(pdev, cfgidx);
+    return 0;
+}
+
+static uint8_t composite_setup(void *pdev, USB_SETUP_REQ *req)
+{
+    if ((req->bmRequest & USB_REQ_RECIPIENT_MASK) == USB_REQ_RECIPIENT_INTERFACE) {
+        uint8_t iface = (uint8_t)(req->wIndex & 0xFF);
+        if (iface == 0) {
+            if (MSC_cb.Setup) return MSC_cb.Setup(pdev, req);
+        } else if (iface == 1) {
+            if (USBD_HID_cb.Setup) return USBD_HID_cb.Setup(pdev, req);
+        }
+    } else {
+        if (MSC_cb.Setup) return MSC_cb.Setup(pdev, req);
+    }
+    return USBD_FAIL;
+}
+
+static uint8_t composite_data_in(void *pdev, uint8_t epnum)
+{
+    if (epnum == (MSC_EP_IN & 0x7F)) {
+        if (MSC_cb.DataIn) return MSC_cb.DataIn(pdev, epnum);
+    }
+    if (epnum == (HID_EP_IN & 0x7F)) {
+        if (USBD_HID_cb.DataIn) return USBD_HID_cb.DataIn(pdev, epnum);
+    }
+    return 0;
+}
+
+static uint8_t composite_data_out(void *pdev, uint8_t epnum)
+{
+    if (epnum == (MSC_EP_OUT & 0x7F)) {
+        if (MSC_cb.DataOut) return MSC_cb.DataOut(pdev, epnum);
+    }
+    return 0;
+}
+
+static uint8_t *composite_get_cfg_desc(uint8_t speed, uint16_t *length)
+{
+    (void)speed;
+    *length = COMPOSITE_CFG_DESC_SIZE;
+    return composite_cfg_desc;
+}
+
+static uint8_t *composite_get_other_cfg_desc(uint8_t speed, uint16_t *length)
+{
+    (void)speed;
+    *length = COMPOSITE_CFG_DESC_SIZE;
+    return composite_cfg_desc;
+}
+
+static USBD_Class_cb_TypeDef composite_cb = {
+    .Init               = composite_init,
+    .DeInit             = composite_deinit,
+    .Setup              = composite_setup,
+    .EP0_TxSent         = NULL,
+    .EP0_RxReady        = NULL,
+    .DataIn             = composite_data_in,
+    .DataOut            = composite_data_out,
+    .SOF                = NULL,
+    .IsoINIncomplete    = NULL,
+    .IsoOUTIncomplete   = NULL,
+    .GetConfigDescriptor = composite_get_cfg_desc,
+    .GetOtherConfigDescriptor = composite_get_other_cfg_desc,
+};
+
+void usbd_composite_reinit()
+{
+    #define DBG_STEP_DONE(s) do { usb_debug_set_step((s), USB_STATUS_OK); usb_debug_refresh(); delay(50); } while(0)
+
+    hspi_gpio_init();
+    hspi_clk_enable();
+    delay(10);
+    usb_debug_set_step(USB_STEP_CLOCK, USB_STATUS_OK);
+    usb_debug_set_step(USB_STEP_GPIO, USB_STATUS_OK);
+    usb_debug_refresh();
+    delay(50);
+
+    hspi_phy_power_up();
+    DBG_STEP_DONE(USB_STEP_PHY);
+
+    memcpy(composite_cfg_desc + 9, msc_iface_desc, sizeof(msc_iface_desc));
+    memcpy(composite_cfg_desc + 9 + sizeof(msc_iface_desc),
+           hid_iface_desc, sizeof(hid_iface_desc));
+
+    USB_OTG_dev.cfg.phy_itface = 1;
+    USB_OTG_dev.dev.class_cb = (USBD_Class_cb_TypeDef *)&composite_cb;
+    USB_OTG_dev.dev.usr_cb = &USR_cb;
+    USB_OTG_dev.dev.usr_device = &USR_desc;
+
+    USB_OTG_dev.cfg.dma_enable = 0;
+    DCD_Init(&USB_OTG_dev, USB_OTG_HS_CORE_ID);
+
+    /* DCD_Init → CoreReset 清除了 DCTL.SDIS → 重新断开 */
+    {
+        volatile uint32_t *dctl = (volatile uint32_t *)(USB_OTG_HS_BASE + 0x804);
+        *dctl |= (1u << 1);
+        __asm volatile ("dsb");
+    }
+
+    DBG_STEP_DONE(USB_STEP_DCD);
+
+    /* EP0 初始化 */
+    DCD_EP_Open(&USB_OTG_dev, 0x00, 64, USB_OTG_EP_CONTROL);
+    DCD_EP_Open(&USB_OTG_dev, 0x80, 64, USB_OTG_EP_CONTROL);
+    DCD_EP_PrepareRx(&USB_OTG_dev, 0x00,
+                     USB_OTG_dev.dev.setup_packet, 8);
+    {
+        volatile uint32_t *doepmsk  = (volatile uint32_t *)(USB_OTG_HS_BASE + 0x80C);
+        volatile uint32_t *daintmsk = (volatile uint32_t *)(USB_OTG_HS_BASE + 0x818);
+        *doepmsk  |= (1u << 3);
+        *daintmsk |= (1u << 0) | (1u << 16);
+        __asm volatile ("dsb");
+    }
+
+    /* SLAVE 模式 */
+    {
+        volatile uint32_t *gahbcfg = (volatile uint32_t *)(USB_OTG_HS_BASE + 0x008);
+        *gahbcfg &= ~((1u << 5) | (0xFu << 1));
+        *gahbcfg |=  (2u << 1);
+        __asm volatile ("dsb");
+    }
+
+    /* GCCFG: 重新唤醒 PHY */
+    {
+        volatile uint32_t *gccfg = (volatile uint32_t *)(USB_OTG_HS_BASE + 0x038);
+        *gccfg &= ~(1u << 16);
+        *gccfg |=  (1u << 21);
+        *gccfg &= ~((1u << 19) | (1u << 18));
+        __asm volatile ("dsb");
+        delay(5);
+    }
+
+    DBG_STEP_DONE(USB_STEP_VBUS);
+
+    USB_OTG_InitDevSpeed(&USB_OTG_dev, USB_OTG_SPEED_PARAM_HIGH);
+    USB_OTG_dev.cfg.speed = USB_OTG_SPEED_HIGH;
+    USB_OTG_dev.cfg.mps   = 512;
+
+    /* FIFO 配置: RX=512, TX0(EP0)=64, TX1(MSC EP1)=192, TX2(HID EP2)=192 */
+    #define HS_RX_FIFO_SIZE_C  512
+    #define HS_TX0_FIFO_SIZE_C 64
+    #define HS_TX1_FIFO_SIZE_C 192
+    #define HS_TX2_FIFO_SIZE_C 192
+
+    USB_OTG_WRITE_REG32(&USB_OTG_dev.regs.GREGS->GRXFSIZ, HS_RX_FIFO_SIZE_C);
+
+    USB_OTG_FSIZ_TypeDef fifo;
+    fifo.d32 = 0;
+    fifo.b.depth     = HS_TX0_FIFO_SIZE_C;
+    fifo.b.startaddr = HS_RX_FIFO_SIZE_C;
+    USB_OTG_WRITE_REG32(&USB_OTG_dev.regs.GREGS->DIEPTXF0_HNPTXFSIZ, fifo.d32);
+
+    fifo.b.startaddr += fifo.b.depth;
+    fifo.b.depth      = HS_TX1_FIFO_SIZE_C;
+    USB_OTG_WRITE_REG32(&USB_OTG_dev.regs.GREGS->DIEPTXF[0], fifo.d32);
+
+    fifo.b.startaddr += fifo.b.depth;
+    fifo.b.depth      = HS_TX2_FIFO_SIZE_C;
+    USB_OTG_WRITE_REG32(&USB_OTG_dev.regs.GREGS->DIEPTXF[1], fifo.d32);
+
+    for (int ep = 2; ep < 5; ep++) {
+        fifo.b.startaddr += fifo.b.depth;
+        fifo.b.depth = 0;
+        USB_OTG_WRITE_REG32(&USB_OTG_dev.regs.GREGS->DIEPTXF[ep], fifo.d32);
+    }
+
+    DBG_STEP_DONE(USB_STEP_SPEED);
+
+    /* GUSBCFG */
+    {
+        volatile uint32_t *gusbcfg = (volatile uint32_t *)(USB_OTG_HS_BASE + GUSBCFG_OFFSET);
+        *gusbcfg &= ~((1u << 6) | (1u << 17) | (1u << 22));
+        *gusbcfg &= ~((1u << 21) | (1u << 20));
+        *gusbcfg &= ~(1u << 30);
+        __asm volatile ("dsb");
+    }
+
+    USB_OTG_dev.dev.usr_cb->Init();
+    hspi_nvic_enable();
+    DCD_DevConnect(&USB_OTG_dev);
+    delay(200);
+
+    DBG_STEP_DONE(USB_STEP_CONNECT);
+}
+
+void usbd_hid_reinit()
+{
+    hspi_gpio_init();
+    hspi_clk_enable();
+    delay(10);
+    usb_debug_set_step(USB_STEP_CLOCK, USB_STATUS_OK);
+    usb_debug_set_step(USB_STEP_GPIO, USB_STATUS_OK);
+    usb_debug_refresh();
+    delay(50);
+
+    hspi_phy_power_up();
+    DBG_STEP_DONE(USB_STEP_PHY);
+
+    USB_OTG_dev.cfg.phy_itface = 1;
+    USB_OTG_dev.dev.class_cb = (USBD_Class_cb_TypeDef *)&USBD_HID_cb;
+    USB_OTG_dev.dev.usr_cb = &USR_cb;
+    USB_OTG_dev.dev.usr_device = &USR_desc;
+
+    USB_OTG_dev.cfg.dma_enable = 0;
+    DCD_Init(&USB_OTG_dev, USB_OTG_HS_CORE_ID);
+
+    {
+        volatile uint32_t *dctl = (volatile uint32_t *)(USB_OTG_HS_BASE + 0x804);
+        *dctl |= (1u << 1);
+        __asm volatile ("dsb");
+    }
+
+    DBG_STEP_DONE(USB_STEP_DCD);
+
+    DCD_EP_Open(&USB_OTG_dev, 0x00, 64, USB_OTG_EP_CONTROL);
+    DCD_EP_Open(&USB_OTG_dev, 0x80, 64, USB_OTG_EP_CONTROL);
+    DCD_EP_PrepareRx(&USB_OTG_dev, 0x00,
+                     USB_OTG_dev.dev.setup_packet, 8);
+    {
+        volatile uint32_t *doepmsk  = (volatile uint32_t *)(USB_OTG_HS_BASE + 0x80C);
+        volatile uint32_t *daintmsk = (volatile uint32_t *)(USB_OTG_HS_BASE + 0x818);
+        *doepmsk  |= (1u << 3);
+        *daintmsk |= (1u << 0) | (1u << 16);
+        __asm volatile ("dsb");
+    }
+
+    {
+        volatile uint32_t *gahbcfg = (volatile uint32_t *)(USB_OTG_HS_BASE + 0x008);
+        *gahbcfg &= ~((1u << 5) | (0xFu << 1));
+        *gahbcfg |=  (2u << 1);
+        __asm volatile ("dsb");
+    }
+
+    {
+        volatile uint32_t *gccfg = (volatile uint32_t *)(USB_OTG_HS_BASE + 0x038);
+        *gccfg &= ~(1u << 16);
+        *gccfg |=  (1u << 21);
+        *gccfg &= ~((1u << 19) | (1u << 18));
+        __asm volatile ("dsb");
+        delay(5);
+    }
+
+    DBG_STEP_DONE(USB_STEP_VBUS);
+
+    USB_OTG_InitDevSpeed(&USB_OTG_dev, USB_OTG_SPEED_PARAM_HIGH);
+    USB_OTG_dev.cfg.speed = USB_OTG_SPEED_HIGH;
+    USB_OTG_dev.cfg.mps   = 512;
+
+    #define HS_RX_FIFO_SIZE_HID  128
+    #define HS_TX0_FIFO_SIZE_HID 64
+    #define HS_TX2_FIFO_SIZE_HID 64
+
+    USB_OTG_WRITE_REG32(&USB_OTG_dev.regs.GREGS->GRXFSIZ, HS_RX_FIFO_SIZE_HID);
+
+    USB_OTG_FSIZ_TypeDef fifo;
+    fifo.d32 = 0;
+    fifo.b.depth     = HS_TX0_FIFO_SIZE_HID;
+    fifo.b.startaddr = HS_RX_FIFO_SIZE_HID;
+    USB_OTG_WRITE_REG32(&USB_OTG_dev.regs.GREGS->DIEPTXF0_HNPTXFSIZ, fifo.d32);
+
+    fifo.b.startaddr += fifo.b.depth;
+    fifo.b.depth      = 0;
+    USB_OTG_WRITE_REG32(&USB_OTG_dev.regs.GREGS->DIEPTXF[0], fifo.d32);
+
+    fifo.b.startaddr += fifo.b.depth;
+    fifo.b.depth      = HS_TX2_FIFO_SIZE_HID;
+    USB_OTG_WRITE_REG32(&USB_OTG_dev.regs.GREGS->DIEPTXF[1], fifo.d32);
+
+    for (int ep = 2; ep < 5; ep++) {
+        fifo.b.startaddr += fifo.b.depth;
+        fifo.b.depth = 0;
+        USB_OTG_WRITE_REG32(&USB_OTG_dev.regs.GREGS->DIEPTXF[ep], fifo.d32);
+    }
+
+    DBG_STEP_DONE(USB_STEP_SPEED);
+
+    {
+        volatile uint32_t *gusbcfg = (volatile uint32_t *)(USB_OTG_HS_BASE + GUSBCFG_OFFSET);
+        *gusbcfg &= ~((1u << 6) | (1u << 17) | (1u << 22));
+        *gusbcfg &= ~((1u << 21) | (1u << 20));
+        *gusbcfg &= ~(1u << 30);
+        __asm volatile ("dsb");
+    }
+
+    USB_OTG_dev.dev.usr_cb->Init();
+    hspi_nvic_enable();
+    DCD_DevConnect(&USB_OTG_dev);
+    delay(200);
+
+    DBG_STEP_DONE(USB_STEP_CONNECT);
+}
+
+#else
+
+void usbd_composite_reinit()
+{
+    usbd_msc_reinit();
+}
+
+#endif /* HID_ENABLE */
 
 #endif /* USB_MSC_ENABLE */

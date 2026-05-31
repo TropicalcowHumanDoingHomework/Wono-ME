@@ -96,7 +96,7 @@
  */
 #define UI_DEPTH 20
 #define UI_MNUMB 20
-#define UI_PARAM 28
+#define UI_PARAM 30
 
 /************************************* 磁贴配置 *************************************/
 
@@ -278,6 +278,7 @@ enum PageIndex {
           M_KRF,
           M_KPF,
       M_VOLT,
+      M_USB,
       M_SETTING,
         M_ABOUT,
 };
@@ -347,6 +348,8 @@ enum ParamIndex {
     ROTATE_SCR,   //屏幕旋转：0=正常 1=右旋90° 2=180° 3=右旋270°
     BUZ_VOL,      //嗡鸣器音量：0~4
     USB_ENABLE,   //USB存储开关：0禁用，1启用
+    USB_WP,       //USB写保护：0可写，1只读
+    HID_ENABLE_SW,//HID开关：0禁用，1启用
     WIN_STYLE,    //弹窗动画样式：0=简单滑动 1=拉伸效果
     FADE_MODE,    //消失动画模式：0=棋盘格 1=整体遮罩
     HL_ANI_MODE,  //高亮条动画模式：0=Ease 1=Spring 2=Bounce 3=Gravity
@@ -415,8 +418,8 @@ enum KnobParamIndex {
 /************************************* HID配置 *************************************/
 
 // ==================== HID配置 ====================
-//0=禁用USB HID，1=启用（需配套HID类驱动）
-#define HID_ENABLE 0
+//0=禁用USB HID，1=启用（复合MSC+HID模式）
+#define HID_ENABLE 1
 
 /************************************* USB MSC配置 *************************************/
 
