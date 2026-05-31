@@ -45,6 +45,11 @@ void usb_debug_reset(void)
     final_shown = false;
 }
 
+void usb_debug_mark_done(void)
+{
+    final_shown = true;
+}
+
 void usb_debug_set_step(int step, int status)
 {
     if (step >= 0 && step < USB_STEP_TOTAL) {
@@ -127,6 +132,8 @@ void usb_debug_refresh(void)
 void usb_debug_final(bool success, const char *msg,
                      const usb_regs_t *regs)
 {
+    if (final_shown) return;
+
     extern U8G2_LS013B7DH03_128X128_F_4W_SW_SPI u8g2;
 
     u8g2.firstPage();

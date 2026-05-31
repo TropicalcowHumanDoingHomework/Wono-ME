@@ -19,12 +19,16 @@
 
 /* ==================== 全局状态 ==================== */
 
-static bool usb_active = false;
-static bool usb_registered = false;
-static bool usb_dirty = false;
-static bool usb_pending = false;      /* begin() 已调用但枚举未完成 */
-static uint32_t usb_poll_timeout = 0; /* 超时倒计时（毫秒） */
-static bool w25q_failed = false;      /* W25Q512 初始化失败标志 */
+static bool usb_active  = false;
+static bool usb_reg     = false;
+static bool usb_dirty   = false;
+static bool usb_pending = false;
+static uint32_t usb_poll_timeout = 0;
+static bool w25q_failed = false;
+static bool s_first_init = true;
+
+#define USB_POLL_TIMEOUT       5000
+#define USB_POLL_ERROR_TIMEOUT 50
 
 /* ==================== USBD_STORAGE 回调实现 ==================== */
 
@@ -128,40 +132,36 @@ static USBD_STORAGE_cb_TypeDef usb_storage_fops = {
 
 void USBManager::registerComponent()
 {
-    if (usb_registered) return;
+    if (usb_reg) return;
 
-    if (!w25q_init()) {
-        /* W25Q512未检测到 — 记录但不阻止（可在调试中检查） */
-        return;
+    if (w25q_init()) {
+        usb_reg = true;
     }
-
-    usb_registered = true;
 }
 
 void USBManager::begin()
 {
     if (usb_active) return;
 
-    if (!usb_registered) {
+    if (!s_first_init) {
+        usb_debug_mark_done();
+    }
+    s_first_init = false;
+
+    if (!usb_reg) {
         registerComponent();
     }
 
-    if (!usb_registered) {
-        /* W25Q512初始化失败 — 设置标志让 poll() 快速返回并显示错误 */
+    if (!usb_reg) {
         w25q_failed = true;
-        usb_poll_timeout = 50;
+        usb_poll_timeout = USB_POLL_ERROR_TIMEOUT;
         usb_pending = true;
         return;
     }
 
-    /* 注册存储回调 */
     USBD_STORAGE_fops = &usb_storage_fops;
-
-    /* 启动HS MSC设备 */
     usbd_msc_reinit();
-
-    /* 启动非阻塞轮询（5秒超时） */
-    usb_poll_timeout = 5000;
+    usb_poll_timeout = USB_POLL_TIMEOUT;
     usb_pending = true;
 }
 
@@ -226,7 +226,7 @@ void USBManager::end()
 
 bool USBManager::isEnabled()
 {
-    return usb_active && usbd_msc_is_mounted();
+    return usb_active;
 }
 
 bool USBManager::isDirty()

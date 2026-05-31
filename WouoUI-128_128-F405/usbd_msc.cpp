@@ -965,7 +965,7 @@ extern "C" void __irq_usb_hs(void)
 
 void usbd_msc_reinit()
 {
-    /* debug 状态由调用者（setup 中的诊断宏）管理，这里只做硬件初始化 */
+    #define DBG_STEP_DONE(s) do { usb_debug_set_step((s), USB_STATUS_OK); usb_debug_refresh(); delay(50); } while(0)
 
     /* ──── 阶段 0：时钟使能 + GPIO ──── */
     hspi_gpio_init();
@@ -978,10 +978,7 @@ void usbd_msc_reinit()
 
     /* ──── 阶段 1：PHY 上电 ──── */
     hspi_phy_power_up();
-
-    usb_debug_set_step(USB_STEP_PHY, USB_STATUS_OK);
-    usb_debug_refresh();
-    delay(50);
+    DBG_STEP_DONE(USB_STEP_PHY);
 
     /* ──── 阶段 2：核心库初始化 ────
      * phy_itface=1=USB_OTG_ULPI_PHY, 配合 usb_conf.h 中的
@@ -1033,9 +1030,7 @@ void usbd_msc_reinit()
         __asm volatile ("dsb");
     }
 
-    usb_debug_set_step(USB_STEP_DCD, USB_STATUS_OK);
-    usb_debug_refresh();
-    delay(50);
+    DBG_STEP_DONE(USB_STEP_DCD);
 
     /* ──── 阶段 2.5：EP0 初始化（修复 code 43 的关键） ────
      * USBD_Init() 未被调用，导致以下 EP0 配置被跳过：
@@ -1108,9 +1103,7 @@ void usbd_msc_reinit()
         delay(5);
     }
 
-    usb_debug_set_step(USB_STEP_VBUS, USB_STATUS_OK);
-    usb_debug_refresh();
-    delay(50);
+    DBG_STEP_DONE(USB_STEP_VBUS);
 
     /* ──── 阶段 3：速度 + FIFO 安全防护（库已配置，显式确保） ──── */
     USB_OTG_InitDevSpeed(&USB_OTG_dev, USB_OTG_SPEED_PARAM_HIGH);
@@ -1148,9 +1141,7 @@ void usbd_msc_reinit()
         USB_OTG_WRITE_REG32(&USB_OTG_dev.regs.GREGS->DIEPTXF[ep], fifo.d32);
     }
 
-    usb_debug_set_step(USB_STEP_SPEED, USB_STATUS_OK);
-    usb_debug_refresh();
-    delay(50);
+    DBG_STEP_DONE(USB_STEP_SPEED);
 
     /* ──── 阶段 4：GUSBCFG ULPI + 模式确认 ────
      * 与 HAL 参考项目 USB_CoreInit(ULPI) 对齐：
@@ -1183,9 +1174,7 @@ void usbd_msc_reinit()
     DCD_DevConnect(&USB_OTG_dev);
     delay(200);
 
-    usb_debug_set_step(USB_STEP_CONNECT, USB_STATUS_OK);
-    usb_debug_refresh();
-    delay(50);
+    DBG_STEP_DONE(USB_STEP_CONNECT);
 }
 
 bool usbd_msc_is_mounted()

@@ -276,6 +276,10 @@ void lcd_init() {
     spi3_init_raw();
     u8g2.getU8x8()->byte_cb = u8x8_byte_spi3_hw;  //替换U8g2的字节发送回调
     u8g2.begin();
+    {
+        static const u8g2_cb_t *rot_table[4] = { U8G2_R0, U8G2_R1, U8G2_R2, U8G2_R3 };
+        u8g2.setDisplayRotation(rot_table[ui.param[ROTATE_SCR] & 3u]);
+    }
     //u8g2.begin()的pinMode会覆盖PC10/PC12的AF6为GPIO_OUTPUT，必须恢复SPI3配置
     spi3_init_raw();
     reg_gpio_write(GPIOC_BASE_RAW, 5u, 1u);  //确保DISP使能

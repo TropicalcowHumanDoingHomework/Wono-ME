@@ -38,6 +38,9 @@
 | **编码器** | SIQ-02FVS3（EC11 兼容） | 带按键的旋转编码器 |
 | **LED** | RGB LED（共阳极） | 红/绿/蓝，软件 PWM 呼吸灯 |
 | **蜂鸣器** | 无源蜂鸣器 | GPIO 方波驱动 |
+| **SPI Flash** | W25Q512JVEIQ | 512Mbit (64MB) SPI NOR Flash，USB MSC 存储后端 |
+| **USB PHY** | USB3300-EZK-TR | ULPI 高速 PHY (480Mbps)，OTG_HS 接口 |
+| **USB 座** | USB Type-C | 连接电脑，数据传输与供电 |
 
 <details>
 <summary><b>已测试的 MCU</b></summary>
@@ -133,17 +136,17 @@
 - 屏幕旋转：0° / 90° / 180° / 270°
 - 黑暗模式 / 白天模式切换
 
-### USB 功能（基于 TinyUSB）
+### USB 功能
+
+MSC 大容量存储使用 STM32 HAL USBD 驱动 + USB3300 ULPI 高速 PHY + W25Q512 SPI Flash 实现高速 U 盘功能。
 
 | 功能 | 说明 | 默认 |
 |:-----|:-----|:----:|
-| **USB CDC** | 虚拟串口，提供 Serial 调试功能 | 启用 |
-| **USB HID** | 模拟键盘 + 多媒体控制器，旋钮控制音量/亮度，按键发送键值 | 禁用 |
-| **USB MSC** | 大容量存储，Flash 模拟 64KB U 盘 | 禁用 |
+| **USB MSC** | 大容量存储，W25Q512 64MB SPI Flash 为存储后端，高速 USB 480Mbps | 启用 |
+| **USB HID** | 键盘 + 多媒体控制器（Consumer Control），旋钮控制音量/亮度，按键发送键值 | 禁用 |
 
-> 启用：需先安装 [Adafruit TinyUSB](https://github.com/adafruit/Adafruit_TinyUSB_Arduino) 库，
-> 在 `config.h` 中设 `HID_ENABLE 1` / `USB_MSC_ENABLE 1`，重新编译烧录。
-> 三者可同时启用，作为复合USB设备工作。
+> MSC 由 `config.h` 中的 `USB_MSC_ENABLE` 控制（默认 `1`），启用后还需在设置页面打开"USB Storage"开关。
+> HID 暂未初始化（`hid_init()` 在代码中注释），需自行启用并实现底层 USBD HID 驱动注册。
 
 ### 数据存储
 
@@ -214,6 +217,25 @@ M_SLEEP（睡眠）
 | RGB_G | LED 绿色通道 | PA9 |
 | RGB_B | LED 蓝色通道 | PA10 |
 
+### W25Q512 SPI Flash
+
+| 信号 | 功能 | STM32 引脚 |
+|:-----|:-----|:-----------|
+| SCK | SPI1 时钟 | PB3 |
+| MISO | SPI1 数据输入 | PA6 |
+| MOSI | SPI1 数据输出 | PA7 |
+| CS | SPI1 片选 | PA4 |
+
+### USB3300 ULPI（OTG_HS 高速接口）
+
+| 信号 | 功能 | STM32 引脚 |
+|:-----|:-----|:-----------|
+| D0-D7 | ULPI 8 位数据总线 | PA3, PB0, PB1, PB10, PB11, PB12, PB13, PB5 |
+| CLK | 60MHz 参考时钟 | PA5 |
+| STP | 停止信号 | PC0 |
+| DIR | 方向指示 | PC2 |
+| NXT | 下一字节 | PC3 |
+
 ---
 
 ## 项目结构
@@ -240,8 +262,10 @@ WouoUI-128_128-F405/
 ├── EEPROM.h                    # EEPROM 闪存模拟（磨损均衡）
 │
 ├── led.h / .cpp                # RGB LED 裸寄存器驱动 + 软件 PWM 呼吸灯
-├── hid_manager.h / .cpp        # USB HID 键盘/多媒体（条件编译）
-├── usb_manager.h / .cpp        # USB MSC 大容量存储（条件编译）
+├── hid_manager.h / .cpp        # USB HID 键盘/多媒体（条件编译，暂未启用）
+├── usb_manager.h / .cpp        # USB MSC 管理器（W25Q512 存储后端）
+├── usbd_msc.h / .cpp           # USBD MSC 类驱动（BOT/SCSI 协议）
+├── usb_debug.h / .cpp          # USB 调试输出
 │
 ├── icons_export/               # 磁贴图标 PNG 导出目录
 ├── LICENSE                     # Apache 2.0
@@ -258,7 +282,6 @@ WouoUI-128_128-F405/
 2. 安装 STM32F4 支持包：工具 → 开发板管理器 → 搜索 `STM32`
 3. 安装所需库：
    - [U8g2](https://github.com/olikraus/u8g2) — OLED/LCD 绘图库
-   - [Adafruit TinyUSB](https://github.com/adafruit/Adafruit_TinyUSB_Arduino) — USB 复合设备（CDC + MSC + HID，可选）
 4. 准备烧录工具：ST-Link / USB 串口模块 / [STM32 Cube Programmer](https://www.st.com/en/development-tools/stm32cubeprog.html)
 
 ### 编译烧录
@@ -275,13 +298,15 @@ git clone <repo-url>
 ### 启用 USB 功能
 
 ```bash
-# 1. config.h 中设置：
-#    #define HID_ENABLE 1
-#    #define USB_MSC_ENABLE 1
-# 2. 启用 HID 还需在 WouoUI-128_128-F405.ino 的 setup() 中取消 //hid_init(); 的注释
-# 3. 重新编译烧录
-# 4. 将 BOOT0 和 BOOT1 跳线均置为 0
-# 5. 重新插拔 USB 线连接电脑
+# MSC（默认启用）：
+# 1. config.h 中确认 #define USB_MSC_ENABLE 1
+# 2. 设备上电后在 Setting → USB Storage 中打开开关
+# 3. 连接 USB Type-C 线至电脑，识别为 64MB U 盘
+#
+# HID（需自行启用）：
+# 1. config.h 中设 #define HID_ENABLE 1
+# 2. 在 WouoUI-128_128-F405.ino 的 setup() 中取消 //hid_init(); 的注释
+# 3. 实现底层 USBD HID 驱动注册（参考 usbd_msc 的注册方式）
 ```
 
 ---
@@ -298,7 +323,7 @@ git clone <repo-url>
 | `UI_MNUMB` | 最大菜单项数量 | `100` |
 | `UI_PARAM` | 系统可调参数数量 | `28` |
 | `HID_ENABLE` | USB HID 功能开关 | `0`（禁用） |
-| `USB_MSC_ENABLE` | USB 大容量存储开关 | `0`（禁用） |
+| `USB_MSC_ENABLE` | USB 大容量存储开关 | `1`（启用） |
 | `SPI_BUS_CLOCK` | SPI 时钟频率 | `2000000`（2MHz） |
 | `WAVE_SAMPLE` | 电压采样倍数 | `20` |
 | `KNOB_PARAM` | 旋钮参数数量 | `4` |
@@ -419,11 +444,12 @@ KNOB/KRF/KPF    弹窗调参
 </details>
 
 <details>
-<summary><b>HID / MSC 功能无法使用？</b></summary>
+<summary><b>MSC U 盘无法识别？</b></summary>
 
-默认禁用。`config.h` 中设 `HID_ENABLE 1` / `USB_MSC_ENABLE 1`，重新编译烧录，BOOT0/BOOT1 置 0 后重新上电。
-
-> **注意**：启用 HID 后还需在 `WouoUI-128_128-F405.ino` 的 `setup()` 函数中取消 `//hid_init();` 的注释，HID 键盘/多媒体功能才能正常初始化。
+MSC 默认启用（`USB_MSC_ENABLE 1`），需先确认：
+1. 设置页面中"USB Storage"开关已打开
+2. USB3300 ULPI PHY 和 W25Q512 硬件连接正确
+3. 使用 USB Type-C 线连接电脑
 </details>
 
 <details>

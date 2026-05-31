@@ -73,6 +73,7 @@
 static uint32_t usb_poll_start  = 0;
 static bool     usb_poll_active = false;
 static bool     usb_mounted     = false;
+static bool     prev_usb_enable = false;
 #endif
 
 /* ==================== 硬件早期初始化 ==================== */
@@ -214,6 +215,10 @@ void setup() {
 #endif
   /* ================================================= */
 
+#if USB_MSC_ENABLE
+  prev_usb_enable = ui.param[USB_ENABLE];
+#endif
+
   btn_init();
 
 #if HID_ENABLE
@@ -230,10 +235,23 @@ void loop() {
     led_proc();
 #if USB_MSC_ENABLE
     if (!ui.param[USB_ENABLE]) {
-        usb_mounted = false;       /* USB 被禁用 → 清除历史成功标志 */
+        if (prev_usb_enable) {
+            USBManager::end();
+        }
+        usb_mounted = false;
+        usb_poll_active = false;
+    } else {
+        if (!prev_usb_enable) {
+            USBManager::begin();
+        }
+        if (!USBManager::isEnabled()) {
+            usb_mounted = false;
+        }
     }
+    prev_usb_enable = ui.param[USB_ENABLE];
+
     if (ui.param[USB_ENABLE] && !usb_mounted && !usb_poll_active) {
-        usb_poll_active = true;    /* USB 刚被启用 → 启动轮询 */
+        usb_poll_active = true;
         usb_poll_start  = millis();
     }
     if (usb_poll_active) {
@@ -244,8 +262,12 @@ void loop() {
             usb_poll_active = false;
         }
     }
-    if (usb_mounted) {
-        led_set_green();           /* USB 成功 → 覆盖为绿色 */
+    if (!ui.sleep) {
+        if (usb_mounted) {
+            led_set_green();
+        } else {
+            led_set_red();
+        }
     }
 #endif
 }

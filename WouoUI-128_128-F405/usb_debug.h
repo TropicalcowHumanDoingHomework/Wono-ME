@@ -75,6 +75,9 @@ void usb_debug_reset(void);
 void usb_debug_final(bool success, const char *msg,
                      const usb_regs_t *regs);
 
+/* 标记 debug 为已完成状态，抑制后续 usb_debug_refresh() 绘制屏幕 */
+void usb_debug_mark_done(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -283,7 +283,6 @@ void tile_param_init() {
     tile.icon_y_vel = 0;
     tile.indi_x_vel = 0;
     tile.title_y_vel = 0;
-    led_set_red();  // 进入主菜单时显示红色
 }
 
 
@@ -905,7 +904,7 @@ void sleep_proc() {
 #endif
                     break;
 
-                case BTN_ID_LP: buzzer_exit_sound(); led_set_red(); if (ui.param[USB_ENABLE]) { USBManager::begin(); } ui.index = M_MAIN; ui.state = S_LAYER_IN; u8g2.setPowerSave(0); ui.sleep = false; break;
+                case BTN_ID_LP: buzzer_exit_sound(); if (ui.param[USB_ENABLE]) { USBManager::begin(); } ui.index = M_MAIN; ui.state = S_LAYER_IN; u8g2.setPowerSave(0); ui.sleep = false; break;
             }
         }
     }
@@ -1437,7 +1436,6 @@ void layer_init_out() {
             break;
         case M_MAIN:
             buzzer_exit_sound();
-            led_set_red();
             tile_param_init();
             break;
         default:

@@ -1207,17 +1207,20 @@ class IconEditor:
             pv_cv.config(width=cw, height=cw)
             removed = 0
             kept = 0
+            center = r - 1
             for dy in range(size):
                 for dx in range(size):
                     x1 = dx * PV2 + 1
                     y1 = dy * PV2 + 1
-                    in_corner = dx <= r and dy <= r
-                    if in_corner and dx*dx + dy*dy <= r*r:
-                        fill = PALETTE[0]
-                        kept += 1
-                    elif in_corner:
-                        fill = PALETTE[1]
-                        removed += 1
+                    in_corner = dx < r and dy < r
+                    if in_corner:
+                        dist2 = (dx - center)**2 + (dy - center)**2
+                        if dist2 <= r*r:
+                            fill = PALETTE[0]
+                            kept += 1
+                        else:
+                            fill = PALETTE[1]
+                            removed += 1
                     elif dx == 0 or dy == 0:
                         fill = "#D0D0D0"
                     else:
@@ -1235,7 +1238,10 @@ class IconEditor:
         def do_apply(event=None):
             m = mode_var.get()
             self._save_state()
-            bg_color = self.current_color ^ 1
+
+            white_cnt = sum(row.count(0) for row in self.pixels)
+            black_cnt = sum(row.count(1) for row in self.pixels)
+            bg_color = 1 if white_cnt >= black_cnt else 0
 
             if m == "wouo":
                 offsets = [(0,0), (0,1), (1,0), (0,2), (2,0)]
@@ -1250,7 +1256,7 @@ class IconEditor:
                         px, py = cx + sdx * dx, cy + sdy * dy
                         if 0 <= px < ICON_W and 0 <= py < ICON_H:
                             self.pixels[py][px] = bg_color
-                self._update_status("已应用 WouoUI 原生圆角 — 每角去除 5 像素")
+                self._update_status(f"已应用 WouoUI 原生圆角  (裁切色:{'黑' if bg_color == 1 else '白'})")
             else:
                 r = radius_var.get()
                 if r <= 0:
@@ -1262,14 +1268,25 @@ class IconEditor:
                     (0, ICON_H-1, 1, -1),
                     (ICON_W-1, ICON_H-1, -1, -1),
                 ]
+                fg_color = 1 - bg_color
+                max_q = min(ICON_W, ICON_H) // 2
                 for cx, cy, sdx, sdy in corners:
-                    for dy in range(r + 1):
-                        for dx in range(r + 1):
-                            if dx*dx + dy*dy <= r*r:
-                                px, py = cx + sdx * dx, cy + sdy * dy
-                                if 0 <= px < ICON_W and 0 <= py < ICON_H:
-                                    self.pixels[py][px] = bg_color
-                self._update_status(f"已应用圆角裁剪 r={r}")
+                    for dy in range(max_q):
+                        for dx in range(max_q):
+                            px = cx + sdx * dx
+                            py = cy + sdy * dy
+                            self.pixels[py][px] = fg_color
+                for cx, cy, sdx, sdy in corners:
+                    center_x = cx + sdx * (r - 1)
+                    center_y = cy + sdy * (r - 1)
+                    for dy in range(r):
+                        for dx in range(r):
+                            px = cx + sdx * dx
+                            py = cy + sdy * dy
+                            dist2 = (px - center_x)**2 + (py - center_y)**2
+                            if dist2 > r * r:
+                                self.pixels[py][px] = bg_color
+                self._update_status(f"已应用圆角裁剪 r={r}  (裁切色:{'黑' if bg_color == 1 else '白'})")
 
             self._render_incremental()
             win.destroy()
