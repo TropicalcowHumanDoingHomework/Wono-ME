@@ -1,4 +1,4 @@
-#include "pages.h"
+﻿#include "pages.h"
 #include "ui_state.h"
 #include "animation.h"
 #include "display.h"
@@ -247,26 +247,26 @@ static void hl_ani_callback(uint8_t select) {
 // Animi 页面：菜单项位置 → 参数索引映射
 // 菜单项 1~20 对应的 ParamIndex
 static const uint8_t animi_param_map[] = {
-    1,   // 1: Tile Ani  → TILE_ANI
-    2,   // 2: List Cur  → LIST_CUR
-    3,   // 3: Box X OS  → BOX_X_OS
-    4,   // 4: Box Y OS  → BOX_Y_OS
-    5,   // 5: Win Y OS  → WIN_Y_OS
-    6,   // 6: List Ani  → LIST_ANI
-    7,   // 7: Win Ani   → WIN_ANI
-    8,   // 8: Spot Ani  → SPOT_ANI
-    9,   // 9: Tag Ani   → TAG_ANI
-    10,  // 10: Fade Ani → FADE_ANI
-    24,  // 11: Fade Mode → FADE_MODE
-    13,  // 12: T Ufd Fm Scr → TILE_UFD
-    14,  // 13: L Ufd Fm Scr → LIST_UFD
-    15,  // 14: T Loop Mode → TILE_LOOP
-    16,  // 15: L Loop Mode → LIST_LOOP
-    17,  // 16: Win Bokeh Bg → WIN_BOK
-    23,  // 17: Win Stretch → WIN_STYLE
-    25,  // 18: HL Ani Mode → HL_ANI_MODE
-    26,  // 19: Spring K → SPRING_K
-    27   // 20: Spring D → SPRING_D
+    1,   // 1: Tile Ani       → TILE_ANI
+    2,   // 2: List Cur       → LIST_CUR
+    3,   // 3: Box X OS       → BOX_X_OS
+    4,   // 4: Box Y OS       → BOX_Y_OS
+    5,   // 5: Win Y OS       → WIN_Y_OS
+    6,   // 6: List Ani       → LIST_ANI
+    7,   // 7: Win Ani        → WIN_ANI
+    8,   // 8: Spot Ani       → SPOT_ANI
+    9,   // 9: Tag Ani        → TAG_ANI
+    10,  // 10: Fade Ani      → FADE_ANI
+    26,  // 11: Fade Mode     → FADE_MODE
+    13,  // 12: T Ufd Fm Scr  → TILE_UFD
+    14,  // 13: L Ufd Fm Scr  → LIST_UFD
+    15,  // 14: T Loop Mode   → TILE_LOOP
+    16,  // 15: L Loop Mode   → LIST_LOOP
+    17,  // 16: Win Bokeh Bg  → WIN_BOK
+    25,  // 17: Win Stretch   → WIN_STYLE
+    27,  // 18: HL Ani Mode   → HL_ANI_MODE
+    28,  // 19: Spring K      → SPRING_K
+    29   // 20: Spring D      → SPRING_D
 };
 
 
@@ -824,6 +824,8 @@ void animition_proc() {
     }
 }
 
+static void init_list_box_params();
+
 /*
  * 进入睡眠模式时的初始化
  * 
@@ -910,7 +912,48 @@ void sleep_proc() {
 #endif
                     break;
 
-                case BTN_ID_LP: buzzer_exit_sound(); if (ui.param[USB_ENABLE] || ui.param[HID_ENABLE_SW]) { USBManager::begin(); } ui.index = M_MAIN; ui.state = S_LAYER_IN; u8g2.setPowerSave(0); ui.sleep = false; break;
+                case BTN_ID_LP:
+                    buzzer_exit_sound();
+                    if (ui.param[USB_ENABLE] || ui.param[HID_ENABLE_SW]) {
+                        USBManager::begin();
+                    }
+                    u8g2.setPowerSave(0);
+                    ui.layer++;
+                    ui.select[ui.layer] = 0;
+                    ui.init = false;
+                    tile_param_init();
+                    list.box_y_trg[ui.layer] = 0;
+                    list.y = 0;
+                    list.y_trg = LIST_LINE_H;
+                    list.box_x = 0;
+                    list.box_y = 0;
+                    list.bar_y = 0;
+                    init_list_box_params();
+                    ui.index = M_MAIN;
+                    ui.fade = 0;
+
+                    for (uint8_t step = 1; step <= 4; step++) {
+                        delay(30);
+                        if (step <= 3) {
+                            for (uint16_t y = 0; y < 128; y++) {
+                                uint8_t mask = 0;
+                                if (step == 1 && y % 2 == 0) mask = 0x55;
+                                else if (step == 2 && y % 2 == 1) mask = 0xAA;
+                                else if (step == 3 && y % 2 == 0) mask = 0xAA;
+                                if (mask) {
+                                    for (uint16_t x = 0; x < 16; x++)
+                                        buf_ptr[y * 16 + x] |= mask;
+                                }
+                            }
+                        } else {
+                            memset(buf_ptr, 0xFF, buf_len);
+                        }
+                        u8g2.sendBuffer();
+                    }
+
+                    ui.state = S_NONE;
+                    ui.sleep = false;
+                    break;
             }
         }
     }
