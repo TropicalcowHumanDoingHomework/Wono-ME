@@ -255,8 +255,10 @@ public:
     void drawLine(int x1, int y1, int x2, int y2);
     void drawStr(int x, int y, const char* s);
     void drawXBMP(int x, int y, int w, int h, const unsigned char* bitmap);
+    void drawPixel(int x, int y);
 
     void setDrawColor(int c);
+    int getDrawColor();
     void setFont(const unsigned char* f);
     void setFontDirection(int d);
     void setCursor(int x, int y);

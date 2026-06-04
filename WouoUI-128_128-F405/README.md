@@ -25,7 +25,7 @@
 
 ## 目录
 
-[硬件要求](#硬件要求) &bull; [功能特性](#功能特性) &bull; [页面说明](#页面说明) &bull; [引脚定义](#硬件引脚定义) &bull; [项目结构](#项目结构) &bull; [快速开始](#快速开始) &bull; [配置说明](#配置说明) &bull; [使用方法](#使用方法) &bull; [常见问题](#常见问题) &bull; [作者](#作者与致谢) &bull; [版本历史](#版本历史) &bull; [许可证](#许可证)
+[硬件要求](#硬件要求) &bull; [功能特性](#功能特性) &bull; [PC 模拟器](#pc-模拟器) &bull; [页面说明](#页面说明) &bull; [引脚定义](#硬件引脚定义) &bull; [项目结构](#项目结构) &bull; [快速开始](#快速开始) &bull; [配置说明](#配置说明) &bull; [使用方法](#使用方法) &bull; [常见问题](#常见问题) &bull; [作者](#作者与致谢) &bull; [版本历史](#版本历史) &bull; [许可证](#许可证)
 
 ---
 
@@ -135,6 +135,17 @@
 - **显示对比度调节**（`u8g2.setContrast()`，0=淡 / 1=浓）
 - 屏幕旋转：0° / 90° / 180° / 270°
 - 黑暗模式 / 白天模式切换
+
+### PC 模拟器
+
+- **Windows 桌面模拟器**，可在无硬件环境下运行完整的 UI 逻辑
+- 所有 UI 源代码**零修改复用**（`pages.cpp`、`animation.cpp`、`window.cpp` 等直接编译）
+- Win32 API 窗口渲染，**4 倍放大**显示 128×128 屏幕内容
+- **操作方式**：
+  - ↑/W / ↓/S 模拟旋钮旋转（顺时针/逆时针）
+  - Enter/Space 模拟短按，鼠标滚轮模拟旋转，鼠标左键模拟按下
+  - Esc 触发长按或退出程序
+- 使用 CMake + Visual Studio 构建，无需 Arduino 工具链
 
 ### USB 功能
 
@@ -268,6 +279,16 @@ WouoUI-128_128-F405/
 ├── usb_debug.h / .cpp          # USB 调试输出
 │
 ├── icons_export/               # 磁贴图标 PNG 导出目录
+├── simulator/                  # Windows 桌面模拟器（CMake + Win32）
+│   ├── CMakeLists.txt          # 模拟器构建配置
+│   ├── build.bat               # VS2022 一键构建脚本
+│   ├── sim_main.cpp            # Win32 窗口 + 事件循环入口
+│   ├── sim_display.cpp         # SimU8g2 模拟显示驱动（4x 缩放）
+│   ├── sim_knob.h / .cpp       # 键盘/鼠标 → 编码器事件映射
+│   ├── sim_eeprom.h / .cpp     # EEPROM 内存模拟
+│   ├── sim_config.h            # 模拟器配置宏（替代 config.h）
+│   ├── sim_define_config.h     # 强制包含头文件（阻止 Arduino 依赖）
+│   └── sim_stubs.cpp           # LED/USB 等硬件空桩函数
 ├── LICENSE                     # Apache 2.0
 └── .gitignore
 ```
@@ -294,6 +315,26 @@ git clone <repo-url>
 ```
 
 > 首次使用建议保持默认配置，确认屏幕点亮、旋钮操作正常后再调整参数。
+
+### 运行 PC 模拟器
+
+无需硬件，可在 Windows 上预览 UI：
+
+```bash
+# 方式一（一键构建）：
+cd simulator
+.\build.bat
+
+# 方式二（手动构建）：
+cd simulator
+cmake -B build -S . -G "Visual Studio 17 2022"
+cmake --build build --config Release
+
+# 运行：
+.\build\Release\wouo_sim.exe
+```
+
+> 需要 Visual Studio 2022 及 "C++ 桌面开发" 工作负载。模拟器使用 Win32 API 原生窗口，无需额外库。
 
 ### 启用 USB 功能
 
