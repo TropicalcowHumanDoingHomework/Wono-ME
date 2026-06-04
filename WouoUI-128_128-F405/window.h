@@ -49,7 +49,7 @@ void window_message_init(const char title[], const char message[], Menu *bg, uin
  * 支持高亮条跟随动画
  * 关闭时通过回调函数返回选中项索引
  */
-void window_list_select_init(const char title[], const char* items[], uint8_t item_count, Menu *bg, uint8_t index);
+void window_list_select_init(const char title[], const char* items[], uint8_t item_count, Menu *bg, uint8_t index, uint8_t default_select = 0);
 
 /*
  * 确认弹窗初始化

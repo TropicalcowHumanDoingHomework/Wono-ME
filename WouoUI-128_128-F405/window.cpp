@@ -110,7 +110,7 @@ void window_message_init(const char title[], const char message[], Menu *bg, uin
  *   bg - 弹窗背景菜单指针
  *   index - 弹窗关闭后返回的页面索引
  */
-void window_list_select_init(const char title[], const char* items[], uint8_t item_count, Menu *bg, uint8_t index) {
+void window_list_select_init(const char title[], const char* items[], uint8_t item_count, Menu *bg, uint8_t index, uint8_t default_select) {
     strcpy(win.title, title);
     win.list_mode = 1;
     win.list_count = item_count < WIN_LIST_MAX ? item_count : WIN_LIST_MAX;
@@ -118,9 +118,9 @@ void window_list_select_init(const char title[], const char* items[], uint8_t it
         strncpy(win.list_items[i], items[i], WIN_LIST_ITEM_LEN - 1);
         win.list_items[i][WIN_LIST_ITEM_LEN - 1] = '\0';
     }
-    win.list_select = 0;
-    win.hl_sel_cur = 0;
-    win.hl_sel_trg = 0;
+    win.list_select = default_select < win.list_count ? default_select : 0;
+    win.hl_sel_cur = (float)win.list_select;
+    win.hl_sel_trg = (float)win.list_select;
     win.list_y = 0;
     win.list_y_trg = 0;
     win.hl_vel = 0;
@@ -160,6 +160,10 @@ void window_list_select_init(const char title[], const char* items[], uint8_t it
     win.y_trg = (DISP_H - win.h) / 2;
     if (win.y_trg < 2) win.y_trg = 2;
     win.u = win.y_trg;
+
+    if (win.list_select >= item_rows)
+        win.list_y = win.list_y_trg = -(win.list_select - item_rows + 1) * LIST_LINE_H;
+
     ui.state = S_NONE;
 }
 

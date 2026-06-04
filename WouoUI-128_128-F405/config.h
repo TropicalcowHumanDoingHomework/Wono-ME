@@ -279,6 +279,7 @@ enum PageIndex {
           M_KPF,
       M_VOLT,
       M_USB,
+        M_HID_KEY,
       M_SETTING,
         M_ABOUT,
 };

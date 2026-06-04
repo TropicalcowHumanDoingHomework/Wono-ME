@@ -104,12 +104,13 @@ void ui_init() {
     ui.state = S_LAYER_IN;  //触发层级初始化，调用tile_param_init设置动画初始值
     ui.num[M_MAIN] = 6;
     ui.num[M_ANIMITION] = 21;
-    ui.num[M_EDITOR] = 12;
+    ui.num[M_EDITOR] = 11;
     ui.num[M_KNOB] = 3;
     ui.num[M_KRF] = 7;
     ui.num[M_KPF] = 82;
     ui.num[M_VOLT] = 10;
-    ui.num[M_USB] = 4;
+    ui.num[M_USB] = 5;
+    ui.num[M_HID_KEY] = 3;
     ui.num[M_SETTING] = 9;
     ui.num[M_ABOUT] = 8;
     list.line_n = DISP_H / LIST_LINE_H;

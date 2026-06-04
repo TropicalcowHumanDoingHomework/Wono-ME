@@ -32,6 +32,9 @@ extern Menu setting_menu[];
 //USB菜单数组：USB存储配置页面
 extern Menu usb_menu[];
 
+//HID按键设置菜单数组：HID旋钮/按键功能配置
+extern Menu hid_key_menu[];
+
 //关于本机菜单数组：显示设备信息
 extern Menu about_menu[];
 

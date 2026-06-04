@@ -123,9 +123,9 @@ static void spi3_init_raw() {
     reg_gpio_set_af(GPIOC_BASE_RAW, 10u, 6u);  //PC10=SPI3_SCK，复用功能6
     reg_gpio_set_af(GPIOC_BASE_RAW, 12u, 6u);  //PC12=SPI3_MOSI，复用功能6
     SPI_CR1(SPI3_BASE_RAW) = 0u;  //先清零所有配置
-    //BR=100=fPCLK/32≈1.31MHz (LS013B7DH03最高2MHz,U8g2默认1MHz)
-    //配置：SSM=1(软件从机管理) | BR=100(分频32) | LSBFIRST=0(MSB先行) | MSTR=1(主机模式) | SPE=1(使能)
-    SPI_CR1(SPI3_BASE_RAW) = (1u << 2) | (4u << 3) | (1u << 9) | (1u << 8) | (1u << 6);
+    //BR=011=fPCLK/16≈2.625MHz (略超LS013B7DH03标称2MHz,实测可行)
+    //配置：SSM=1(软件从机管理) | BR=011(分频16) | LSBFIRST=0(MSB先行) | MSTR=1(主机模式) | SPE=1(使能)
+    SPI_CR1(SPI3_BASE_RAW) = (1u << 2) | (3u << 3) | (1u << 9) | (1u << 8) | (1u << 6);
 }
 
 /************************************* U8g2字节回调（裸SPI3，含VCOM翻转） *************************************/
@@ -144,6 +144,7 @@ static uint8_t  s_frame_page_cnt;       //基于页面的帧计数器（16页=1�
 static uint16_t s_vcom_frame_cnt;       //基于tile的帧计数器（256 tile=1整屏），用于低对比度模式
 static uint8_t  s_transfer_is_update;   //标记当前传输是否为有效的画面更新
 static uint8_t  s_dc_is_data;           //标记DC引脚状态：0=命令，1=数据
+static uint8_t  s_first_cmd;            //标记当前传输是否为第一个命令（仅START后的UPDATE命令处理VCOM）
 
 extern "C" uint8_t u8x8_byte_spi3_hw(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr) {
     static uint8_t buf[256];  //临时缓冲区，用于修改命令字节（插入VCOM翻转）
@@ -158,15 +159,17 @@ extern "C" uint8_t u8x8_byte_spi3_hw(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int,
                 if (s_dc_is_data) {
                     //数据字节直接发送，不修改VCOM
                     spi3_send_bytes(src, (uint16_t)arg_int);
-                } else if (src[0] == 0x80u || src[0] == 0xC0u) {
-                    //命令字节：如果是VCOM命令（0x80或0xC0），修改VCOM极性
+                } else if (s_first_cmd && (src[0] == 0x80u || src[0] == 0xC0u)) {
+                    //仅处理传输的第一个命令（UPDATE），跳过行地址SWAP8(1)=0x80和SWAP8(3)=0xC0的误匹配
+                    s_first_cmd = 0u;
                     s_frame_page_cnt++;
+                    uint8_t cur_vcom = s_vcom_toggle;  // 保存当前VCOM，避免在计数翻转后被修改
                     if (s_frame_page_cnt >= 16u) {
                         s_frame_page_cnt = 0u;
-                        s_vcom_toggle ^= 1u;  //每16页翻转一次VCOM
+                        s_vcom_toggle ^= 1u;  // 每16页翻转一次VCOM（为下一帧准备）
                     }
-                    //根据当前VCOM状态替换命令字节
-                    if (s_vcom_toggle) {
+                    //使用当前帧的VCOM状态替换命令字节，确保一帧内所有行极性一致
+                    if (cur_vcom) {
                         buf[0] = 0xC0u;
                     } else {
                         buf[0] = 0x80u;
@@ -175,16 +178,21 @@ extern "C" uint8_t u8x8_byte_spi3_hw(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int,
                     s_transfer_is_update = 1u;
                     spi3_send_bytes(buf, (uint16_t)arg_int);
                 } else {
-                    //其他命令直接发送
+                    //其他命令（含后续行地址）或非首命令的0x80/0xC0直接发送
+                    if (s_first_cmd) s_first_cmd = 0u;  //首个命令不是VCOM（理论上不会发生），清除标志
                     spi3_send_bytes(src, (uint16_t)arg_int);
                 }
             } else {
                 //低对比度模式：使用基于tile计数的VCOM翻转（桌面代码逻辑）
-                if (arg_int > 0 && src[0] == 0x80u && s_vcom_toggle) {
+                if (arg_int > 0 && s_first_cmd && src[0] == 0x80u && s_vcom_toggle) {
+                    //仅首个命令执行VCOM修改，避免行地址SWAP8(1)=0x80的误匹配
+                    s_first_cmd = 0u;
                     buf[0] = 0xC0u;
                     if (arg_int > 1u) memcpy(buf + 1, src + 1, arg_int - 1u);
                     spi3_send_bytes(buf, (uint16_t)arg_int);
                 } else {
+                    //非首命令或条件不满足时直接发送
+                    if (s_first_cmd) s_first_cmd = 0u;
                     spi3_send_bytes(src, (uint16_t)arg_int);
                 }
             }
@@ -198,6 +206,7 @@ extern "C" uint8_t u8x8_byte_spi3_hw(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int,
             s_vcom_frame_cnt = 0u;
             s_transfer_is_update = 0u;
             s_dc_is_data = 0u;
+            s_first_cmd = 0u;
             if (u8x8->bus_clock == 0)
                 u8x8->bus_clock = u8x8->display_info->sck_clock_hz;
             u8x8_gpio_SetCS(u8x8, u8x8->display_info->chip_disable_level);  //CS置为无效电平
@@ -218,6 +227,7 @@ extern "C" uint8_t u8x8_byte_spi3_hw(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int,
 
         //开始传输：置低CS使能屏幕通信
         case U8X8_MSG_BYTE_START_TRANSFER:
+            s_first_cmd = 1u;  //标记此传输的第一个命令用于VCOM处理，避免行地址被误匹配
             if (ui.param[DISP_BRI] >= 1u) {
                 s_transfer_is_update = 0u;
             } else {
@@ -234,6 +244,7 @@ extern "C" uint8_t u8x8_byte_spi3_hw(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int,
 
         //结束传输：置高CS禁用屏幕通信
         case U8X8_MSG_BYTE_END_TRANSFER:
+            s_first_cmd = 0u;  //确保传输结束后清除标志
             u8x8->gpio_and_delay_cb(u8x8, U8X8_MSG_DELAY_NANO, u8x8->display_info->pre_chip_disable_wait_ns, NULL);
             u8x8_gpio_SetCS(u8x8, u8x8->display_info->chip_disable_level);  //CS置高禁用
             break;
@@ -286,4 +297,21 @@ void lcd_init() {
     u8g2.setContrast(ui.param[DISP_BRI]);  //设置初始对比度
     buf_ptr = u8g2.getBufferPtr();        //获取帧缓冲区指针
     buf_len = 8 * u8g2.getBufferTileHeight() * u8g2.getBufferTileWidth();  //计算缓冲区长度
+}
+
+void lcd_reset_vcom() {
+    /* 
+     * 重置VCOM翻转状态和帧计数器
+     * 
+     * 解决屏幕旋转模式切换时的边缘白线问题：
+     * 1. 复位s_frame_page_cnt和s_vcom_toggle，确保VCOM翻转从已知状态开始
+     * 2. 复位tile_curr_row=0，确保下一次sendBuffer发送全部16行数据
+     */
+    s_frame_page_cnt = 0u;
+    s_vcom_toggle = 0u;
+    u8g2.getU8g2()->tile_curr_row = 0;  // 复位行指针，确保全帧发送
+    
+    // 立即发送一帧清空缓冲区显示，消除任何残留的VCOM极性偏移导致的视觉残留
+    u8g2.clearBuffer();
+    u8g2.sendBuffer();
 }

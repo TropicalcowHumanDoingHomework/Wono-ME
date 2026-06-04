@@ -1,7 +1,13 @@
 #ifndef UI_TYPES_H
 #define UI_TYPES_H
 
+// Simulator version: conditionally include config.h
+// The original ui_types.h does #include "config.h" unconditionally.
+// Since /D CONFIG_H is defined globally, this guard prevents the
+// original config.h from being processed by force.
+#ifndef CONFIG_H
 #include "config.h"
+#endif
 
 /*
  * 菜单项结构体
@@ -31,14 +37,14 @@ struct Menu {
  */
 struct UiState {
     bool init;                          //当前页面是否已完成初始化动画
-    uint8_t num[UI_MNUMB];              //每个页面的菜单项数量
-    uint8_t select[UI_DEPTH];           //每层当前选中的菜单项索引
-    uint8_t layer;                      //当前层级深度（0=最外层）
-    uint8_t index;                      //当前页面索引（PageIndex枚举值）
-    uint8_t state;                      //当前状态（PageState枚举：FADE/WINDOW/LAYER_IN/LAYER_OUT/NONE）
+    unsigned char num[UI_MNUMB];              //每个页面的菜单项数量
+    unsigned char select[UI_DEPTH];           //每层当前选中的菜单项索引
+    unsigned char layer;                      //当前层级深度（0=最外层）
+    unsigned char index;                      //当前页面索引（PageIndex枚举值）
+    unsigned char state;                      //当前状态（PageState枚举：FADE/WINDOW/LAYER_IN/LAYER_OUT/NONE）
     bool sleep;                         //是否处于睡眠模式
-    uint8_t fade = 1;                   //消失动画当前步骤（1-4）
-    uint8_t param[UI_PARAM];            //用户可调参数数组，索引见ParamIndex枚举
+    unsigned char fade = 1;                   //消失动画当前步骤（1-4）
+    unsigned char param[UI_PARAM];            //用户可调参数数组，索引见ParamIndex枚举
 };
 
 /*
@@ -52,7 +58,7 @@ struct UiState {
 struct TileState {
     float title_y_calc   = TILE_INDI_S + (TILE_INDI_H - TILE_B_TITLE_H) / 2 + TILE_B_TITLE_H * 2;
     float title_y_trg_calc = TILE_INDI_S + (TILE_INDI_H - TILE_B_TITLE_H) / 2 + TILE_B_TITLE_H;
-    int16_t temp;
+    int temp;
     bool select_flag;
     float icon_x;          //图标X位置（当前值）
     float icon_x_trg;      //图标X位置（目标值）
@@ -78,7 +84,7 @@ struct TileState {
  */
 struct ListState {
     int line_n;              //屏幕可显示的行数
-    int16_t temp;
+    int temp;
     bool loop;               //是否正在进行循环滚动
     float curve;             //当前行的弯曲偏移量（用于弧形列表效果）
     float y;                 //列表垂直滚动位置（当前值）
@@ -127,11 +133,11 @@ struct VoltageState {
  * 各指针指向ui.param[]中的对应位置
  */
 struct CheckBoxState {
-    uint8_t* v;      //数值显示数组指针（指向ui.param[]中的数值项）
-    uint8_t* m;      //多选框选中状态数组指针
-    uint8_t* s;      //单选框选中值指针
-    uint8_t* s_p;    //单选框选中位置指针
-    uint8_t* map;    //菜单项位置到参数索引的映射表
+    unsigned char* v;      //数值显示数组指针（指向ui.param[]中的数值项）
+    unsigned char* m;      //多选框选中状态数组指针
+    unsigned char* s;      //单选框选中值指针
+    unsigned char* s_p;    //单选框选中位置指针
+    unsigned char* map;    //菜单项位置到参数索引的映射表
 };
 
 /*
@@ -152,26 +158,26 @@ struct CheckBoxState {
 struct WindowState {
     char title[32];                       //弹窗标题
     char message[128];                    //弹窗消息内容
-    uint8_t select;                       //当前选中项
-    uint8_t* value;                       //要修改的数值指针（指向ui.param[]中对应项）
-    uint8_t max;                          //数值最大值
-    uint8_t min;                          //数值最小值
-    uint8_t step;                         //数值步进
+    unsigned char select;                       //当前选中项
+    unsigned char* value;                       //要修改的数值指针（指向ui.param[]中对应项）
+    unsigned char max;                          //数值最大值
+    unsigned char min;                          //数值最小值
+    unsigned char step;                         //数值步进
     Menu* bg;                             //弹窗背景菜单指针
-    uint8_t index;                        //弹窗返回后的页面索引
-    uint8_t msg_mode;                     //消息弹窗模式标志
-    uint8_t list_mode;                    //列表选择弹窗模式标志
+    unsigned char index;                        //弹窗返回后的页面索引
+    unsigned char msg_mode;                     //消息弹窗模式标志
+    unsigned char list_mode;                    //列表选择弹窗模式标志
     char list_items[WIN_LIST_MAX][WIN_LIST_ITEM_LEN]; //列表选择弹窗项文字
-    uint8_t list_count;                   //列表选择弹窗项数量
-    uint8_t list_select;                  //列表选择弹窗当前选中项
+    unsigned char list_count;                   //列表选择弹窗项数量
+    unsigned char list_select;                  //列表选择弹窗当前选中项
     float hl_sel_cur;                     //列表高亮条当前位置
     float hl_sel_trg;                     //列表高亮条目标位置
     float list_y;                         //列表垂直滚动位置
     float list_y_trg;                     //列表垂直滚动目标位置
     float hl_vel;                         //高亮条速度（弹簧动画用）
     float list_vel;                       //列表滚动速度（弹簧动画用）
-    uint8_t bokeh_step;                   //背景虚化步骤（0-3）
-    uint32_t last_bokeh_time;             //上次背景虚化更新时间
+    unsigned char bokeh_step;                   //背景虚化步骤（0-3）
+    unsigned int last_bokeh_time;             //上次背景虚化更新时间
     float bar;                            //进度条位置（当前值）
     float bar_trg;                        //进度条位置（目标值）
     float y;                              //弹窗Y位置（当前值）
@@ -185,8 +191,8 @@ struct WindowState {
     float box_H;                          //弹窗拉伸高度（稳态值，仅WIN_STYLE=1用）
     float box_h;                          //弹窗拉伸高度（当前值）
     float box_h_trg;                      //弹窗拉伸高度（目标值）
-    void (*list_on_close)(uint8_t);       //列表选择弹窗关闭回调函数
-    uint8_t confirm_mode;                 //确认弹窗模式标志
+    void (*list_on_close)(unsigned char);       //列表选择弹窗关闭回调函数
+    unsigned char confirm_mode;                 //确认弹窗模式标志
     void (*confirm_on_close)(bool);       //确认弹窗关闭回调函数
     float conf_hl_cur;                    //确认弹窗高亮条X位置（当前值）
     float conf_hl_trg;                    //确认弹窗高亮条X位置（目标值）
@@ -213,7 +219,7 @@ struct SpotState {
  * indi_x/indi_x_trg：指示器滑动动画位置
  */
 struct AboutState {
-    uint8_t index;           //当前显示的关于信息行
+    unsigned char index;           //当前显示的关于信息行
     float indi_x;            //指示器X位置（当前值）
     float indi_x_trg;        //指示器X位置（目标值）
 };
@@ -226,7 +232,7 @@ struct AboutState {
  * 这些参数通过EEPROM持久化
  */
 struct KnobState {
-    uint8_t param[KNOB_PARAM];  //旋钮参数数组
+    unsigned char param[KNOB_PARAM];  //旋钮参数数组
 };
 
 /*
@@ -249,7 +255,7 @@ struct KnobState {
  */
 struct ButtonState {
     bool pressed;           //是否有按钮事件发生（主循环中处理完毕后置false）
-    uint8_t id;             //按钮事件ID（对应ButtonId枚举：CW/CC/SP/LP）
+    unsigned char id;             //按钮事件ID（对应ButtonId枚举：CW/CC/SP/LP）
     bool alv;               //编码器A相当前电平
     bool blv;               //编码器B相当前电平
     bool flag;              //编码器状态机标志（防重复触发）
@@ -260,15 +266,15 @@ struct ButtonState {
     bool pressed_1;         //按键按下检测标志1
     bool pressed_2;         //按键按下检测标志2
     bool long_pressed;      //长按事件标志
-    uint32_t spt;           //短按时间阈值
-    uint32_t lpt;           //长按时间阈值
-    uint32_t spt_cnt;       //短按计数
-    uint32_t lpt_cnt;       //长按计数
+    unsigned int spt;           //短按时间阈值
+    unsigned int lpt;           //长按时间阈值
+    unsigned int spt_cnt;       //短按计数
+    unsigned int lpt_cnt;       //长按计数
     bool buzzer_trig;       //蜂鸣器触发标志（旋转操作音）
     bool buzzer_confirm;    //蜂鸣器确认标志（确认操作音）
     bool buzzer_exit;       //蜂鸣器退出标志（退出操作音）
     bool buzzer_boot;       //蜂鸣器开机标志（开机提示音）
-    uint32_t buzzer_start;  //蜂鸣器播放开始时间（毫秒）
+    unsigned int buzzer_start;  //蜂鸣器播放开始时间（毫秒）
 };
 
 /*
@@ -281,10 +287,10 @@ struct ButtonState {
  * - change标志标记是否有未保存的修改
  */
 struct EepromState {
-    uint8_t check;          //校验结果（允许一位误码）
-    uint16_t address;       //当前读写地址
+    unsigned char check;          //校验结果（允许一位误码）
+    unsigned int address;       //当前读写地址
     bool change;            //是否有数据变更需要保存
-    uint8_t check_param[EEPROM_CHECK];  //校验参数数组
+    unsigned char check_param[EEPROM_CHECK];  //校验参数数组
 };
 
 #endif

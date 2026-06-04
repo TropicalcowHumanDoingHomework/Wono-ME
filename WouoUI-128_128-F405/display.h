@@ -46,4 +46,13 @@ extern uint16_t buf_len;
  */
 void lcd_init();
 
+/*
+ * 重置VCOM翻转状态
+ * 
+ * 在屏幕旋转模式改变时调用，确保VCOM计数器重新对齐，
+ * 防止因VCOM极性翻转时机偏移导致的边缘白线问题。
+ * 同时复位tile_curr_row确保下一次sendBuffer发送全部16行。
+ */
+void lcd_reset_vcom();
+
 #endif

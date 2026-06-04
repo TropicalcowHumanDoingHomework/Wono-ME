@@ -277,7 +277,7 @@ void loop() {
 #if USB_MSC_ENABLE
     {
         bool param_changed = (ui.param[USB_ENABLE]    != prev_usb_enable)
-                          || (ui.param[USB_WP]        != prev_usb_wp)
+                          || (ui.param[USB_ENABLE] && (ui.param[USB_WP] != prev_usb_wp))
                           || (ui.param[HID_ENABLE_SW] != prev_hid_enable);
 
         if (usb_mounted && param_changed) {

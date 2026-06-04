@@ -27,12 +27,12 @@ static bool usb_active  = false;
 static bool usb_reg     = false;
 static bool usb_dirty   = false;
 static bool usb_pending = false;
-static uint32_t usb_poll_timeout = 0;
 static bool w25q_failed = false;
 static bool s_first_init = true;
+static uint32_t usb_poll_deadline = 0;
 
-#define USB_POLL_TIMEOUT       5000
-#define USB_POLL_ERROR_TIMEOUT 50
+#define USB_POLL_TIMEOUT_MS  15000
+#define USB_POLL_ERROR_MS    1000
 
 /* ==================== USBD_STORAGE 回调实现 ==================== */
 
@@ -162,7 +162,7 @@ void USBManager::begin()
         }
         if (!usb_reg) {
             w25q_failed = true;
-            usb_poll_timeout = USB_POLL_ERROR_TIMEOUT;
+            usb_poll_deadline = millis() + USB_POLL_ERROR_MS;
             usb_pending = true;
             return;
         }
@@ -180,7 +180,7 @@ void USBManager::begin()
         usbd_msc_reinit();
     }
     usb_active = true;
-    usb_poll_timeout = USB_POLL_TIMEOUT;
+    usb_poll_deadline = millis() + USB_POLL_TIMEOUT_MS;
     usb_pending = true;
 }
 
@@ -212,7 +212,6 @@ bool USBManager::poll()
     }
 
     if (usbd_msc_is_mounted()) {
-        usb_active = true;
         usb_pending = false;
         usb_debug_set_step(USB_STEP_DONE, USB_STATUS_OK);
         const char *ready_msg;
@@ -227,8 +226,8 @@ bool USBManager::poll()
         return true;
     }
 
-    if (usb_poll_timeout > 0) {
-        usb_poll_timeout--;
+    if ((int32_t)(millis() - usb_poll_deadline) < 0) {
+        /* 仍在等待中 */
     } else {
         /* 超时 — 读取寄存器快照辅助诊断 */
         usb_pending = false;

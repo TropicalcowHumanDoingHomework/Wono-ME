@@ -1,4 +1,4 @@
-﻿#include "pages.h"
+#include "pages.h"
 #include "ui_state.h"
 #include "animation.h"
 #include "display.h"
@@ -239,6 +239,9 @@ static const uint8_t usb_param_map[] = {
     24   // 3: HID Enable    → HID_ENABLE_SW
 };
 
+// KRF/KPF子页面返回目标（默认M_KNOB，HID Key入口设为M_HID_KEY）
+static uint8_t s_krf_return_page = M_KNOB;
+
 static const char* hl_ani_mode_items[] = { "Ease", "Spring", "Bounce", "Gravity" };
 static void hl_ani_callback(uint8_t select) {
     ui.param[HL_ANI_MODE] = select;
@@ -447,6 +450,7 @@ void list_rotate_switch() {
             case M_VOLT: current_menu = volt_menu; break;
             case M_SETTING: current_menu = setting_menu; break;
             case M_USB: current_menu = usb_menu; break;
+            case M_HID_KEY: current_menu = hid_key_menu; break;
             case M_ABOUT: current_menu = about_menu; break;
         }
         if (!current_menu) return;
@@ -654,19 +658,20 @@ void list_show(Menu* arr, uint8_t ui_index) {
 void volt_param_init() {
     volt.text_bg_l = 0;
     volt.text_bg_l_trg = DISP_W;
+    volt.text_bg_l_vel = 0;
 }
 
 void volt_show()
 {
   //更新动画目标值
   u8g2.setFont(LIST_FONT);
-  list.box_x_trg = u8g2.getStrWidth(volt_menu[ui.select[ui.layer]].title) + LIST_TEXT_S * 2;
+  list.box_x_trg = u8g2.getStrWidth(volt_menu[ui.select[ui.layer]].title) + LIST_TEXT_S * 2 + ui.param[BOX_X_OS];
 
   //计算动画过渡值  
   animation(&list.y, &list.y_trg, LIST_ANI);
   hl_ani(&list.box_x, &list.box_x_trg, &list.box_x_vel, LIST_ANI);
   hl_ani(&list.box_y, &list.box_y_trg[ui.layer], &list.box_y_vel, LIST_ANI);
-  animation(&volt.text_bg_l, &volt.text_bg_l_trg, TAG_ANI);
+  hl_ani(&volt.text_bg_l, &volt.text_bg_l_trg, &volt.text_bg_l_vel, TAG_ANI);
 
   //检查循环动画是否结束
   if (list.loop && list.box_y == list.box_y_trg[ui.layer]) list.loop = false;
@@ -674,18 +679,27 @@ void volt_show()
   //设置文字和曲线颜色，0透显，1实显，2反色，这里都用实显
   u8g2.setDrawColor(1);  
 
-  //绘制列表文字
+  //绘制列表文字（带弯曲效果）
   u8g2.setFontDirection(1);
   if (!ui.init)
   {
-    for (uint8_t i = 0; i < ui.num[ui.index]; ++ i) u8g2.drawStr(LIST_TEXT_S + (i - ui.select[ui.layer]) * list.y + list.box_y_trg[ui.layer] - 1, VOLT_LIST_U_S , volt_menu[i].title);
+    for (uint8_t i = 0; i < ui.num[ui.index]; ++ i) {
+      uint8_t temp_y;
+      if (ui.param[LIST_UFD]) temp_y = LIST_TEXT_S + i * list.y - LIST_LINE_H * ui.select[ui.layer] + list.box_y_trg[ui.layer] - 1;
+      else temp_y = LIST_TEXT_S + (i - ui.select[ui.layer]) * list.y + list.box_y_trg[ui.layer] - 1;
+      u8g2.drawStr(temp_y, VOLT_LIST_U_S, volt_menu[i].title);
+    }
     if (list.y == list.y_trg) 
     {
       ui.init = true;
       list.y = list.y_trg = - LIST_LINE_H * ui.select[ui.layer] + list.box_y_trg[ui.layer];
     }
   }
-  else for (uint8_t i = 0; i < ui.num[ui.index]; ++ i) u8g2.drawStr(LIST_TEXT_S + LIST_LINE_H * i + (int16_t)list.y - 1, VOLT_LIST_U_S , volt_menu[i].title); 
+  else for (uint8_t i = 0; i < ui.num[ui.index]; ++ i) {
+    list.temp = LIST_LINE_H * i + (int16_t)list.y - 1;
+    uint8_t curve_x = VOLT_LIST_U_S + (uint8_t)((ui.param[LIST_CUR] / 1000.0f) * pow(list.temp - list.box_y, 2));
+    u8g2.drawStr(LIST_TEXT_S + list.temp, curve_x, volt_menu[i].title);
+  }
   
   //绘制电压曲线和外框
   volt.val = 0;
@@ -708,9 +722,9 @@ void volt_show()
   u8g2.print(volt.val / 4096.0f * 3.3f);
   u8g2.print("V");
 
-  //绘制列表选择框和电压文字背景
+  //绘制列表选择框（带 BOX_Y_OS 过伸）
   u8g2.setDrawColor(2);
-  u8g2.drawRBox(list.box_y, VOLT_LIST_U_S - LIST_TEXT_S, LIST_LINE_H, list.box_x, LIST_BOX_R);
+  u8g2.drawRBox(list.box_y, VOLT_LIST_U_S - LIST_TEXT_S, LIST_LINE_H + ui.param[BOX_Y_OS], list.box_x, LIST_BOX_R);
   u8g2.drawBox(DISP_W - volt.text_bg_l, VOLT_TEXT_BG_U_S, DISP_W, VOLT_TEXT_BG_H);
 
   //反转屏幕内元素颜色，白天模式遮罩
@@ -815,7 +829,7 @@ void animition_proc() {
                     case 15: check_box_m_select(LIST_LOOP); break;
                     case 16: check_box_m_select(WIN_BOK); break;
                     case 17: check_box_m_select(WIN_STYLE); break;
-                    case 18: window_list_select_init("HL Ani Mode", hl_ani_mode_items, 4, animition_menu, M_ANIMITION); window_set_list_callback(hl_ani_callback); break;
+                    case 18: window_list_select_init("HL Ani Mode", hl_ani_mode_items, 4, animition_menu, M_ANIMITION, ui.param[HL_ANI_MODE]); window_set_list_callback(hl_ani_callback); break;
                     case 19: window_value_init("Spring K", SPRING_K, &ui.param[SPRING_K], 100, 10, 1, animition_menu, M_ANIMITION); break;
                     case 20: window_value_init("Spring D", SPRING_D, &ui.param[SPRING_D], 100, 10, 1, animition_menu, M_ANIMITION); break;
                 }
@@ -933,7 +947,7 @@ void sleep_proc() {
                     ui.fade = 0;
 
                     for (uint8_t step = 1; step <= 4; step++) {
-                        delay(30);
+                        delay(ui.param[FADE_ANI]);
                         if (step <= 3) {
                             for (uint16_t y = 0; y < 128; y++) {
                                 uint8_t mask = 0;
@@ -945,8 +959,12 @@ void sleep_proc() {
                                         buf_ptr[y * 16 + x] |= mask;
                                 }
                             }
-                        } else {
+                        } else if (ui.param[FADE_MODE] == 0) {
                             memset(buf_ptr, 0xFF, buf_len);
+                        } else {
+                            for (uint16_t y = 1; y < 128; y += 2)
+                                for (uint16_t x = 0; x < 16; x++)
+                                    buf_ptr[y * 16 + x] |= 0x55;
                         }
                         u8g2.sendBuffer();
                     }
@@ -1032,7 +1050,6 @@ void editor_proc() {
                     case 8: window_confirm_init("Conf Test", "Are you sure?\nChoose Yes or No.", editor_menu, M_EDITOR, conf_test_callback); break;
                     case 9: window_list_select_init("Select Item", win_list_test_items, WIN_LIST_TEST_ITEMS_NUM, editor_menu, M_EDITOR); break;
                     case 10: window_message_init("Message", "Hello World!\nLine 2\nLine 3", editor_menu, M_EDITOR); break;
-                    case 11: ui.index = M_KNOB; ui.state = S_LAYER_IN; break;
                 }
                 break;
         }
@@ -1093,6 +1110,15 @@ void usb_param_init() {
     check_box.map = (uint8_t*)usb_param_map;
 }
 
+static uint8_t s_hid_display[2];  // 供list_draw_krf/kpf读取的显示数组
+
+void hid_key_param_init() {
+    s_hid_display[0] = knob.param[KNOB_ROT];
+    s_hid_display[1] = knob.param[KNOB_COD];
+    check_box_v_init(s_hid_display);
+    check_box_m_init(ui.param);
+}
+
 /********************************* 页面主循环函数 *********************************/
 
 /*
@@ -1119,8 +1145,8 @@ void knob_proc() {
             case BTN_ID_SP:
                 switch (ui.select[ui.layer]) {
                     case 0: ui.index = M_EDITOR; ui.state = S_LAYER_OUT; break;
-                    case 1: ui.index = M_KRF; ui.state = S_LAYER_IN; check_box_s_init(&knob.param[KNOB_ROT], &knob.param[KNOB_ROT_P]); break;
-                    case 2: ui.index = M_KPF; ui.state = S_LAYER_IN; check_box_s_init(&knob.param[KNOB_COD], &knob.param[KNOB_COD_P]); break;
+                    case 1: s_krf_return_page = M_KNOB; ui.index = M_KRF; ui.state = S_LAYER_IN; check_box_s_init(&knob.param[KNOB_ROT], &knob.param[KNOB_ROT_P]); break;
+                    case 2: s_krf_return_page = M_KNOB; ui.index = M_KPF; ui.state = S_LAYER_IN; check_box_s_init(&knob.param[KNOB_COD], &knob.param[KNOB_COD_P]); break;
                 }
                 break;
         }
@@ -1150,7 +1176,7 @@ void krf_proc() {
                 ui.select[ui.layer] = 0;
             case BTN_ID_SP:
                 switch (ui.select[ui.layer]) {
-                    case 0: ui.index = M_KNOB; ui.state = S_LAYER_OUT; break;
+                    case 0: ui.index = s_krf_return_page; ui.state = S_LAYER_OUT; break;
                     case 1: break;
                     case 2: check_box_s_select(KNOB_DISABLE, ui.select[ui.layer]); break;
                     case 3: break;
@@ -1186,7 +1212,7 @@ void kpf_proc() {
                 ui.select[ui.layer] = 0;
             case BTN_ID_SP:
                 switch (ui.select[ui.layer]) {
-                    case 0: ui.index = M_KNOB; ui.state = S_LAYER_OUT; break;
+                    case 0: ui.index = s_krf_return_page; ui.state = S_LAYER_OUT; break;
                     case 1: break;
                     case 2: check_box_s_select(KNOB_DISABLE, ui.select[ui.layer]); break;
                     case 3: break;
@@ -1349,13 +1375,15 @@ void setting_proc() {
 /*
  * USB设置页面主循环
  * 
- * 显示USB存储配置列表：
+ * 显示USB配置列表：
  * - 0：返回主菜单
  * - 1：USB存储开关
  * - 2：写保护开关
+ * - 3：HID开关
+ * - 4：HID按键设置入口
  * 
  * LP（长按）：返回主菜单，选中项重置
- * SP（短按）：开关项直接切换
+ * SP（短按）：开关项直接切换 / 进入子页面
  */
 void usb_proc() {
     list_show(usb_menu, M_USB);
@@ -1374,6 +1402,40 @@ void usb_proc() {
                     case 1: check_box_m_select(USB_ENABLE); break;
                     case 2: check_box_m_select(USB_WP); break;
                     case 3: check_box_m_select(HID_ENABLE_SW); break;
+                    case 4: ui.index = M_HID_KEY; ui.state = S_LAYER_IN; break;
+                }
+                break;
+        }
+    }
+}
+
+/*
+ * HID按键设置页面主循环
+ * 
+ * 菜单项：
+ * - 0：返回USB菜单
+ * - 1：旋钮旋转功能（→ Volume / Brightness / Disable）
+ * - 2：按键键码选择
+ * 
+ * SP（短按）：进入子页面
+ * LP（长按）：返回USB菜单
+ */
+void hid_key_proc() {
+    list_show(hid_key_menu, M_HID_KEY);
+    if (btn.pressed) {
+        btn.pressed = false;
+        switch (btn.id) {
+            case BTN_ID_CW:
+            case BTN_ID_CC:
+                list_rotate_switch();
+                break;
+            case BTN_ID_LP:
+                ui.select[ui.layer] = 0;
+            case BTN_ID_SP:
+                switch (ui.select[ui.layer]) {
+                    case 0: ui.index = M_USB; ui.state = S_LAYER_OUT; break;
+                    case 1: s_krf_return_page = M_HID_KEY; ui.index = M_KRF; ui.state = S_LAYER_IN; check_box_s_init(&knob.param[KNOB_ROT], &knob.param[KNOB_ROT_P]); break;
+                    case 2: s_krf_return_page = M_HID_KEY; ui.index = M_KPF; ui.state = S_LAYER_IN; check_box_s_init(&knob.param[KNOB_COD], &knob.param[KNOB_COD_P]); break;
                 }
                 break;
         }
@@ -1422,6 +1484,7 @@ static void init_list_box_params() {
         case M_KPF: current_menu = kpf_menu; break;
         case M_VOLT: current_menu = volt_menu; break;
         case M_USB: current_menu = usb_menu; break;
+        case M_HID_KEY: current_menu = hid_key_menu; break;
         case M_SETTING: current_menu = setting_menu; break;
         case M_ABOUT: current_menu = about_menu; break;
     }
@@ -1492,6 +1555,7 @@ void layer_init_in() {
         case M_KPF: kpf_param_init(); break;
         case M_VOLT: volt_param_init(); break;
         case M_USB: usb_param_init(); break;
+        case M_HID_KEY: hid_key_param_init(); break;
         case M_SETTING: setting_param_init(); break;
         case M_ABOUT: about_param_init(); break;
     }
@@ -1563,7 +1627,13 @@ void layer_init_out() {
  */
 void ui_proc() {
     static const u8g2_cb_t *rot_table[4] = { U8G2_R0, U8G2_R1, U8G2_R2, U8G2_R3 };
-    u8g2.setDisplayRotation(rot_table[ui.param[ROTATE_SCR] & 3u]);
+    static uint8_t last_rotate = 0xFF;  // 初始化为无效值，确保首次必定设置
+    uint8_t cur_rotate = ui.param[ROTATE_SCR] & 3u;
+    if (cur_rotate != last_rotate) {
+        last_rotate = cur_rotate;
+        u8g2.setDisplayRotation(rot_table[cur_rotate]);
+        lcd_reset_vcom();  // 旋转切换时重置VCOM状态，防止边缘白线
+    }
 
     switch (ui.state) {
         case S_FADE:          fade();                   break;
@@ -1584,6 +1654,7 @@ void ui_proc() {
                 case M_KPF: kpf_proc(); break;
                 case M_VOLT: volt_proc(); break;
                 case M_USB: usb_proc(); break;
+                case M_HID_KEY: hid_key_proc(); break;
                 case M_SETTING: setting_proc(); break;
                 case M_ABOUT: about_proc(); break;
             }

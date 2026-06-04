@@ -398,15 +398,24 @@ def pixels_to_png(pixels, filepath, scale=1):
 
 # ── 形状绘制工具函数 ─────────────────────────────────────────────
 
-def draw_line(pixels, x0, y0, x1, y1, color=1):
-    """Bresenham 画线算法"""
+def draw_line(pixels, x0, y0, x1, y1, color=1, brush_size=1):
+    """Bresenham 画线算法，支持画笔粗细"""
+    half = brush_size // 2
     dx, dy = abs(x1 - x0), -abs(y1 - y0)
     sx = 1 if x0 < x1 else -1
     sy = 1 if y0 < y1 else -1
     err = dx + dy
     while True:
-        if 0 <= x0 < ICON_W and 0 <= y0 < ICON_H:
-            pixels[y0][x0] = color
+        if brush_size <= 1:
+            if 0 <= x0 < ICON_W and 0 <= y0 < ICON_H:
+                pixels[y0][x0] = color
+        else:
+            for by in range(brush_size):
+                for bx in range(brush_size):
+                    px = x0 - half + bx
+                    py = y0 - half + by
+                    if 0 <= px < ICON_W and 0 <= py < ICON_H:
+                        pixels[py][px] = color
         if x0 == x1 and y0 == y1:
             break
         e2 = 2 * err
@@ -421,10 +430,15 @@ def draw_line(pixels, x0, y0, x1, y1, color=1):
 def draw_circle(pixels, cx, cy, r, color=1, fill=False):
     """中点圆算法"""
     if fill:
-        for y in range(ICON_H):
-            for x in range(ICON_W):
-                d2 = (x - cx) ** 2 + (y - cy) ** 2
-                if d2 <= r * r:
+        x0 = max(0, cx - r)
+        x1 = min(ICON_W - 1, cx + r)
+        y0 = max(0, cy - r)
+        y1 = min(ICON_H - 1, cy + r)
+        r2 = r * r
+        for y in range(y0, y1 + 1):
+            dy2 = (y - cy) ** 2
+            for x in range(x0, x1 + 1):
+                if (x - cx) ** 2 + dy2 <= r2:
                     pixels[y][x] = color
     else:
         x, y = r, 0
@@ -652,6 +666,7 @@ class IconEditor:
         self.cv.bind("<Motion>", self._mouse_hover)
         # 右键取色
         self.cv.bind("<Button-3>", self._pick_color)
+        self.cv.bind("<MouseWheel>", self._on_mousewheel)
 
         # ── 右侧工具栏 ──
         right_frame = ttk.Frame(main_frame, width=220)
@@ -764,7 +779,7 @@ class IconEditor:
 
     def _on_tool_change(self, *_):
         self.tool = self.tool_var.get()
-        self.brush_spin.config(state=tk.NORMAL if self.tool == "pencil" else tk.DISABLED)
+        self.brush_spin.config(state=tk.NORMAL if self.tool in ("pencil", "line") else tk.DISABLED)
         self.rect_fill = self.fill_var.get()
         self.circle_fill = self.fill_var.get()
         self.rect_radius = self.radius_var.get()
@@ -838,17 +853,20 @@ class IconEditor:
 
     # ── 鼠标事件 ────────────────────────────────────────────────
 
+    def _on_mousewheel(self, event):
+        self.cv.yview_scroll(-1 * (event.delta // 120), "units")
+
     def _mouse_hover(self, event):
         x, y = event.x // CELL_SIZE, event.y // CELL_SIZE
         if 0 <= x < ICON_W and 0 <= y < ICON_H:
             color_name = "前景(黑)" if self.current_color == 1 else "背景(白)"
             tool_names = {"pencil": "铅笔", "line": "直线", "rect": "矩形", "circle": "圆形", "select": "框选"}
             tool_name = tool_names.get(self.tool, self.tool)
-            extra = f"  笔刷:{self.brush_size}×{self.brush_size}" if self.tool == "pencil" else ""
+            extra = f"  笔刷:{self.brush_size}×{self.brush_size}" if self.tool in ("pencil", "line") else ""
             self._update_status(f"工具:{tool_name}{extra}  颜色:{color_name}  坐标 ({x}, {y})  值={self.pixels[y][x]}")
             if self.tool != "select":
                 if self._hover_id is None:
-                    if self.tool == "pencil":
+                    if self.tool in ("pencil", "line"):
                         s = self.brush_size
                         half = s // 2
                         px = (x - half) * CELL_SIZE + 1
@@ -863,7 +881,7 @@ class IconEditor:
                             px, py, px+CELL_SIZE, py+CELL_SIZE,
                             outline="#FF0000", width=2, dash=(3, 2), tags="hover")
                 else:
-                    if self.tool == "pencil":
+                    if self.tool in ("pencil", "line"):
                         s = self.brush_size
                         half = s // 2
                         px = (x - half) * CELL_SIZE + 1
@@ -957,15 +975,21 @@ class IconEditor:
             elif self.tool == "line":
                 self.preview_outline = []
                 lx0, ly0, lx1, ly1 = x0, y0, x, y
+                bs = self.brush_size
+                half = bs // 2
                 dx, dy = abs(lx1 - lx0), -abs(ly1 - ly0)
                 sx = 1 if lx0 < lx1 else -1
                 sy = 1 if ly0 < ly1 else -1
                 err = dx + dy
                 while True:
                     if 0 <= lx0 < ICON_W and 0 <= ly0 < ICON_H:
+                        x1 = lx0 - half
+                        y1 = ly0 - half
+                        x2 = x1 + bs
+                        y2 = y1 + bs
                         self.preview_outline.append(self.cv.create_rectangle(
-                            lx0*CELL_SIZE+1, ly0*CELL_SIZE+1,
-                            lx0*CELL_SIZE+1+CELL_SIZE, ly0*CELL_SIZE+1+CELL_SIZE,
+                            x1*CELL_SIZE+1, y1*CELL_SIZE+1,
+                            x2*CELL_SIZE+1, y2*CELL_SIZE+1,
                             outline="#FF0000", width=1, fill=""))
                     if lx0 == lx1 and ly0 == ly1:
                         break
@@ -1011,9 +1035,12 @@ class IconEditor:
                     if fill:
                         ya = max(0, cy - r)
                         yb = min(ICON_H - 1, cy + r)
+                        xa = max(0, cx - r)
+                        xb = min(ICON_W - 1, cx + r)
                         for py in range(ya, yb + 1):
-                            for px in range(ICON_W):
-                                if (px - cx)**2 + (py - cy)**2 <= r*r:
+                            dy2 = (py - cy) ** 2
+                            for px in range(xa, xb + 1):
+                                if (px - cx)**2 + dy2 <= r*r:
                                     self.preview_outline.append(self.cv.create_rectangle(
                                         px*CELL_SIZE+1, py*CELL_SIZE+1,
                                         px*CELL_SIZE+1+CELL_SIZE, py*CELL_SIZE+1+CELL_SIZE,
@@ -1061,7 +1088,7 @@ class IconEditor:
             else:
                 self._render_incremental()
         elif self.tool == "line":
-            draw_line(self.pixels, x0, y0, x1, y1, self.current_color)
+            draw_line(self.pixels, x0, y0, x1, y1, self.current_color, self.brush_size)
             self._render_incremental()
         elif self.tool == "rect":
             r = self.radius_var.get()
@@ -1237,13 +1264,12 @@ class IconEditor:
 
         def do_apply(event=None):
             m = mode_var.get()
-            self._save_state()
-
-            white_cnt = sum(row.count(0) for row in self.pixels)
-            black_cnt = sum(row.count(1) for row in self.pixels)
-            bg_color = 1 if white_cnt >= black_cnt else 0
 
             if m == "wouo":
+                self._save_state()
+                white_cnt = sum(row.count(0) for row in self.pixels)
+                black_cnt = sum(row.count(1) for row in self.pixels)
+                bg_color = 1 if white_cnt >= black_cnt else 0
                 offsets = [(0,0), (0,1), (1,0), (0,2), (2,0)]
                 corners = [
                     (0, 0, 1, 1),
@@ -1262,14 +1288,18 @@ class IconEditor:
                 if r <= 0:
                     win.destroy()
                     return
+                self._save_state()
+                white_cnt = sum(row.count(0) for row in self.pixels)
+                black_cnt = sum(row.count(1) for row in self.pixels)
+                bg_color = 1 if white_cnt >= black_cnt else 0
+                fg_color = 1 - bg_color
+                max_q = min(ICON_W, ICON_H) // 2
                 corners = [
                     (0, 0, 1, 1),
                     (ICON_W-1, 0, -1, 1),
                     (0, ICON_H-1, 1, -1),
                     (ICON_W-1, ICON_H-1, -1, -1),
                 ]
-                fg_color = 1 - bg_color
-                max_q = min(ICON_W, ICON_H) // 2
                 for cx, cy, sdx, sdy in corners:
                     for dy in range(max_q):
                         for dx in range(max_q):
@@ -1394,7 +1424,7 @@ class IconEditor:
         ins("sep", "")
         ins("h2", "绘图工具")
         ins("item", "• 铅笔   点击或拖拽绘制，右侧可调节笔刷粗细（1×1 ~ 4×4）")
-        ins("item", "• 直线   拖拽绘制一条直线，预览显示逐像素红色轮廓")
+        ins("item", "• 直线   拖拽绘制直线，同样支持笔刷粗细")
         ins("item", "• 矩形   拖拽绘制矩形，可设置填充和圆角半径（0~24）")
         ins("item", "• 圆形   拖拽绘制圆形，可设置填充")
         ins("item", "• 框选   绘制矩形选区，可用方向键移动，Space 旋转")
@@ -1519,6 +1549,18 @@ class IconEditor:
                 scale_slider = ttk.Scale(scale_frame, from_=5, to=300,
                                          variable=scale_var, orient=tk.HORIZONTAL, length=160)
                 scale_slider.pack(side=tk.LEFT, padx=(0, 6))
+
+                def on_scale_key(event):
+                    if scale_slider.instate((tk.DISABLED,)):
+                        return
+                    step = 1 if event.state & 0x0001 else 5
+                    if event.keysym == "Left":
+                        scale_var.set(max(5, scale_var.get() - step))
+                    elif event.keysym == "Right":
+                        scale_var.set(min(300, scale_var.get() + step))
+                    return "break"
+                win.bind("<Left>", on_scale_key)
+                win.bind("<Right>", on_scale_key)
 
                 scale_label = ttk.Label(scale_frame, text="100%", width=6, anchor=tk.W)
                 scale_label.pack(side=tk.LEFT)
@@ -2333,7 +2375,6 @@ class IconEditor:
     def _render_incremental(self):
         for y in range(ICON_H):
             row_items = self._cell_items[y]
-            px = y * CELL_SIZE + 1
             for x in range(ICON_W):
                 self.cv.itemconfig(row_items[x], fill=PALETTE[self.pixels[y][x]])
         self._refresh_preview()
@@ -2360,13 +2401,6 @@ class IconEditor:
     def _update_status(self, msg):
         if msg:
             self.status_var.set(msg)
-        else:
-            xy = ""
-            try:
-                sel = self.cv.tk.call(self.cv, "index", "current")
-                mx, my = self.cv.canvasx(0), self.cv.canvasy(0)
-            except:
-                pass
 
     def run(self):
         self.root.mainloop()

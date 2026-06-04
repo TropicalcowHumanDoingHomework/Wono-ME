@@ -201,10 +201,7 @@ HIDKeyboard Keyboard;
 
 void hid_init()
 {
-    /* HID初始化预留。
-     * 当HID_ENABLE=1且HID类驱动就绪时：
-     * 1. 注册HID报告描述符
-     * 2. 启用HID端点
-     */
+    /* HID 初始化 — 实际驱动注册在 usbd_hid_reinit() / composite_reinit() 中完成。
+     * 本函数保留供未来分离 HID 初始化与 USB 枚举流程的独立入口。 */
 }
 

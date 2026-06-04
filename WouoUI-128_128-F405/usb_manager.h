@@ -17,46 +17,45 @@
 #if USB_MSC_ENABLE
 
 /*
- * USB大容量存储管理器
+ * USB管理器
  *
- * 基于USB_OTG_HS + USB3300 ULPI PHY + W25Q512 SPI Flash
- * - W25Q512作为存储后端，4KB扇区缓存写入
- * - 自包含USBD MSC类驱动处理BOT/SCSI协议
+ * 基于USB_OTG_HS + USB3300 ULPI PHY
+ * 支持三种模式：
+ *   - MSC：W25Q512 SPI Flash 作为存储后端（64MB U盘）
+ *   - HID：Consumer Control（多媒体）+ Keyboard（键盘）
+ *   - Composite：MSC + HID 复合设备
  */
 class USBManager {
 public:
     /*
-     * 注册USB MSC组件
-     * 初始化W25Q512 SPI Flash并验证器件ID
+     * 注册W25Q512 Flash存储组件
      */
     static void registerComponent();
 
     /*
-     * 启动USB MSC设备
-     * 通过usbd_msc_reinit()初始化为MSC模式
-     * 立即返回，status 通过 poll() 或 isEnabled() 查询
+     * 启动USB设备（自动根据开关选择模式）
+     * 立即返回，状态通过 poll() 或 isEnabled() 查询
      */
     static void begin();
 
     /*
-     * 轮询 USB 枚举状态（在 loop() 中调用）
-     * 在 begin() 之后定期调用，不再阻塞
-     * 返回 true 表示已枚举完成
+     * 轮询 USB 枚举状态
+     * 返回 true 表示枚举已完成（成功或超时）
      */
     static bool poll();
 
     /*
-     * 断开USB连接
+     * 断开USB连接并释放硬件
      */
     static void end();
 
     /*
-     * 查询USB连接状态
+     * USB已枚举且配置完成
      */
     static bool isEnabled();
 
     /*
-     * 查询是否有未完成的写入操作
+     * 查询是否有未完成的写入操作（仅MSC模式有效）
      */
     static bool isDirty();
 };
