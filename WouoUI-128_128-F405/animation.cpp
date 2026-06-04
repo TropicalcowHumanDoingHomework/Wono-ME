@@ -290,23 +290,23 @@ void fade() {
                         for (uint16_t y = 0; y < 128; ++y)
                             if (y % 2 == 0)
                                 for (uint16_t x = 0; x < 16; ++x)
-                                    buf_ptr[y * 16 + x] |= 0x55;
+                                    buf_ptr[y * 16 + x] &= 0xAA;
                         break;
                     case 2:
                         for (uint16_t y = 0; y < 128; ++y)
                             if (y % 2 == 1)
                                 for (uint16_t x = 0; x < 16; ++x)
-                                    buf_ptr[y * 16 + x] |= 0xAA;
+                                    buf_ptr[y * 16 + x] &= 0x55;
                         break;
                     case 3:
                         for (uint16_t y = 0; y < 128; ++y)
                             if (y % 2 == 0)
                                 for (uint16_t x = 0; x < 16; ++x)
-                                    buf_ptr[y * 16 + x] |= 0xAA;
+                                    buf_ptr[y * 16 + x] &= 0x55;
                         break;
                     case 4:
                         for (uint16_t i = 0; i < buf_len; ++i)
-                            buf_ptr[i] = 0xFF;
+                            buf_ptr[i] = 0x00;
                         ui.state = S_NONE;
                         ui.fade = 0;
                         break;

@@ -342,8 +342,8 @@ void window_show() {
         }
     }
 
-    uint8_t bg_color = ui.param[DARK_MODE] ? 0 : 1;
-    uint8_t fg_color = ui.param[DARK_MODE] ? 1 : 0;
+    uint8_t bg_color = 0;
+    uint8_t fg_color = 1;
 
     u8g2.setFont(WIN_FONT);
 

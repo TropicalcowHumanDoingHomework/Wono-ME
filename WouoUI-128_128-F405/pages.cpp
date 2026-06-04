@@ -353,10 +353,6 @@ void tile_show(Menu* arr_1, Menu* arr_2, const uint8_t icon_pic[][16 * 18]) {
         }
     }
     else for (uint8_t i = 0; i < ui.num[ui.index]; ++i) u8g2.drawXBMP((DISP_W - TILE_ICON_W) / 2 + (int16_t)tile.icon_x + i * TILE_ICON_S, 0, TILE_ICON_W, TILE_ICON_H, icon_pic[i]);
-
-    //反转屏幕内元素颜色，白天模式遮罩
-    u8g2.setDrawColor(2);
-    if (!ui.param[DARK_MODE]) u8g2.drawBox(0, 0, DISP_W, DISP_H);
 }
 
 static void list_update_box_size(Menu* menu);
@@ -623,10 +619,6 @@ void list_show(Menu* arr, uint8_t ui_index) {
     u8g2.setDrawColor(2);
     if (list.box_y + LIST_LINE_H > 0 && list.box_y < DISP_H)
         u8g2.drawRBox(0, list.box_y - (list.box_h - LIST_LINE_H) / 2, list.box_w, list.box_h, LIST_BOX_R);
-
-    if (!ui.param[DARK_MODE]) {
-        u8g2.drawBox(0, 0, DISP_W, DISP_H);
-    }
 }
 
 /*
@@ -727,8 +719,6 @@ void volt_show()
   u8g2.drawRBox(list.box_y, VOLT_LIST_U_S - LIST_TEXT_S, LIST_LINE_H + ui.param[BOX_Y_OS], list.box_x, LIST_BOX_R);
   u8g2.drawBox(DISP_W - volt.text_bg_l, VOLT_TEXT_BG_U_S, DISP_W, VOLT_TEXT_BG_H);
 
-  //反转屏幕内元素颜色，白天模式遮罩
-  if (!ui.param[DARK_MODE]) u8g2.drawBox(0, 0, DISP_W, DISP_H);
 }
 
 /*
@@ -769,8 +759,6 @@ void about_show() {
 
     u8g2.setDrawColor(2);
     u8g2.drawRBox(ABOUT_INDI_S, ABOUT_INDI_S, list.box_x, LIST_LINE_H, LIST_BOX_R);
-
-    if (!ui.param[DARK_MODE]) u8g2.drawBox(0, 0, DISP_W, DISP_H);
 }
 
 /*
@@ -879,8 +867,10 @@ void sleep_proc() {
         u8g2.setPowerSave(1);
         ui.sleep = true;
 
+#ifndef _WIN32
         TIM12_CCR1 = 0;
         TIM12_CR1 &= ~(1u << 0);
+#endif
 
         if (USBManager::isEnabled() && !ui.param[HID_ENABLE_SW]) {
             USBManager::end();
@@ -894,8 +884,15 @@ void sleep_proc() {
 
         led_start_breathing_white();
     }
-    while (ui.sleep) {
+#ifdef _WIN32
+    if (ui.sleep)
+#else
+    while (ui.sleep)
+#endif
+    {
+#ifndef _WIN32
         btn_scan();
+#endif
         buzzer_proc();
         led_proc();
 
