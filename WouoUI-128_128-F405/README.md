@@ -361,7 +361,7 @@ cmake --build build --config Release
 | 宏 | 说明 | 默认值 |
 |:---|:-----|:-------|
 | `UI_DEPTH` | 页面层级最大深度 | `20` |
-| `UI_MNUMB` | 最大菜单项数量 | `100` |
+| `UI_MNUMB` | 最大页面数量 | `20` |
 | `UI_PARAM` | 系统可调参数数量 | `28` |
 | `HID_ENABLE` | USB HID 功能开关 | `0`（禁用） |
 | `USB_MSC_ENABLE` | USB 大容量存储开关 | `1`（启用） |

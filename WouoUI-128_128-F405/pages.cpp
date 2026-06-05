@@ -716,10 +716,13 @@ void volt_show()
 
   //绘制列表选择框（带 BOX_Y_OS 过伸）
   // dir=1 选择框：w=16同标准List，x偏移使文字居中
+  int16_t box_y = VOLT_LIST_U_S - LIST_TEXT_S - 3;
+  int16_t box_h = (int16_t)list.box_x - 12;
+  if (box_h > DISP_H - box_y) box_h = DISP_H - box_y;
   u8g2.setDrawColor(2);
-  u8g2.drawRBox(list.box_y - 1, VOLT_LIST_U_S - LIST_TEXT_S - 3,
+  u8g2.drawRBox(list.box_y - 1, box_y,
                 16,
-                list.box_x - 12, LIST_BOX_R);
+                box_h, LIST_BOX_R);
   u8g2.drawBox(DISP_W - volt.text_bg_l, VOLT_TEXT_BG_U_S, DISP_W, VOLT_TEXT_BG_H);
 
 }
