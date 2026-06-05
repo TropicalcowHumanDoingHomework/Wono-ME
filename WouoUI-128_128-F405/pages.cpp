@@ -719,8 +719,10 @@ void volt_show()
   int16_t box_y = VOLT_LIST_U_S - LIST_TEXT_S - 3;
   int16_t box_h = (int16_t)list.box_x - 12;
   if (box_h > DISP_H - box_y) box_h = DISP_H - box_y;
+  int16_t box_x = (int16_t)list.box_y - 1;
+  if (box_x < 0) box_x = 0;
   u8g2.setDrawColor(2);
-  u8g2.drawRBox(list.box_y - 1, box_y,
+  u8g2.drawRBox(box_x, box_y,
                 16,
                 box_h, LIST_BOX_R);
   u8g2.drawBox(DISP_W - volt.text_bg_l, VOLT_TEXT_BG_U_S, DISP_W, VOLT_TEXT_BG_H);

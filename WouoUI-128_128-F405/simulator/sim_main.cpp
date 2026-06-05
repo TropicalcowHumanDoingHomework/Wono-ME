@@ -87,8 +87,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
                 case 0x57: sim_knob_handle_key(81, true); break;
                 case VK_DOWN:
                 case 0x53: sim_knob_handle_key(82, true); break;
-                case VK_RETURN:
-                case VK_SPACE: sim_knob_handle_key(40, true); break;
+                case VK_RETURN: sim_knob_handle_key(40, true); break;
             }
             return 0;
         }
@@ -96,8 +95,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
         case WM_KEYUP: {
             UINT vk = (UINT)wParam;
             switch (vk) {
-                case VK_RETURN:
-                case VK_SPACE: sim_knob_handle_key(40, false); break;
+                case VK_RETURN: sim_knob_handle_key(40, false); break;
             }
             return 0;
         }
@@ -126,6 +124,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
             if (sim_running) {
                 btn_scan();
                 ui_proc();
+                buzzer_proc();
                 update_pixel_buffer();
                 InvalidateRect(hwnd, nullptr, FALSE);
             }
@@ -164,12 +163,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
     if (!RegisterClass(&wc)) return 1;
 
     RECT rect = {0, 0, DISP_W_PX, DISP_H_PX};
-    AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, FALSE);
+    DWORD style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
+    AdjustWindowRect(&rect, style, FALSE);
     int win_w = rect.right - rect.left;
     int win_h = rect.bottom - rect.top;
 
     g_hwnd = CreateWindowEx(0, CLASS_NAME, "WouoUI Simulator",
-        WS_OVERLAPPEDWINDOW,
+        style,
         CW_USEDEFAULT, CW_USEDEFAULT, win_w, win_h,
         nullptr, nullptr, hInstance, nullptr);
     if (!g_hwnd) return 1;
@@ -183,6 +183,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
     setting_param_init();
     lcd_init();
     btn_init();
+    buzzer_boot_sound();
 
     update_pixel_buffer();
     InvalidateRect(g_hwnd, nullptr, FALSE);
