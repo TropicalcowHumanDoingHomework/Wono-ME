@@ -233,13 +233,27 @@ void hl_ani(float *a, float *a_trg, float *vel, uint8_t n) {
  * - 第3步：偶数行=0xFF
  * - 第4步：奇数行=0xFF → 全白，完成
  * 
- * 完成时：ui.state = S_NONE, ui.fade = 0
+ * 方向控制（ui.fade_dir）：
+ * - 0（默认）：渐出，从当前内容过渡到全黑/全白
+ * - 1：渐入，从全黑/全白过渡到保存的内容（预先通过fade_save_content保存）
+ * 
+ * 完成时：ui.state = S_NONE, ui.fade = 0, ui.fade_dir = 0
  * 
  * 像素位说明：
  * LS013B7DH03是Memory LCD，1像素=1bit
  * 每字节(16bit)中：0x55 = 01010101, 0xAA = 10101010
  * 棋盘格交替位可产生中间灰度过渡效果
  */
+
+// 渐入过渡用的临时缓存
+#define FADE_BUF_SIZE (128 * 16)  // 128行 × 16字节/行
+static uint8_t fade_saved_buf[FADE_BUF_SIZE];
+
+void fade_save_content(uint8_t* buf, uint16_t len) {
+    uint16_t copy_len = (len < FADE_BUF_SIZE) ? len : FADE_BUF_SIZE;
+    memcpy(fade_saved_buf, buf, copy_len);
+}
+
 void fade() {
     static uint32_t last_fade_time = 0;
     uint32_t now = millis();
@@ -249,6 +263,62 @@ void fade() {
     }
     last_fade_time = now;
 
+    // 渐入方向：从全黑/全白逐步显现已保存的内容
+    if (ui.fade_dir == 1) {
+        switch (ui.fade) {
+            case 1:
+                // 仅偶数行保留 0x55（奇数位）的已保存内容，奇数行全黑
+                for (uint16_t y = 0; y < 128; ++y) {
+                    uint16_t off = y * 16;
+                    if (y % 2 == 0) {
+                        for (uint16_t x = 0; x < 16; ++x)
+                            buf_ptr[off + x] = fade_saved_buf[off + x] & 0x55;
+                    } else {
+                        memset(&buf_ptr[off], 0x00, 16);
+                    }
+                }
+                break;
+            case 2:
+                // 偶数行保留 0x55，奇数行保留 0xAA（偶数位）
+                for (uint16_t y = 0; y < 128; ++y) {
+                    uint16_t off = y * 16;
+                    if (y % 2 == 0) {
+                        for (uint16_t x = 0; x < 16; ++x)
+                            buf_ptr[off + x] = fade_saved_buf[off + x] & 0x55;
+                    } else {
+                        for (uint16_t x = 0; x < 16; ++x)
+                            buf_ptr[off + x] = fade_saved_buf[off + x] & 0xAA;
+                    }
+                }
+                break;
+            case 3:
+                // 偶数行全保留，奇数行保留 0xAA
+                for (uint16_t y = 0; y < 128; ++y) {
+                    uint16_t off = y * 16;
+                    if (y % 2 == 0) {
+                        memcpy(&buf_ptr[off], &fade_saved_buf[off], 16);
+                    } else {
+                        for (uint16_t x = 0; x < 16; ++x)
+                            buf_ptr[off + x] = fade_saved_buf[off + x] & 0xAA;
+                    }
+                }
+                break;
+            case 4:
+                // 全部恢复，渐入完成
+                memcpy(buf_ptr, fade_saved_buf, buf_len);
+                ui.state = S_NONE;
+                ui.fade_dir = 0;
+                break;
+            default:
+                ui.state = S_NONE;
+                ui.fade_dir = 0;
+                break;
+        }
+        ++ui.fade;
+        return;
+    }
+
+    // 渐出方向（原有逻辑）
     bool dark = ui.param[DARK_MODE] || ui.index == M_SLEEP;
 
     switch (ui.param[FADE_MODE]) {

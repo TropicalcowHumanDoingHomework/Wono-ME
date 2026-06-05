@@ -358,15 +358,15 @@ void window_show() {
 
             if (win.box_h > 2) {
                 u8g2.setDrawColor(bg_color);
-                u8g2.drawBox((int16_t)win.l + 1, (int16_t)win.y + 1, (int16_t)win.w - 2, (int16_t)win.box_h - 2);
+                u8g2.drawBox((int16_t)win.l, (int16_t)win.y, (int16_t)win.w, (int16_t)win.box_h);
                 u8g2.setDrawColor(fg_color);
-                u8g2.drawRFrame((int16_t)win.l, (int16_t)win.y, (int16_t)win.w, (int16_t)win.box_h, 2);
+                u8g2.drawRFrame((int16_t)win.l, (int16_t)win.y, (int16_t)win.w, (int16_t)win.box_h, 1);
             }
         } else {
             u8g2.setDrawColor(bg_color);
-            u8g2.drawBox((int16_t)win.l + 1, (int16_t)win.y + 1, (int16_t)win.w - 2, (int16_t)win.h - 2);
+            u8g2.drawBox((int16_t)win.l, (int16_t)win.y, (int16_t)win.w, (int16_t)win.h);
             u8g2.setDrawColor(fg_color);
-            u8g2.drawRFrame((int16_t)win.l, (int16_t)win.y, (int16_t)win.w, (int16_t)win.h, 2);
+            u8g2.drawRFrame((int16_t)win.l, (int16_t)win.y, (int16_t)win.w, (int16_t)win.h, 1);
         }
 
         if (!ui.param[WIN_STYLE] || win.box_h > WIN_MSG_PAD + LIST_TEXT_H) {
@@ -397,15 +397,15 @@ void window_show() {
             win.l = (DISP_W - win.w) / 2;
             if (win.box_h > 2) {
                 u8g2.setDrawColor(bg_color);
-                u8g2.drawBox((int16_t)win.l + 1, (int16_t)win.y + 1, (int16_t)win.w - 2, (int16_t)win.box_h - 2);
+                u8g2.drawBox((int16_t)win.l, (int16_t)win.y, (int16_t)win.w, (int16_t)win.box_h);
                 u8g2.setDrawColor(fg_color);
-                u8g2.drawRFrame((int16_t)win.l, (int16_t)win.y, (int16_t)win.w, (int16_t)win.box_h, 2);
+                u8g2.drawRFrame((int16_t)win.l, (int16_t)win.y, (int16_t)win.w, (int16_t)win.box_h, 1);
             }
         } else {
             u8g2.setDrawColor(bg_color);
-            u8g2.drawBox((int16_t)win.l + 1, (int16_t)win.y + 1, (int16_t)win.w - 2, (int16_t)win.h - 2);
+            u8g2.drawBox((int16_t)win.l, (int16_t)win.y, (int16_t)win.w, (int16_t)win.h);
             u8g2.setDrawColor(fg_color);
-            u8g2.drawRFrame((int16_t)win.l, (int16_t)win.y, (int16_t)win.w, (int16_t)win.h, 2);
+            u8g2.drawRFrame((int16_t)win.l, (int16_t)win.y, (int16_t)win.w, (int16_t)win.h, 1);
         }
 
         if (!ui.param[WIN_STYLE] || win.box_h > WIN_MSG_PAD + LIST_TEXT_H) {
@@ -459,15 +459,15 @@ void window_show() {
             win.l = (DISP_W - win.w) / 2;
             if (win.box_h > 2) {
                 u8g2.setDrawColor(bg_color);
-                u8g2.drawBox((int16_t)win.l + 1, (int16_t)win.y + 1, (int16_t)win.w - 2, (int16_t)win.box_h - 2);
+                u8g2.drawBox((int16_t)win.l, (int16_t)win.y, (int16_t)win.w, (int16_t)win.box_h);
                 u8g2.setDrawColor(fg_color);
-                u8g2.drawRFrame((int16_t)win.l, (int16_t)win.y, (int16_t)win.w, (int16_t)win.box_h, 2);
+                u8g2.drawRFrame((int16_t)win.l, (int16_t)win.y, (int16_t)win.w, (int16_t)win.box_h, 1);
             }
         } else {
             u8g2.setDrawColor(bg_color);
-            u8g2.drawBox((int16_t)win.l + 1, (int16_t)win.y + 1, (int16_t)win.w - 2, (int16_t)win.h - 2);
+            u8g2.drawBox((int16_t)win.l, (int16_t)win.y, (int16_t)win.w, (int16_t)win.h);
             u8g2.setDrawColor(fg_color);
-            u8g2.drawRFrame((int16_t)win.l, (int16_t)win.y, (int16_t)win.w, (int16_t)win.h, 2);
+            u8g2.drawRFrame((int16_t)win.l, (int16_t)win.y, (int16_t)win.w, (int16_t)win.h, 1);
         }
 
         int16_t content_top = (int16_t)win.y + WIN_MSG_PAD * 2 + LIST_TEXT_H;
@@ -529,15 +529,15 @@ void window_show() {
 
             if (win.box_h > 2) {
                 u8g2.setDrawColor(bg_color);
-                u8g2.drawRBox(win.l, (int16_t)win.y, win.w, win.box_h, 2);
+                u8g2.drawRBox(win.l, (int16_t)win.y, win.w, win.box_h, 1);
                 u8g2.setDrawColor(fg_color);
-                u8g2.drawRFrame(win.l, (int16_t)win.y, win.w, win.box_h, 2);
+                u8g2.drawRFrame(win.l, (int16_t)win.y, win.w, win.box_h, 1);
             }
         } else {
             u8g2.setDrawColor(bg_color);
-            u8g2.drawRBox(win.l, (int16_t)win.y, WIN_W, WIN_H, 2);
+            u8g2.drawRBox(win.l, (int16_t)win.y, WIN_W, WIN_H, 1);
             u8g2.setDrawColor(fg_color);
-            u8g2.drawRFrame(win.l, (int16_t)win.y, WIN_W, WIN_H, 2);
+            u8g2.drawRFrame(win.l, (int16_t)win.y, WIN_W, WIN_H, 1);
         }
 
         if (!ui.param[WIN_STYLE] || win.box_h > 16) {
@@ -599,7 +599,6 @@ void window_proc() {
                         win.box_h_trg = 0;
                         win.w_trg = DISP_W;
                     }
-                    win.confirm_mode = 0;
                     buzzer_exit_sound();
                     break;
             }

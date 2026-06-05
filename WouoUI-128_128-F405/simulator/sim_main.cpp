@@ -30,11 +30,20 @@ static uint32_t g_timer_id = 0;
 static void update_pixel_buffer() {
     uint8_t* buf = u8g2.getBufferPtr();
     int dark = ui.param[DARK_MODE];
+    int rot = u8g2.getRotation();
 
     for (int y = 0; y < DISP_H; ++y) {
         for (int x = 0; x < DISP_W; ++x) {
-            int byte_idx = y * 16 + (x >> 3);
-            uint8_t bit = (buf[byte_idx] >> (7 - (x & 7))) & 1;
+            int sx, sy;
+            switch (rot) {
+                case 0: sx = x;               sy = y;               break;
+                case 1: sx = y;               sy = DISP_W - 1 - x;  break;
+                case 2: sx = DISP_W - 1 - x;  sy = DISP_H - 1 - y;  break;
+                case 3: sx = DISP_H - 1 - y;  sy = x;               break;
+                default: sx = x; sy = y; break;
+            }
+            int byte_idx = sy * 16 + (sx >> 3);
+            uint8_t bit = (buf[byte_idx] >> (7 - (sx & 7))) & 1;
             if (dark) {
                 g_pixel_buf[y * DISP_W + x] = bit ? 0x00FFFFFF : 0x00000000;
             } else {
@@ -75,9 +84,9 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
             }
             switch (vk) {
                 case VK_UP:
-                case 0x57: sim_knob_handle_key(82, true); break;
+                case 0x57: sim_knob_handle_key(81, true); break;
                 case VK_DOWN:
-                case 0x53: sim_knob_handle_key(81, true); break;
+                case 0x53: sim_knob_handle_key(82, true); break;
                 case VK_RETURN:
                 case VK_SPACE: sim_knob_handle_key(40, true); break;
             }
@@ -96,11 +105,11 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
         case WM_MOUSEWHEEL: {
             short delta = GET_WHEEL_DELTA_WPARAM(wParam);
             if (delta > 0) {
-                sim_knob_handle_key(82, true);
-                sim_knob_handle_key(82, false);
-            } else {
                 sim_knob_handle_key(81, true);
                 sim_knob_handle_key(81, false);
+            } else {
+                sim_knob_handle_key(82, true);
+                sim_knob_handle_key(82, false);
             }
             return 0;
         }

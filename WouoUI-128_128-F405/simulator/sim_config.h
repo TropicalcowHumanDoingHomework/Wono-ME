@@ -235,6 +235,7 @@ private:
     bool is_big_font;
     int font_direction;
     int cursor_x, cursor_y;
+    uint8_t rotation;
     struct { int x1, y1, x2, y2; } clip;
 
     void set_pixel(int x, int y);
@@ -258,13 +259,13 @@ public:
     void drawPixel(int x, int y);
 
     void setDrawColor(int c);
-    int getDrawColor();
     void setFont(const unsigned char* f);
     void setFontDirection(int d);
     void setCursor(int x, int y);
     void setContrast(int val);
     void setPowerSave(int mode) {}
-    void setDisplayRotation(const u8g2_cb_t*) {}
+    void setDisplayRotation(const u8g2_cb_t* rot);
+    int  getRotation() const { return rotation; }
 
     void clearBuffer();
     void sendBuffer();
@@ -282,8 +283,6 @@ public:
     void println(float val) { print(val); }
 
     void begin();
-    struct u8x8_t* getU8x8();
-    struct u8g2_t* getU8g2();
     void setClipWindow(int x1, int y1, int x2, int y2);
     void setMaxClipWindow();
 };

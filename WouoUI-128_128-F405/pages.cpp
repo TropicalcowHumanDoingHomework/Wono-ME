@@ -715,8 +715,11 @@ void volt_show()
   u8g2.print("V");
 
   //绘制列表选择框（带 BOX_Y_OS 过伸）
+  // dir=1 选择框：w=16同标准List，x偏移使文字居中
   u8g2.setDrawColor(2);
-  u8g2.drawRBox(list.box_y, VOLT_LIST_U_S - LIST_TEXT_S, LIST_LINE_H + ui.param[BOX_Y_OS], list.box_x, LIST_BOX_R);
+  u8g2.drawRBox(list.box_y - 1, VOLT_LIST_U_S - LIST_TEXT_S - 3,
+                16,
+                list.box_x - 12, LIST_BOX_R);
   u8g2.drawBox(DISP_W - volt.text_bg_l, VOLT_TEXT_BG_U_S, DISP_W, VOLT_TEXT_BG_H);
 
 }
@@ -941,32 +944,18 @@ void sleep_proc() {
                     list.bar_y = 0;
                     init_list_box_params();
                     ui.index = M_MAIN;
-                    ui.fade = 0;
-
-                    for (uint8_t step = 1; step <= 4; step++) {
-                        delay(ui.param[FADE_ANI]);
-                        if (step <= 3) {
-                            for (uint16_t y = 0; y < 128; y++) {
-                                uint8_t mask = 0;
-                                if (step == 1 && y % 2 == 0) mask = 0x55;
-                                else if (step == 2 && y % 2 == 1) mask = 0xAA;
-                                else if (step == 3 && y % 2 == 0) mask = 0xAA;
-                                if (mask) {
-                                    for (uint16_t x = 0; x < 16; x++)
-                                        buf_ptr[y * 16 + x] |= mask;
-                                }
-                            }
-                        } else if (ui.param[FADE_MODE] == 0) {
-                            memset(buf_ptr, 0xFF, buf_len);
-                        } else {
-                            for (uint16_t y = 1; y < 128; y += 2)
-                                for (uint16_t x = 0; x < 16; x++)
-                                    buf_ptr[y * 16 + x] |= 0x55;
-                        }
-                        u8g2.sendBuffer();
-                    }
-
-                    ui.state = S_NONE;
+                    
+                    // 画主菜单并保存到临时缓存（用于渐入恢复）
+                    u8g2.clearBuffer();
+                    tile_show(main_menu, main_menu_exp, main_icon_pic);
+                    fade_save_content(buf_ptr, buf_len);
+                    // 清屏为黑，启动非阻塞渐入
+                    memset(buf_ptr, 0x00, buf_len);
+                    u8g2.sendBuffer();
+                    
+                    ui.fade = 1;
+                    ui.fade_dir = 1;
+                    ui.state = S_FADE;
                     ui.sleep = false;
                     break;
             }

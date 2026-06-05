@@ -106,10 +106,17 @@ void hl_ani(float *a, float *a_trg, float *vel, uint8_t n);
  * - FADE_MODE=0：棋盘格模式，逐格显示/隐藏
  * - FADE_MODE=1：整体遮罩模式，从左至右扫入/扫出
  * 
- * 使用ui.fade（0~1）控制进度
+ * 使用ui.fade（1-4）控制进度
+ * ui.fade_dir: 0=渐出（内容→黑），1=渐入（黑→内容）
  * 配合UI状态机的S_FADE状态使用
  * 完成后自动切换至S_NONE
  */
 void fade();
+
+/*
+ * 保存当前缓存内容到临时缓存（用于渐入动画恢复）
+ * 在唤醒睡眠时调用：先画好页面内容，保存，清屏为黑，然后启动fade_dir=1
+ */
+void fade_save_content(uint8_t* buf, uint16_t len);
 
 #endif

@@ -44,6 +44,7 @@ struct UiState {
     unsigned char state;                      //当前状态（PageState枚举：FADE/WINDOW/LAYER_IN/LAYER_OUT/NONE）
     bool sleep;                         //是否处于睡眠模式
     unsigned char fade = 1;                   //消失动画当前步骤（1-4）
+    unsigned char fade_dir = 0;               //消失动画方向：0=渐出（内容→黑），1=渐入（黑→内容）
     unsigned char param[UI_PARAM];            //用户可调参数数组，索引见ParamIndex枚举
 };
 
