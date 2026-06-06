@@ -75,6 +75,7 @@ static void validate_ui_params() {
   ui.param[HL_ANI_MODE] = validate_param(eeprom_ui_params[HL_ANI_MODE], 0, 3, ui.param[HL_ANI_MODE]);
   ui.param[SPRING_K] = validate_param(eeprom_ui_params[SPRING_K], 10, 100, ui.param[SPRING_K]);
   ui.param[SPRING_D] = validate_param(eeprom_ui_params[SPRING_D], 10, 100, ui.param[SPRING_D]);
+  ui.param[CDC_ENABLE_SW] = validate_param(eeprom_ui_params[CDC_ENABLE_SW], 0, 1, ui.param[CDC_ENABLE_SW]);
 }
 
 /*

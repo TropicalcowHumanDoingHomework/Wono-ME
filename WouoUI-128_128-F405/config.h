@@ -96,7 +96,7 @@
  */
 #define UI_DEPTH 20
 #define UI_MNUMB 20
-#define UI_PARAM 30
+#define UI_PARAM 31
 
 /************************************* 磁贴配置 *************************************/
 
@@ -355,7 +355,8 @@ enum ParamIndex {
     FADE_MODE,    //消失动画模式：0=棋盘格 1=整体遮罩
     HL_ANI_MODE,  //高亮条动画模式：0=Ease 1=Spring 2=Bounce 3=Gravity
     SPRING_K,     //弹簧刚度：10~100（实际值=参数/100）
-    SPRING_D      //弹簧阻尼：10~100（实际值=参数/100）
+    SPRING_D,     //弹簧阻尼：10~100（实际值=参数/100）
+    CDC_ENABLE_SW //CDC虚拟串口开关：0禁用，1启用
 };
 
 /************************************* 旋钮配置 *************************************/
@@ -394,7 +395,7 @@ enum ParamIndex {
 #define RGB_R PA8        //LED 红色通道
 #define RGB_G PA9        //LED 绿色通道
 #define RGB_B PA10       //LED 蓝色通道
-#define KNOB_PARAM 4
+#define KNOB_PARAM 5
 #define KNOB_DISABLE 0
 #define KNOB_ROT_VOL 1
 #define KNOB_ROT_BRI 2
@@ -413,7 +414,8 @@ enum KnobParamIndex {
     KNOB_ROT,     //睡眠下旋转旋钮的功能，0禁用，1音量，2亮度
     KNOB_COD,     //睡眠下短按旋钮输入的字符码，0禁用
     KNOB_ROT_P,   //旋转旋钮功能在单选框中选择的位置
-    KNOB_COD_P    //字符码在单选框中选择的位置
+    KNOB_COD_P,   //字符码在单选框中选择的位置
+    KNOB_CASE     //字母大小写：0=小写，1=大写
 };
 
 /************************************* HID配置 *************************************/
@@ -497,11 +499,11 @@ enum KnobParamIndex {
 #define KEY_F5           62     //F5键
 #define KEY_F6           63     //F6键
 #define KEY_F7           64     //F7键
-#define KEY_F8           65     //F8键
-#define KEY_F9           66     //F9键
-#define KEY_F10          67     //F10键
-#define KEY_F11          68     //F11键
-#define KEY_F12          69     //F12键
+#define KEY_F8           0xE9  //F8键（0xE9避免与ASCII 'A'=65冲突）
+#define KEY_F9           0xEA  //F9键（0xEA避免与ASCII 'B'=66冲突）
+#define KEY_F10          0xEB  //F10键（0xEB避免与ASCII 'C'=67冲突）
+#define KEY_F11          0xEC  //F11键（0xEC避免与ASCII 'D'=68冲突）
+#define KEY_F12          0xED  //F12键（0xED避免与ASCII 'E'=69冲突）
 #define KEY_LEFT_CTRL    0xE0  //左Ctrl
 #define KEY_LEFT_SHIFT   0xE1  //左Shift
 #define KEY_LEFT_ALT     0xE2  //左Alt
@@ -510,7 +512,7 @@ enum KnobParamIndex {
 #define KEY_RIGHT_SHIFT  0xE5  //右Shift
 #define KEY_RIGHT_ALT    0xE6  //右Alt
 #define KEY_RIGHT_GUI    0xE7  //右Win
-#define KEY_CAPS_LOCK    57    //大小写锁定
+#define KEY_CAPS_LOCK    0xE8  //大小写锁定（0xE8避免与ASCII '9'=57冲突）
 #define KEY_BACKSPACE    42    //退格键
 #define KEY_RETURN       40    //回车键
 #define KEY_INSERT       73    //Insert键
@@ -539,9 +541,9 @@ enum KnobParamIndex {
  * - 校验通过则从EEPROM读取配置，否则使用默认值
  * 
  * 数据在Flash中的布局：
- * [0~10] 校验码（11字节）
- * [11~38] UI参数（28字节）
- * [39~42] 旋钮参数（4字节）
+ * [0~10]   校验码（11字节）
+ * [11~41]  UI参数（31字节）
+ * [42~45]  旋钮参数（4字节）
  * 
  * 写入时机：用户进入睡眠模式时自动写入
  */

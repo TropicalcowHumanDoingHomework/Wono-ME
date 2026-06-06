@@ -76,6 +76,7 @@ void ui_param_init() {
     ui.param[HL_ANI_MODE] = 0;     //高亮条动画模式：0=Ease
     ui.param[SPRING_K] = 25;       //弹簧刚度：25（实际0.25）
     ui.param[SPRING_D] = 70;       //弹簧阻尼：70（实际0.70）
+    ui.param[CDC_ENABLE_SW] = 0;   //CDC虚拟串口：默认关闭
 }
 
 /************************************* 系统初始化 *************************************/
@@ -109,8 +110,8 @@ void ui_init() {
     ui.num[M_KRF] = 7;
     ui.num[M_KPF] = 82;
     ui.num[M_VOLT] = 10;
-    ui.num[M_USB] = 5;
-    ui.num[M_HID_KEY] = 3;
+    ui.num[M_USB] = 6;
+    ui.num[M_HID_KEY] = 4;
     ui.num[M_SETTING] = 9;
     ui.num[M_ABOUT] = 8;
     list.line_n = DISP_H / LIST_LINE_H;

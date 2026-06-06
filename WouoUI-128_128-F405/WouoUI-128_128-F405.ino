@@ -67,6 +67,7 @@
 #include "usb_manager.h"
 #include "usb_debug.h"
 #include "led.h"
+#include "usbd_cdc.h"
 
 /* ==================== USB 非阻塞轮询状态 ==================== */
 #if USB_MSC_ENABLE
@@ -76,6 +77,7 @@ static bool     usb_mounted     = false;
 static bool     prev_usb_enable = false;
 static bool     prev_usb_wp     = false;
 static bool     prev_hid_enable = false;
+static bool     prev_cdc_enable = false;
 #endif
 
 /* ==================== 硬件早期初始化 ==================== */
@@ -175,34 +177,25 @@ void setup() {
   usb_debug_refresh();
 
 #if USB_MSC_ENABLE
-  if (ui.param[USB_ENABLE]) {
-    usb_debug_set_msg("Init W25Q512...");
-    usb_debug_refresh();
-    USBManager::registerComponent();
+  if (ui.param[USB_ENABLE] || ui.param[HID_ENABLE_SW] || ui.param[CDC_ENABLE_SW]) {
+    if (ui.param[USB_ENABLE]) {
+      usb_debug_set_msg("Init W25Q512...");
+      usb_debug_refresh();
+      USBManager::registerComponent();
+    }
 
-    /* === 诊断：progress 变量跟踪 usbd_msc_reinit 执行进度 === */
-    #define USB_DBG_SET_STEP(n,s) do { usb_debug_set_step(n,s); usb_debug_refresh(); delay(50); } while(0)
-
-    usb_debug_reset();
     usb_debug_set_msg("USB init...");
-    USB_DBG_SET_STEP(USB_STEP_CLOCK, USB_STATUS_BUSY); // step0=[**]
-
-    USBManager::begin();   // 内部会调用 usbd_msc_reinit
-
-    /* begin() 返回表示 usbd_msc_reinit 执行完毕 */
-    USB_DBG_SET_STEP(USB_STEP_CLOCK,   USB_STATUS_OK);
-    USB_DBG_SET_STEP(USB_STEP_GPIO,    USB_STATUS_OK);
-    USB_DBG_SET_STEP(USB_STEP_PHY,     USB_STATUS_OK);
-    USB_DBG_SET_STEP(USB_STEP_DCD,     USB_STATUS_OK);
-    USB_DBG_SET_STEP(USB_STEP_SPEED,   USB_STATUS_OK);
-    USB_DBG_SET_STEP(USB_STEP_VBUS,    USB_STATUS_OK);
-    USB_DBG_SET_STEP(USB_STEP_CONNECT, USB_STATUS_OK);
-    USB_DBG_SET_STEP(USB_STEP_DONE,    USB_STATUS_BUSY);  // 等待枚举
-    usb_debug_set_msg("Waiting enumeration...");
     usb_debug_refresh();
     delay(50);
 
-    /* 非阻塞：显示等待后直接进入 UI，轮询逻辑交给 loop() */
+    USBManager::begin();
+
+    /* 各 reinit 函数内部已通过 DBG_STEP_DONE 逐步骤标记进度
+     * 这里只设置"等待枚举"状态 */
+    usb_debug_set_step(USB_STEP_DONE, USB_STATUS_BUSY);
+    usb_debug_set_msg("Waiting enumeration...");
+    usb_debug_refresh();
+
     usb_poll_start  = millis();
     usb_poll_active = true;
   } else {
@@ -221,6 +214,7 @@ void setup() {
   prev_usb_enable = false;
   prev_usb_wp     = false;
   prev_hid_enable = false;
+  prev_cdc_enable = false;
 #endif
 
   btn_init();
@@ -235,8 +229,8 @@ void setup() {
 void loop() {
 #if USB_MSC_ENABLE
     {
-        bool usb_should_run = ui.param[USB_ENABLE] || ui.param[HID_ENABLE_SW];
-        bool was_running     = prev_usb_enable || prev_hid_enable;
+        bool usb_should_run = ui.param[USB_ENABLE] || ui.param[HID_ENABLE_SW] || ui.param[CDC_ENABLE_SW];
+        bool was_running     = prev_usb_enable || prev_hid_enable || prev_cdc_enable;
 
         if (!usb_should_run) {
             if (was_running) {
@@ -260,6 +254,8 @@ void loop() {
         if (usb_poll_active) {
             USBManager::poll();
             if (USBManager::isEnabled()) {
+                delay(500);
+                usb_debug_mark_done();
                 usb_mounted = true;
                 usb_poll_active = false;
             } else if (millis() - usb_poll_start > 20000) {
@@ -278,7 +274,8 @@ void loop() {
     {
         bool param_changed = (ui.param[USB_ENABLE]    != prev_usb_enable)
                           || (ui.param[USB_ENABLE] && (ui.param[USB_WP] != prev_usb_wp))
-                          || (ui.param[HID_ENABLE_SW] != prev_hid_enable);
+                          || (ui.param[HID_ENABLE_SW] != prev_hid_enable)
+                          || (ui.param[CDC_ENABLE_SW] != prev_cdc_enable);
 
         if (usb_mounted && param_changed) {
             USBManager::end();
@@ -291,10 +288,13 @@ void loop() {
         prev_usb_enable = ui.param[USB_ENABLE];
         prev_usb_wp     = ui.param[USB_WP];
         prev_hid_enable = ui.param[HID_ENABLE_SW];
+        prev_cdc_enable = ui.param[CDC_ENABLE_SW];
 
         if (usb_poll_active) {
             USBManager::poll();
             if (USBManager::isEnabled()) {
+                delay(500);
+                usb_debug_mark_done();
                 usb_mounted = true;
                 usb_poll_active = false;
             } else if (millis() - usb_poll_start > 20000) {

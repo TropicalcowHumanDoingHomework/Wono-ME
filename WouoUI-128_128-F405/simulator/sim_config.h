@@ -79,7 +79,7 @@ typedef bool boolean;
 // UI config
 #define UI_DEPTH 20
 #define UI_MNUMB 20
-#define UI_PARAM 30
+#define UI_PARAM 31
 
 // Font declarations (defined in sim_display.cpp)
 extern const unsigned char u8g2_font_helvB24_tr[];
@@ -165,7 +165,7 @@ enum ParamIndex {
     WIN_BOK, KNOB_DIR, DARK_MODE, ROTATE_SCR,
     BUZ_VOL, USB_ENABLE, USB_WP, HID_ENABLE_SW,
     WIN_STYLE, FADE_MODE, HL_ANI_MODE,
-    SPRING_K, SPRING_D
+    SPRING_K, SPRING_D, CDC_ENABLE_SW
 };
 
 // Knob config
@@ -176,7 +176,7 @@ enum ParamIndex {
 #define BTN_PARAM_TIMES 2
 
 enum ButtonId { BTN_ID_CC, BTN_ID_CW, BTN_ID_SP, BTN_ID_LP };
-enum KnobParamIndex { KNOB_ROT, KNOB_COD, KNOB_ROT_P, KNOB_COD_P };
+enum KnobParamIndex { KNOB_ROT, KNOB_COD, KNOB_ROT_P, KNOB_COD_P, KNOB_CASE };
 
 #define EEPROM_CHECK 11
 

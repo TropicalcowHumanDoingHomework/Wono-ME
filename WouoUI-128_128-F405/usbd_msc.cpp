@@ -26,6 +26,8 @@
 #include "usbd_hid.h"
 #endif
 
+#include "usbd_cdc.h"
+
 /* ==================== 核心库头文件 ==================== */
 extern "C" {
 #include <STM32_USB_Device_Library/Core/inc/usbd_core.h>
@@ -871,7 +873,7 @@ int8_t w25q_write_block(uint32_t blk_addr, const uint8_t *buf)
 
 #define HSPI_AF  GPIO_AFMODE_OTG_FS  /* =10 = AF10 = OTG_HS ULPI (与 hardware_early_init 中 ULPI_AF_VAL 保持一致) */
 
-static void hspi_gpio_init(void)
+void hspi_gpio_init(void)
 {
     const gpio_pin_mode af_mode = (gpio_pin_mode)(GPIO_MODE_AF | GPIO_OTYPE_PP | GPIO_OSPEED_100MHZ);
 
@@ -918,7 +920,7 @@ static void hspi_gpio_deinit(void)
     gpio_set_mode(ULPI_NXT_PIN, (gpio_pin_mode)GPIO_MODE_INPUT);
 }
 
-static void hspi_clk_enable(void)
+void hspi_clk_enable(void)
 {
     /* 使能 OTG_HS + ULPI 时钟
      * 注意：不使用 RCC_AHB1RSTR 硬复位（会打断 ULPI PHY 通信），
@@ -955,7 +957,7 @@ static void hspi_clk_disable(void)
  * 因此设置 VBUSBSEN=1 让核心使用 ULPI VBUS 指示，
  * 同时清除 PWRDWN 确保 ULPI 接口唤醒。
  */
-static void hspi_phy_power_up(void)
+void hspi_phy_power_up(void)
 {
     volatile uint32_t *gccfg = (volatile uint32_t *)(USB_OTG_HS_BASE + 0x038);
     /* 清除 PWRDWN (bit 16) 唤醒 PHY
@@ -972,7 +974,7 @@ static void hspi_phy_power_up(void)
 
 /* ==================== HS NVIC / 中断 ==================== */
 
-static void hspi_nvic_enable(void)
+void hspi_nvic_enable(void)
 {
     nvic_irq_enable(NVIC_USB_HS);
     nvic_irq_set_priority(NVIC_USB_HS, 6);
@@ -1572,9 +1574,611 @@ void usbd_hid_reinit()
     DBG_STEP_DONE(USB_STEP_CONNECT);
 }
 
+/* ==================== CDC 复合模式共享辅助函数 ==================== */
+
+/*
+ * BSP + DCD 初始化通用部分（各 CDC 复合模式共享）
+ * 包含：GPIO/时钟/PHY/DCD/EP0/SLAVE/GCCFG/速度/GUSBCFG 全流程
+ */
+static void cdc_composite_bsp_init(void)
+{
+    hspi_gpio_init();
+    hspi_clk_enable();
+    delay(10);
+    usb_debug_set_step(USB_STEP_CLOCK, USB_STATUS_OK);
+    usb_debug_set_step(USB_STEP_GPIO, USB_STATUS_OK);
+    usb_debug_refresh();
+    delay(50);
+
+    hspi_phy_power_up();
+    usb_debug_set_step(USB_STEP_PHY, USB_STATUS_OK);
+    usb_debug_refresh();
+    delay(50);
+
+    USB_OTG_dev.cfg.phy_itface = 1;
+    USB_OTG_dev.cfg.dma_enable = 0;
+    DCD_Init(&USB_OTG_dev, USB_OTG_HS_CORE_ID);
+
+    {
+        volatile uint32_t *dctl = (volatile uint32_t *)(USB_OTG_HS_BASE + 0x804);
+        *dctl |= (1u << 1);
+        __asm volatile ("dsb");
+    }
+
+    usb_debug_set_step(USB_STEP_DCD, USB_STATUS_OK);
+    usb_debug_refresh();
+    delay(50);
+
+    DCD_EP_Open(&USB_OTG_dev, 0x00, 64, USB_OTG_EP_CONTROL);
+    DCD_EP_Open(&USB_OTG_dev, 0x80, 64, USB_OTG_EP_CONTROL);
+    DCD_EP_PrepareRx(&USB_OTG_dev, 0x00,
+                     USB_OTG_dev.dev.setup_packet, 8);
+    {
+        volatile uint32_t *doepmsk  = (volatile uint32_t *)(USB_OTG_HS_BASE + 0x80C);
+        volatile uint32_t *daintmsk = (volatile uint32_t *)(USB_OTG_HS_BASE + 0x818);
+        *doepmsk  |= (1u << 3);
+        *daintmsk |= (1u << 0) | (1u << 16);
+        __asm volatile ("dsb");
+    }
+
+    {
+        volatile uint32_t *gahbcfg = (volatile uint32_t *)(USB_OTG_HS_BASE + 0x008);
+        *gahbcfg &= ~((1u << 5) | (0xFu << 1));
+        *gahbcfg |=  (2u << 1);
+        __asm volatile ("dsb");
+    }
+
+    {
+        volatile uint32_t *gccfg = (volatile uint32_t *)(USB_OTG_HS_BASE + 0x038);
+        *gccfg &= ~(1u << 16);
+        *gccfg |=  (1u << 21);
+        *gccfg &= ~((1u << 19) | (1u << 18));
+        __asm volatile ("dsb");
+        delay(5);
+    }
+
+    usb_debug_set_step(USB_STEP_VBUS, USB_STATUS_OK);
+    usb_debug_refresh();
+    delay(50);
+
+    USB_OTG_InitDevSpeed(&USB_OTG_dev, USB_OTG_SPEED_PARAM_HIGH);
+    USB_OTG_dev.cfg.speed = USB_OTG_SPEED_HIGH;
+    USB_OTG_dev.cfg.mps   = 512;
+
+    {
+        volatile uint32_t *gusbcfg = (volatile uint32_t *)(USB_OTG_HS_BASE + GUSBCFG_OFFSET);
+        *gusbcfg &= ~((1u << 6) | (1u << 17) | (1u << 22));
+        *gusbcfg &= ~((1u << 21) | (1u << 20));
+        *gusbcfg &= ~(1u << 30);
+        __asm volatile ("dsb");
+    }
+}
+
+static void cdc_composite_connect(void)
+{
+    USB_OTG_dev.dev.usr_cb->Init();
+    hspi_nvic_enable();
+    DCD_DevConnect(&USB_OTG_dev);
+    delay(200);
+    usb_debug_set_step(USB_STEP_CONNECT, USB_STATUS_OK);
+    usb_debug_refresh();
+    delay(50);
+}
+
+/* 从 usbd_cdc.cpp 获取 CDC 接口描述符 */
+extern const uint8_t* cdc_get_iface_desc(void);
+extern uint16_t cdc_get_iface_desc_size(void);
+
+/*
+ * 构建 CDC 接口描述符（复制并修补接口号）
+ * cdc_iface_desc 硬编码为 Interface 2+3，此处根据 comm_iface 修补
+ */
+static void patch_cdc_iface_desc(uint8_t *buf, uint8_t comm_iface)
+{
+    memcpy(buf, cdc_get_iface_desc(), cdc_get_iface_desc_size());
+    buf[2]  = comm_iface;        /* Communication Interface bInterfaceNumber */
+    buf[26] = comm_iface;        /* Union Func Desc bMasterInterface */
+    buf[27] = comm_iface + 1;    /* Union Func Desc bSlaveInterface */
+    buf[37] = comm_iface + 1;    /* Data Interface bInterfaceNumber */
+}
+
+/* ==================== MSC+HID+CDC 三接口复合 ==================== */
+
+#define COMPOSITE_CDC_CFG_DESC_SIZE  115
+#define COMPOSITE_CDC_NUM_IFACES     4
+
+static uint8_t composite_cdc_cfg_desc[COMPOSITE_CDC_CFG_DESC_SIZE];
+static uint8_t composite_cdc_cdc_desc[58]; /* CDC 接口描述符副本（带修补） */
+
+static void build_composite_cdc_desc(void)
+{
+    uint8_t *p = composite_cdc_cfg_desc;
+    /* 配置头 */
+    p[0] = 0x09; p[1] = 0x02;
+    p[2] = COMPOSITE_CDC_CFG_DESC_SIZE & 0xFF;
+    p[3] = (COMPOSITE_CDC_CFG_DESC_SIZE >> 8) & 0xFF;
+    p[4] = COMPOSITE_CDC_NUM_IFACES;
+    p[5] = 0x01; p[6] = 0x00; p[7] = 0xC0; p[8] = 0x32;
+    p += 9;
+
+    /* MSC 接口 0 */
+    memcpy(p, msc_iface_desc, sizeof(msc_iface_desc));
+    p += sizeof(msc_iface_desc);
+
+    /* HID 接口 1 */
+    memcpy(p, hid_iface_desc, sizeof(hid_iface_desc));
+    p += sizeof(hid_iface_desc);
+
+    /* CDC 接口 2+3 */
+    patch_cdc_iface_desc(composite_cdc_cdc_desc, 2);
+    memcpy(p, composite_cdc_cdc_desc, sizeof(composite_cdc_cdc_desc));
+}
+
+static uint8_t composite_cdc_data_in(void *pdev, uint8_t epnum)
+{
+    if (epnum == (MSC_EP_IN & 0x7F)) {
+        if (MSC_cb.DataIn) return MSC_cb.DataIn(pdev, epnum);
+    }
+    if (epnum == (HID_EP_IN & 0x7F)) {
+        if (USBD_HID_cb.DataIn) return USBD_HID_cb.DataIn(pdev, epnum);
+    }
+    return 0;
+}
+
+static uint8_t composite_cdc_data_out(void *pdev, uint8_t epnum)
+{
+    if (epnum == (MSC_EP_OUT & 0x7F)) {
+        if (MSC_cb.DataOut) return MSC_cb.DataOut(pdev, epnum);
+    }
+    if (epnum == (CDC_DATA_OUT_EP & 0x7F)) {
+        return cdc_class_data_out(pdev, epnum);
+    }
+    return 0;
+}
+
+static uint8_t composite_cdc_sof(void *pdev)
+{
+    return cdc_class_sof(pdev);
+}
+
+static uint8_t *composite_cdc_get_cfg_desc(uint8_t speed, uint16_t *length)
+{
+    (void)speed;
+    *length = COMPOSITE_CDC_CFG_DESC_SIZE;
+    return composite_cdc_cfg_desc;
+}
+
+static uint8_t *composite_cdc_get_other_cfg_desc(uint8_t speed, uint16_t *length)
+{
+    (void)speed;
+    *length = COMPOSITE_CDC_CFG_DESC_SIZE;
+    return composite_cdc_cfg_desc;
+}
+
+static uint8_t composite_cdc_init(void *pdev, uint8_t cfgidx)
+{
+    if (MSC_cb.Init)       MSC_cb.Init(pdev, cfgidx);
+    if (USBD_HID_cb.Init)  USBD_HID_cb.Init(pdev, cfgidx);
+    cdc_class_init(pdev, cfgidx);
+    return 0;
+}
+
+static uint8_t composite_cdc_deinit(void *pdev, uint8_t cfgidx)
+{
+    if (MSC_cb.DeInit)       MSC_cb.DeInit(pdev, cfgidx);
+    if (USBD_HID_cb.DeInit)  USBD_HID_cb.DeInit(pdev, cfgidx);
+    cdc_class_deinit(pdev, cfgidx);
+    return 0;
+}
+
+static uint8_t composite_cdc_setup(void *pdev, USB_SETUP_REQ *req)
+{
+    if ((req->bmRequest & USB_REQ_RECIPIENT_MASK) == USB_REQ_RECIPIENT_INTERFACE) {
+        uint8_t iface = (uint8_t)(req->wIndex & 0xFF);
+        if (iface == 0) {
+            if (MSC_cb.Setup) return MSC_cb.Setup(pdev, req);
+        } else if (iface == 1) {
+            if (USBD_HID_cb.Setup) return USBD_HID_cb.Setup(pdev, req);
+        } else if (iface == 2 || iface == 3) {
+            return cdc_class_setup(pdev, req);
+        }
+    } else {
+        if (MSC_cb.Setup) return MSC_cb.Setup(pdev, req);
+    }
+    return USBD_FAIL;
+}
+
+static USBD_Class_cb_TypeDef composite_cdc_cb;
+
+static void setup_composite_cdc_cb(void)
+{
+    memset(&composite_cdc_cb, 0, sizeof(composite_cdc_cb));
+    composite_cdc_cb.Init       = composite_cdc_init;
+    composite_cdc_cb.DeInit     = composite_cdc_deinit;
+    composite_cdc_cb.Setup      = composite_cdc_setup;
+    composite_cdc_cb.EP0_TxSent = NULL;
+    composite_cdc_cb.EP0_RxReady = NULL;
+    composite_cdc_cb.DataIn     = composite_cdc_data_in;
+    composite_cdc_cb.DataOut    = composite_cdc_data_out;
+    composite_cdc_cb.SOF        = composite_cdc_sof;
+    composite_cdc_cb.IsoINIncomplete  = NULL;
+    composite_cdc_cb.IsoOUTIncomplete = NULL;
+    composite_cdc_cb.GetConfigDescriptor     = composite_cdc_get_cfg_desc;
+    composite_cdc_cb.GetOtherConfigDescriptor = composite_cdc_get_other_cfg_desc;
+}
+
+void usbd_composite_cdc_reinit()
+{
+    g_cdc_ready = false;
+    g_cdc_dtr = false;
+    g_cdc_rx_head = 0;
+    g_cdc_rx_tail = 0;
+    g_cdc_tx_head = 0;
+    g_cdc_tx_tail = 0;
+
+    cdc_composite_bsp_init();
+
+    setup_composite_cdc_cb();
+    build_composite_cdc_desc();
+
+    USB_OTG_dev.dev.class_cb   = &composite_cdc_cb;
+    USB_OTG_dev.dev.usr_cb     = &USR_cb;
+    USB_OTG_dev.dev.usr_device = &USR_desc;
+
+    /* FIFO: RX=512, TX0(EP0)=64, TX1(MSC EP1)=128, TX2(HID EP2)=96, TX3(CDC notif EP3)=16, TX4(CDC data EP4)=128 */
+    USB_OTG_WRITE_REG32(&USB_OTG_dev.regs.GREGS->GRXFSIZ, 512);
+
+    USB_OTG_FSIZ_TypeDef fifo;
+    fifo.d32 = 0;
+    fifo.b.depth     = 64;
+    fifo.b.startaddr = 512;
+    USB_OTG_WRITE_REG32(&USB_OTG_dev.regs.GREGS->DIEPTXF0_HNPTXFSIZ, fifo.d32);
+
+    fifo.b.startaddr += fifo.b.depth;
+    fifo.b.depth      = 128;
+    USB_OTG_WRITE_REG32(&USB_OTG_dev.regs.GREGS->DIEPTXF[0], fifo.d32);
+
+    fifo.b.startaddr += fifo.b.depth;
+    fifo.b.depth      = 96;
+    USB_OTG_WRITE_REG32(&USB_OTG_dev.regs.GREGS->DIEPTXF[1], fifo.d32);
+
+    fifo.b.startaddr += fifo.b.depth;
+    fifo.b.depth      = 16;
+    USB_OTG_WRITE_REG32(&USB_OTG_dev.regs.GREGS->DIEPTXF[2], fifo.d32);
+
+    fifo.b.startaddr += fifo.b.depth;
+    fifo.b.depth      = 128;
+    USB_OTG_WRITE_REG32(&USB_OTG_dev.regs.GREGS->DIEPTXF[3], fifo.d32);
+
+    for (int ep = 4; ep < 5; ep++) {
+        fifo.b.startaddr += fifo.b.depth;
+        fifo.b.depth = 0;
+        USB_OTG_WRITE_REG32(&USB_OTG_dev.regs.GREGS->DIEPTXF[ep], fifo.d32);
+    }
+
+    usb_debug_set_step(USB_STEP_SPEED, USB_STATUS_OK);
+    usb_debug_refresh();
+    delay(50);
+
+    cdc_composite_connect();
+}
+
+/* ==================== HID+CDC 双接口复合 ==================== */
+
+#define HID_CDC_CFG_DESC_SIZE   92   /* 9 + 25(HID iface 0) + 58(CDC iface 1+2) */
+#define HID_CDC_NUM_IFACES      3
+
+/* HID 接口描述符（Interface 0，用于 HID+CDC 模式） */
+static const uint8_t hid0_iface_desc[25] = {
+    0x09, 0x04, 0x00, 0x00, 0x01,
+    0x03, 0x00, 0x00, 0x00,
+    0x09, 0x21, 0x10, 0x01, 0x00, 0x01,
+    0x22,
+    HID_REPORT_DESC_LEN & 0xFF, (HID_REPORT_DESC_LEN >> 8) & 0xFF,
+    0x07, 0x05, HID_EP_IN, 0x03,
+    (uint8_t)(HID_EP_SIZE & 0xFF), (uint8_t)((HID_EP_SIZE >> 8) & 0xFF),
+    HID_HS_BINTERVAL,
+};
+
+static uint8_t hid_cdc_cfg_desc[HID_CDC_CFG_DESC_SIZE];
+static uint8_t hid_cdc_cdc_desc[58];
+
+static void build_hid_cdc_desc(void)
+{
+    uint8_t *p = hid_cdc_cfg_desc;
+    p[0] = 0x09; p[1] = 0x02;
+    p[2] = HID_CDC_CFG_DESC_SIZE & 0xFF;
+    p[3] = (HID_CDC_CFG_DESC_SIZE >> 8) & 0xFF;
+    p[4] = HID_CDC_NUM_IFACES;
+    p[5] = 0x01; p[6] = 0x00; p[7] = 0xC0; p[8] = 0x32;
+    p += 9;
+
+    memcpy(p, hid0_iface_desc, sizeof(hid0_iface_desc));
+    p += sizeof(hid0_iface_desc);
+
+    patch_cdc_iface_desc(hid_cdc_cdc_desc, 1);
+    memcpy(p, hid_cdc_cdc_desc, sizeof(hid_cdc_cdc_desc));
+}
+
+static uint8_t hid_cdc_init(void *pdev, uint8_t cfgidx)
+{
+    if (USBD_HID_cb.Init)  USBD_HID_cb.Init(pdev, cfgidx);
+    cdc_class_init(pdev, cfgidx);
+    return 0;
+}
+
+static uint8_t hid_cdc_deinit(void *pdev, uint8_t cfgidx)
+{
+    if (USBD_HID_cb.DeInit)  USBD_HID_cb.DeInit(pdev, cfgidx);
+    cdc_class_deinit(pdev, cfgidx);
+    return 0;
+}
+
+static uint8_t hid_cdc_setup(void *pdev, USB_SETUP_REQ *req)
+{
+    if ((req->bmRequest & USB_REQ_RECIPIENT_MASK) == USB_REQ_RECIPIENT_INTERFACE) {
+        uint8_t iface = (uint8_t)(req->wIndex & 0xFF);
+        if (iface == 0) {
+            if (USBD_HID_cb.Setup) return USBD_HID_cb.Setup(pdev, req);
+        } else if (iface == 1 || iface == 2) {
+            return cdc_class_setup(pdev, req);
+        }
+    } else {
+        if (USBD_HID_cb.Setup) return USBD_HID_cb.Setup(pdev, req);
+    }
+    return USBD_FAIL;
+}
+
+static uint8_t *hid_cdc_get_cfg_desc(uint8_t speed, uint16_t *length)
+{
+    (void)speed;
+    *length = HID_CDC_CFG_DESC_SIZE;
+    return hid_cdc_cfg_desc;
+}
+
+static uint8_t *hid_cdc_get_other_cfg_desc(uint8_t speed, uint16_t *length)
+{
+    (void)speed;
+    *length = HID_CDC_CFG_DESC_SIZE;
+    return hid_cdc_cfg_desc;
+}
+
+static USBD_Class_cb_TypeDef hid_cdc_cb;
+
+static void setup_hid_cdc_cb(void)
+{
+    memset(&hid_cdc_cb, 0, sizeof(hid_cdc_cb));
+    hid_cdc_cb.Init       = hid_cdc_init;
+    hid_cdc_cb.DeInit     = hid_cdc_deinit;
+    hid_cdc_cb.Setup      = hid_cdc_setup;
+    hid_cdc_cb.EP0_TxSent = NULL;
+    hid_cdc_cb.EP0_RxReady = NULL;
+    hid_cdc_cb.DataIn     = composite_cdc_data_in;  /* 复用 HID EP2 + CDC 路由 */
+    hid_cdc_cb.DataOut    = composite_cdc_data_out;  /* 复用 CDC EP4 OUT 路由 */
+    hid_cdc_cb.SOF        = composite_cdc_sof;
+    hid_cdc_cb.IsoINIncomplete  = NULL;
+    hid_cdc_cb.IsoOUTIncomplete = NULL;
+    hid_cdc_cb.GetConfigDescriptor     = hid_cdc_get_cfg_desc;
+    hid_cdc_cb.GetOtherConfigDescriptor = hid_cdc_get_other_cfg_desc;
+}
+
+void usbd_hid_cdc_reinit()
+{
+    g_cdc_ready = false;
+    g_cdc_dtr = false;
+    g_cdc_rx_head = 0;
+    g_cdc_rx_tail = 0;
+    g_cdc_tx_head = 0;
+    g_cdc_tx_tail = 0;
+
+    cdc_composite_bsp_init();
+
+    setup_hid_cdc_cb();
+    build_hid_cdc_desc();
+
+    USB_OTG_dev.dev.class_cb   = &hid_cdc_cb;
+    USB_OTG_dev.dev.usr_cb     = &USR_cb;
+    USB_OTG_dev.dev.usr_device = &USR_desc;
+
+    /* FIFO: RX=256, TX0(EP0)=64, TX1(EP1)=0, TX2(HID EP2)=96, TX3(CDC notif EP3)=16, TX4(CDC data EP4)=128 */
+    USB_OTG_WRITE_REG32(&USB_OTG_dev.regs.GREGS->GRXFSIZ, 256);
+
+    USB_OTG_FSIZ_TypeDef fifo;
+    fifo.d32 = 0;
+    fifo.b.depth     = 64;
+    fifo.b.startaddr = 256;
+    USB_OTG_WRITE_REG32(&USB_OTG_dev.regs.GREGS->DIEPTXF0_HNPTXFSIZ, fifo.d32);
+
+    fifo.b.startaddr += fifo.b.depth;
+    fifo.b.depth      = 0;
+    USB_OTG_WRITE_REG32(&USB_OTG_dev.regs.GREGS->DIEPTXF[0], fifo.d32);
+
+    fifo.b.startaddr += fifo.b.depth;
+    fifo.b.depth      = 96;
+    USB_OTG_WRITE_REG32(&USB_OTG_dev.regs.GREGS->DIEPTXF[1], fifo.d32);
+
+    fifo.b.startaddr += fifo.b.depth;
+    fifo.b.depth      = 16;
+    USB_OTG_WRITE_REG32(&USB_OTG_dev.regs.GREGS->DIEPTXF[2], fifo.d32);
+
+    fifo.b.startaddr += fifo.b.depth;
+    fifo.b.depth      = 128;
+    USB_OTG_WRITE_REG32(&USB_OTG_dev.regs.GREGS->DIEPTXF[3], fifo.d32);
+
+    for (int ep = 4; ep < 5; ep++) {
+        fifo.b.startaddr += fifo.b.depth;
+        fifo.b.depth = 0;
+        USB_OTG_WRITE_REG32(&USB_OTG_dev.regs.GREGS->DIEPTXF[ep], fifo.d32);
+    }
+
+    usb_debug_set_step(USB_STEP_SPEED, USB_STATUS_OK);
+    usb_debug_refresh();
+    delay(50);
+
+    cdc_composite_connect();
+}
+
+/* ==================== MSC+CDC 双接口复合 ==================== */
+
+#define MSC_CDC_CFG_DESC_SIZE   90   /* 9 + 23(MSC iface 0) + 58(CDC iface 1+2) */
+#define MSC_CDC_NUM_IFACES      3
+
+static uint8_t msc_cdc_cfg_desc[MSC_CDC_CFG_DESC_SIZE];
+static uint8_t msc_cdc_cdc_desc[58];
+
+static void build_msc_cdc_desc(void)
+{
+    uint8_t *p = msc_cdc_cfg_desc;
+    p[0] = 0x09; p[1] = 0x02;
+    p[2] = MSC_CDC_CFG_DESC_SIZE & 0xFF;
+    p[3] = (MSC_CDC_CFG_DESC_SIZE >> 8) & 0xFF;
+    p[4] = MSC_CDC_NUM_IFACES;
+    p[5] = 0x01; p[6] = 0x00; p[7] = 0xC0; p[8] = 0x32;
+    p += 9;
+
+    memcpy(p, msc_iface_desc, sizeof(msc_iface_desc));
+    p += sizeof(msc_iface_desc);
+
+    patch_cdc_iface_desc(msc_cdc_cdc_desc, 1);
+    memcpy(p, msc_cdc_cdc_desc, sizeof(msc_cdc_cdc_desc));
+}
+
+static uint8_t msc_cdc_init(void *pdev, uint8_t cfgidx)
+{
+    if (MSC_cb.Init)  MSC_cb.Init(pdev, cfgidx);
+    cdc_class_init(pdev, cfgidx);
+    return 0;
+}
+
+static uint8_t msc_cdc_deinit(void *pdev, uint8_t cfgidx)
+{
+    if (MSC_cb.DeInit)  MSC_cb.DeInit(pdev, cfgidx);
+    cdc_class_deinit(pdev, cfgidx);
+    return 0;
+}
+
+static uint8_t msc_cdc_setup(void *pdev, USB_SETUP_REQ *req)
+{
+    if ((req->bmRequest & USB_REQ_RECIPIENT_MASK) == USB_REQ_RECIPIENT_INTERFACE) {
+        uint8_t iface = (uint8_t)(req->wIndex & 0xFF);
+        if (iface == 0) {
+            if (MSC_cb.Setup) return MSC_cb.Setup(pdev, req);
+        } else if (iface == 1 || iface == 2) {
+            return cdc_class_setup(pdev, req);
+        }
+    } else {
+        if (MSC_cb.Setup) return MSC_cb.Setup(pdev, req);
+    }
+    return USBD_FAIL;
+}
+
+static uint8_t *msc_cdc_get_cfg_desc(uint8_t speed, uint16_t *length)
+{
+    (void)speed;
+    *length = MSC_CDC_CFG_DESC_SIZE;
+    return msc_cdc_cfg_desc;
+}
+
+static uint8_t *msc_cdc_get_other_cfg_desc(uint8_t speed, uint16_t *length)
+{
+    (void)speed;
+    *length = MSC_CDC_CFG_DESC_SIZE;
+    return msc_cdc_cfg_desc;
+}
+
+static USBD_Class_cb_TypeDef msc_cdc_cb;
+
+static void setup_msc_cdc_cb(void)
+{
+    memset(&msc_cdc_cb, 0, sizeof(msc_cdc_cb));
+    msc_cdc_cb.Init       = msc_cdc_init;
+    msc_cdc_cb.DeInit     = msc_cdc_deinit;
+    msc_cdc_cb.Setup      = msc_cdc_setup;
+    msc_cdc_cb.EP0_TxSent = NULL;
+    msc_cdc_cb.EP0_RxReady = NULL;
+    msc_cdc_cb.DataIn     = composite_cdc_data_in;   /* 复用 MSC EP1 IN 路由 */
+    msc_cdc_cb.DataOut    = composite_cdc_data_out;  /* 复用 MSC EP1 OUT + CDC EP4 OUT 路由 */
+    msc_cdc_cb.SOF        = composite_cdc_sof;
+    msc_cdc_cb.IsoINIncomplete  = NULL;
+    msc_cdc_cb.IsoOUTIncomplete = NULL;
+    msc_cdc_cb.GetConfigDescriptor     = msc_cdc_get_cfg_desc;
+    msc_cdc_cb.GetOtherConfigDescriptor = msc_cdc_get_other_cfg_desc;
+}
+
+void usbd_msc_cdc_reinit()
+{
+    g_cdc_ready = false;
+    g_cdc_dtr = false;
+    g_cdc_rx_head = 0;
+    g_cdc_rx_tail = 0;
+    g_cdc_tx_head = 0;
+    g_cdc_tx_tail = 0;
+
+    cdc_composite_bsp_init();
+
+    setup_msc_cdc_cb();
+    build_msc_cdc_desc();
+
+    USB_OTG_dev.dev.class_cb   = &msc_cdc_cb;
+    USB_OTG_dev.dev.usr_cb     = &USR_cb;
+    USB_OTG_dev.dev.usr_device = &USR_desc;
+
+    /* FIFO: RX=384, TX0(EP0)=64, TX1(MSC EP1)=128, TX2(EP2)=0, TX3(CDC notif EP3)=16, TX4(CDC data EP4)=128 */
+    USB_OTG_WRITE_REG32(&USB_OTG_dev.regs.GREGS->GRXFSIZ, 384);
+
+    USB_OTG_FSIZ_TypeDef fifo;
+    fifo.d32 = 0;
+    fifo.b.depth     = 64;
+    fifo.b.startaddr = 384;
+    USB_OTG_WRITE_REG32(&USB_OTG_dev.regs.GREGS->DIEPTXF0_HNPTXFSIZ, fifo.d32);
+
+    fifo.b.startaddr += fifo.b.depth;
+    fifo.b.depth      = 128;
+    USB_OTG_WRITE_REG32(&USB_OTG_dev.regs.GREGS->DIEPTXF[0], fifo.d32);
+
+    fifo.b.startaddr += fifo.b.depth;
+    fifo.b.depth      = 0;
+    USB_OTG_WRITE_REG32(&USB_OTG_dev.regs.GREGS->DIEPTXF[1], fifo.d32);
+
+    fifo.b.startaddr += fifo.b.depth;
+    fifo.b.depth      = 16;
+    USB_OTG_WRITE_REG32(&USB_OTG_dev.regs.GREGS->DIEPTXF[2], fifo.d32);
+
+    fifo.b.startaddr += fifo.b.depth;
+    fifo.b.depth      = 128;
+    USB_OTG_WRITE_REG32(&USB_OTG_dev.regs.GREGS->DIEPTXF[3], fifo.d32);
+
+    for (int ep = 4; ep < 5; ep++) {
+        fifo.b.startaddr += fifo.b.depth;
+        fifo.b.depth = 0;
+        USB_OTG_WRITE_REG32(&USB_OTG_dev.regs.GREGS->DIEPTXF[ep], fifo.d32);
+    }
+
+    usb_debug_set_step(USB_STEP_SPEED, USB_STATUS_OK);
+    usb_debug_refresh();
+    delay(50);
+
+    cdc_composite_connect();
+}
+
 #else
 
 void usbd_composite_reinit()
+{
+    usbd_msc_reinit();
+}
+
+void usbd_composite_cdc_reinit()
+{
+    usbd_msc_reinit();
+}
+
+void usbd_hid_cdc_reinit()
+{
+    usbd_msc_reinit();
+}
+
+void usbd_msc_cdc_reinit()
 {
     usbd_msc_reinit();
 }

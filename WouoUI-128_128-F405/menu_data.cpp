@@ -178,12 +178,13 @@ Menu setting_menu[] = {
 
 /************************************* USB菜单数据 *************************************/
 
-//USB菜单（5项）：USB存储配置
+//USB菜单（6项）：USB存储配置
 Menu usb_menu[] = {
     {"[ USB ]"},
     {"+ USB Storage"},
     {"+ Write Protect"},
     {"+ HID Enable"},
+    {"+ CDC Enable"},
     {"- HID Key Setting"}
 };
 
@@ -193,7 +194,8 @@ Menu usb_menu[] = {
 Menu hid_key_menu[] = {
     {"[ HID Key ]"},
     {"# Rotate Func"},
-    {"$ Press Func"}
+    {"$ Press Func"},
+    {"+ Upper Case"}
 };
 
 /************************************* 关于本机菜单数据 *************************************/

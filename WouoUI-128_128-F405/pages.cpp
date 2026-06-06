@@ -182,9 +182,42 @@ void list_draw_krf(int n) {
  * 0=OFF 1~90=ASCII字符 其他值=?
  */
 void list_draw_kpf(int n) {
-    if (check_box.v[n - 1] == 0) u8g2.print("OFF");
-    else if (check_box.v[n - 1] <= 90) u8g2.print((char)check_box.v[n - 1]);
-    else u8g2.print("?");
+    uint8_t v = check_box.v[n - 1];
+    if (v == 0) { u8g2.print("OFF"); return; }
+    if (v >= 'A' && v <= 'Z') { u8g2.print((char)(knob.param[KNOB_CASE] ? v : v + 32)); return; }
+    if (v >= '0' && v <= '9') { u8g2.print((char)v); return; }
+    if (v >= 0xE0 && v <= 0xED) {
+        static const char *ext_names[] = {
+            "LCtrl","LShft","LAlt","LWin","RCtrl","RShft","RAlt","RWin",
+            "Caps","F8","F9","F10","F11","F12"
+        };
+        u8g2.print(ext_names[v - 0xE0]);
+        return;
+    }
+    switch (v) {
+    case 40:  u8g2.print("Enter");   break;
+    case 41:  u8g2.print("Esc");     break;
+    case 42:  u8g2.print("BkSpc");   break;
+    case 43:  u8g2.print("Tab");     break;
+    case 58:  u8g2.print("F1");      break;
+    case 59:  u8g2.print("F2");      break;
+    case 60:  u8g2.print("F3");      break;
+    case 61:  u8g2.print("F4");      break;
+    case 62:  u8g2.print("F5");      break;
+    case 63:  u8g2.print("F6");      break;
+    case 64:  u8g2.print("F7");      break;
+    case 73:  u8g2.print("Ins");     break;
+    case 74:  u8g2.print("Home");    break;
+    case 75:  u8g2.print("PgUp");    break;
+    case 76:  u8g2.print("Del");     break;
+    case 77:  u8g2.print("End");     break;
+    case 78:  u8g2.print("PgDn");    break;
+    case 79:  u8g2.print("Right");   break;
+    case 80:  u8g2.print("Left");    break;
+    case 81:  u8g2.print("Down");    break;
+    case 82:  u8g2.print("Up");      break;
+    default:  u8g2.print("?");       break;
+    }
 }
 
 /************************************* 行尾控件分发绘制 *************************************/
@@ -236,7 +269,8 @@ static const uint8_t setting_param_map[] = {
 static const uint8_t usb_param_map[] = {
     22,  // 1: USB Storage   → USB_ENABLE
     23,  // 2: Write Protect → USB_WP
-    24   // 3: HID Enable    → HID_ENABLE_SW
+    24,  // 3: HID Enable    → HID_ENABLE_SW
+    30   // 4: CDC Enable    → CDC_ENABLE_SW
 };
 
 // KRF/KPF子页面返回目标（默认M_KNOB，HID Key入口设为M_HID_KEY）
@@ -718,9 +752,10 @@ void volt_show()
   // dir=1 选择框：w=16同标准List，x偏移使文字居中
   int16_t box_y = VOLT_LIST_U_S - LIST_TEXT_S - 3;
   int16_t box_h = (int16_t)list.box_x - 12;
-  if (box_h > DISP_H - box_y) box_h = DISP_H - box_y;
-  int16_t box_x = (int16_t)list.box_y - 1;
+  if (box_h < DISP_H - box_y) box_h = DISP_H - box_y;
+  int16_t box_x = (int16_t)list.box_y;
   if (box_x < 0) box_x = 0;
+  if (box_x + 16 > DISP_W) box_x = DISP_W - 16;
   u8g2.setDrawColor(2);
   u8g2.drawRBox(box_x, box_y,
                 16,
@@ -880,7 +915,7 @@ void sleep_proc() {
         TIM12_CR1 &= ~(1u << 0);
 #endif
 
-        if (USBManager::isEnabled() && !ui.param[HID_ENABLE_SW]) {
+        if (USBManager::isEnabled() && !ui.param[HID_ENABLE_SW] && !ui.param[CDC_ENABLE_SW]) {
             USBManager::end();
         }
 
@@ -933,7 +968,7 @@ void sleep_proc() {
 
                 case BTN_ID_LP:
                     buzzer_exit_sound();
-                    if (ui.param[USB_ENABLE] || ui.param[HID_ENABLE_SW]) {
+                    if (ui.param[USB_ENABLE] || ui.param[HID_ENABLE_SW] || ui.param[CDC_ENABLE_SW]) {
                         USBManager::begin();
                     }
                     u8g2.setPowerSave(0);
@@ -1102,12 +1137,14 @@ void usb_param_init() {
 }
 
 static uint8_t s_hid_display[2];  // 供list_draw_krf/kpf读取的显示数组
+static uint8_t hid_key_param_map[] = { KNOB_ROT, KNOB_COD, KNOB_CASE };
 
 void hid_key_param_init() {
     s_hid_display[0] = knob.param[KNOB_ROT];
     s_hid_display[1] = knob.param[KNOB_COD];
     check_box_v_init(s_hid_display);
-    check_box_m_init(ui.param);
+    check_box_m_init(knob.param);
+    check_box.map = hid_key_param_map;
 }
 
 /********************************* 页面主循环函数 *********************************/
@@ -1393,7 +1430,8 @@ void usb_proc() {
                     case 1: check_box_m_select(USB_ENABLE); break;
                     case 2: check_box_m_select(USB_WP); break;
                     case 3: check_box_m_select(HID_ENABLE_SW); break;
-                    case 4: ui.index = M_HID_KEY; ui.state = S_LAYER_IN; break;
+                    case 4: check_box_m_select(CDC_ENABLE_SW); break;
+                    case 5: ui.index = M_HID_KEY; ui.state = S_LAYER_IN; break;
                 }
                 break;
         }
@@ -1427,6 +1465,7 @@ void hid_key_proc() {
                     case 0: ui.index = M_USB; ui.state = S_LAYER_OUT; break;
                     case 1: s_krf_return_page = M_HID_KEY; ui.index = M_KRF; ui.state = S_LAYER_IN; check_box_s_init(&knob.param[KNOB_ROT], &knob.param[KNOB_ROT_P]); break;
                     case 2: s_krf_return_page = M_HID_KEY; ui.index = M_KPF; ui.state = S_LAYER_IN; check_box_s_init(&knob.param[KNOB_COD], &knob.param[KNOB_COD_P]); break;
+                    case 3: check_box_m_select(KNOB_CASE); break;
                 }
                 break;
         }

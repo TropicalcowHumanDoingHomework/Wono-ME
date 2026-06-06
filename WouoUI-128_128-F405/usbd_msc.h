@@ -108,4 +108,24 @@ void usbd_msc_disconnect();
  */
 void usbd_composite_reinit();
 
+/*
+ * CDC-only 模式重初始化
+ */
+void usbd_cdc_reinit();
+
+/*
+ * 复合设备 MSC + HID + CDC（三接口）
+ */
+void usbd_composite_cdc_reinit();
+
+/*
+ * 复合设备 HID + CDC（双接口）
+ */
+void usbd_hid_cdc_reinit();
+
+/*
+ * 复合设备 MSC + CDC（双接口）
+ */
+void usbd_msc_cdc_reinit();
+
 #endif

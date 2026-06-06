@@ -91,17 +91,32 @@ void usb_debug_read_regs(usb_regs_t *regs)
     regs->daintmsk = REG(0x818);
 }
 
-/* ==================== 绘制状态标记 ==================== */
+/* ==================== 居中绘制辅助 ==================== */
 
-static void draw_status(int status, int x, int y)
+static void draw_centered_str(int y, const char *s)
 {
     extern U8G2_LS013B7DH03_128X128_F_4W_SW_SPI u8g2;
-    switch (status) {
-    case USB_STATUS_WAITING: u8g2.drawStr(x, y, "[  ]"); break;
-    case USB_STATUS_BUSY:    u8g2.drawStr(x, y, "[**]"); break;
-    case USB_STATUS_OK:      u8g2.drawStr(x, y, "[OK]"); break;
-    case USB_STATUS_FAIL:    u8g2.drawStr(x, y, "[XX]"); break;
+    int16_t w = u8g2.getStrWidth(s);
+    int16_t x = (128 - w) / 2;
+    if (x < 0) x = 0;
+    u8g2.drawStr(x, y, s);
+}
+
+/* ==================== 绘制一行步骤：状态标记 + 步骤名（左对齐） ==================== */
+
+static void draw_step_row(int i, int y)
+{
+    extern U8G2_LS013B7DH03_128X128_F_4W_SW_SPI u8g2;
+    const char *tag;
+    switch (step_status[i]) {
+        case USB_STATUS_WAITING: tag = "[  ]"; break;
+        case USB_STATUS_BUSY:    tag = "[**]"; break;
+        case USB_STATUS_OK:      tag = "[OK]"; break;
+        case USB_STATUS_FAIL:    tag = "[XX]"; break;
+        default:                 tag = "[??]"; break;
     }
+    u8g2.drawStr(2, y, tag);
+    u8g2.drawStr(30, y, step_names[i]);
 }
 
 /* ==================== 初始化步骤页 ==================== */
@@ -114,24 +129,144 @@ void usb_debug_refresh(void)
 
     u8g2.firstPage();
     do {
-        /* 标题 */
+        /* 标题居中 */
         u8g2.setFont(u8g2_font_helvB08_tr);
-        u8g2.drawStr(2, 12, debug_title);
+        draw_centered_str(12, debug_title);
 
-        /* 步骤列表 */
+        /* 步骤列表左对齐 */
         u8g2.setFont(u8g2_font_helvR08_tr);
         for (int i = 0; i < USB_STEP_TOTAL; i++) {
-            int y = 26 + i * 13;
-            draw_status(step_status[i], 2, y);
-            u8g2.drawStr(30, y, step_names[i]);
+            draw_step_row(i, 26 + i * 13);
         }
 
-        /* 底步状态消息 */
+        /* 底部状态消息左对齐 */
         if (status_msg[0] != '\0') {
             u8g2.setFont(u8g2_font_helvR08_tr);
             u8g2.drawStr(2, 124, status_msg);
         }
     } while (u8g2.nextPage());
+}
+
+/* ==================== 最终页绘制（共享：final + animate 共用） ==================== */
+
+static void draw_final_page(bool success, const char *msg,
+                            const usb_regs_t *regs, bool show_title)
+{
+    extern U8G2_LS013B7DH03_128X128_F_4W_SW_SPI u8g2;
+
+    if (success) {
+        /* ====== 成功页 ====== */
+        if (show_title) {
+            u8g2.setFont(u8g2_font_helvB10_tr);
+            draw_centered_str(14, "USB OK!");
+        }
+
+        u8g2.setFont(u8g2_font_helvR08_tr);
+        for (int i = 0; i < USB_STEP_TOTAL; i++) {
+            draw_step_row(i, 26 + i * 13);   /* 行距与初始化页一致 */
+        }
+        if (msg) {
+            u8g2.drawStr(2, 124, msg);
+        }
+    } else {
+        /* ====== 失败页：寄存器直显 ====== */
+        if (show_title) {
+            u8g2.setFont(u8g2_font_helvB10_tr);
+            draw_centered_str(14, "USB FAIL");
+        }
+
+        if (msg) {
+            u8g2.setFont(u8g2_font_helvR08_tr);
+            u8g2.drawStr(2, 24, msg);
+        }
+
+        if (regs) {
+            u8g2.setFont(u8g2_font_helvR08_tr);
+            char buf[24];
+            int y = 36;
+
+            snprintf(buf, sizeof(buf), "AHB:%08lX D%lu H%lu G%lu",
+                (unsigned long)regs->gahbcfg,
+                (unsigned long)((regs->gahbcfg >> 5) & 1),
+                (unsigned long)((regs->gahbcfg >> 1) & 7),
+                (unsigned long)(regs->gahbcfg & 1));
+            u8g2.drawStr(2, y, buf);
+
+            y += 11;
+            snprintf(buf, sizeof(buf), "USB:%08lX MD=%lu ULPI=%lu",
+                (unsigned long)regs->gusbcfg,
+                (unsigned long)((regs->gusbcfg >> 29) & 1),
+                (unsigned long)((regs->gusbcfg >> 6) & 1) ^ 1);
+            u8g2.drawStr(2, y, buf);
+
+            y += 11;
+            snprintf(buf, sizeof(buf), "CFG:%08lX P%lu N%lu V%lu",
+                (unsigned long)regs->gccfg,
+                (unsigned long)((regs->gccfg >> 16) & 1),
+                (unsigned long)((regs->gccfg >> 21) & 1),
+                (unsigned long)((regs->gccfg >> 19) & 1));
+            u8g2.drawStr(2, y, buf);
+
+            y += 11;
+            snprintf(buf, sizeof(buf), "GIN:%08lX E%lu R%lu O%lu I%lu",
+                (unsigned long)regs->gintsts,
+                (unsigned long)((regs->gintsts >> 6) & 1),
+                (unsigned long)((regs->gintsts >> 7) & 1),
+                (unsigned long)((regs->gintsts >> 19) & 1),
+                (unsigned long)((regs->gintsts >> 18) & 1));
+            u8g2.drawStr(2, y, buf);
+
+            y += 11;
+            snprintf(buf, sizeof(buf), "MSK:%08lX R%lu O%lu I%lu",
+                (unsigned long)regs->gintmsk,
+                (unsigned long)((regs->gintmsk >> 4) & 1),
+                (unsigned long)((regs->gintmsk >> 19) & 1),
+                (unsigned long)((regs->gintmsk >> 18) & 1));
+            u8g2.drawStr(2, y, buf);
+
+            y += 11;
+            snprintf(buf, sizeof(buf), "DCT:%08lX SD=%lu",
+                (unsigned long)regs->dctl,
+                (unsigned long)((regs->dctl >> 1) & 1));
+            u8g2.drawStr(2, y, buf);
+
+            y += 11;
+            {
+                uint32_t enumspd = regs->dsts & 3;
+                const char *spd;
+                switch (enumspd) {
+                    case 0: spd = "LS"; break;
+                    case 1: spd = "FS"; break;
+                    case 2: spd = "HS"; break;
+                    default: spd = "?"; break;
+                }
+                snprintf(buf, sizeof(buf), "DST:%08lX %s SLP=%lu",
+                    (unsigned long)regs->dsts, spd,
+                    (unsigned long)((regs->dsts >> 2) & 1));
+            }
+            u8g2.drawStr(2, y, buf);
+
+            y += 11;
+            snprintf(buf, sizeof(buf), "OTG:%08lX BV%lu AV%lu D%lu",
+                (unsigned long)regs->gotgctl,
+                (unsigned long)((regs->gotgctl >> 19) & 1),
+                (unsigned long)((regs->gotgctl >> 18) & 1),
+                (unsigned long)((regs->gotgctl >> 16) & 1));
+            u8g2.drawStr(2, y, buf);
+
+            y += 11;
+            snprintf(buf, sizeof(buf), "DOEP:%04lX DAIM:%04lX",
+                (unsigned long)(regs->doepmsk & 0xFFFF),
+                (unsigned long)(regs->daintmsk & 0xFFFF));
+            u8g2.drawStr(2, y, buf);
+
+            y += 11;
+            snprintf(buf, sizeof(buf), "RXF:%lu TX0:%lu",
+                (unsigned long)regs->grxfsiz,
+                (unsigned long)((regs->dieptxf0 >> 16) & 0xFFFF));
+            u8g2.drawStr(2, y, buf);
+        }
+    }
 }
 
 /* ==================== 寄存器诊断页（失败/超时时显示） ==================== */
@@ -145,134 +280,10 @@ void usb_debug_final(bool success, const char *msg,
 
     u8g2.firstPage();
     do {
-        if (success) {
-            /* ====== 成功页 ====== */
-            u8g2.setFont(u8g2_font_helvB10_tr);
-            u8g2.drawStr(10, 12, "USB OK!");
-
-            u8g2.setFont(u8g2_font_helvR08_tr);
-            for (int i = 0; i < USB_STEP_TOTAL; i++) {
-                int y = 26 + i * 10;
-                draw_status(step_status[i], 2, y);
-                u8g2.drawStr(30, y, step_names[i]);
-            }
-            if (msg) {
-                u8g2.drawStr(2, 124, msg);
-            }
-        } else {
-            /* ====== 失败页：寄存器直显 ====== */
-
-            /* 标题行 */
-            u8g2.setFont(u8g2_font_helvB10_tr);
-            u8g2.drawStr(2, 12, "USB FAIL");
-
-            /* 消息行 */
-            if (msg) {
-                u8g2.setFont(u8g2_font_helvR08_tr);
-                u8g2.drawStr(2, 24, msg);
-            }
-
-            u8g2.setFont(u8g2_font_helvR08_tr);
-
-            if (regs) {
-                char buf[24];
-                int y;
-
-                /* 每个寄存器占一行：标签 HEX 关键位 */
-                /* 第 1 行：GAHBCFG — DMAEN, HBSTLEN, GINT */
-                y = 36;
-                snprintf(buf, sizeof(buf), "AHB:%08lX D%lu H%lu G%lu",
-                    (unsigned long)regs->gahbcfg,
-                    (unsigned long)((regs->gahbcfg >> 5) & 1),
-                    (unsigned long)((regs->gahbcfg >> 1) & 7),
-                    (unsigned long)(regs->gahbcfg & 1));
-                u8g2.drawStr(2, y, buf);
-
-                /* 第 2 行：GUSBCFG — FDMOD(bit29), PHYSEL(bit6) */
-                y += 11;
-                snprintf(buf, sizeof(buf), "USB:%08lX MD=%lu ULPI=%lu",
-                    (unsigned long)regs->gusbcfg,
-                    (unsigned long)((regs->gusbcfg >> 29) & 1),
-                    (unsigned long)((regs->gusbcfg >> 6) & 1) ^ 1);
-                u8g2.drawStr(2, y, buf);
-
-                /* 第 3 行：GCCFG — PWRDWN(bit16), NOVBUSSENS(bit21), VBUSBSEN(bit19) */
-                y += 11;
-                snprintf(buf, sizeof(buf), "CFG:%08lX P%lu N%lu V%lu",
-                    (unsigned long)regs->gccfg,
-                    (unsigned long)((regs->gccfg >> 16) & 1),
-                    (unsigned long)((regs->gccfg >> 21) & 1),
-                    (unsigned long)((regs->gccfg >> 19) & 1));
-                u8g2.drawStr(2, y, buf);
-
-                /* 第 4 行：GINTSTS — ENUMDNE(bit6), USBRST(bit7), OEPINT(bit19), IEPINT(bit18) */
-                y += 11;
-                snprintf(buf, sizeof(buf), "GIN:%08lX E%lu R%lu O%lu I%lu",
-                    (unsigned long)regs->gintsts,
-                    (unsigned long)((regs->gintsts >> 6) & 1),
-                    (unsigned long)((regs->gintsts >> 7) & 1),
-                    (unsigned long)((regs->gintsts >> 19) & 1),
-                    (unsigned long)((regs->gintsts >> 18) & 1));
-                u8g2.drawStr(2, y, buf);
-
-                /* 第 5 行：GINTMSK — RXFLVLM(bit4), OEPINT(bit19), IEPINT(bit18) */
-                y += 11;
-                snprintf(buf, sizeof(buf), "MSK:%08lX R%lu O%lu I%lu",
-                    (unsigned long)regs->gintmsk,
-                    (unsigned long)((regs->gintmsk >> 4) & 1),
-                    (unsigned long)((regs->gintmsk >> 19) & 1),
-                    (unsigned long)((regs->gintmsk >> 18) & 1));
-                u8g2.drawStr(2, y, buf);
-
-                /* 第 6 行：DCTL — SDIS(bit1) */
-                y += 11;
-                snprintf(buf, sizeof(buf), "DCT:%08lX SD=%lu",
-                    (unsigned long)regs->dctl,
-                    (unsigned long)((regs->dctl >> 1) & 1));
-                u8g2.drawStr(2, y, buf);
-
-                /* 第 7 行：DSTS — ENUMSPD(bit1:0), SUSPSTS(bit2) */
-                y += 11;
-                {
-                    uint32_t enumspd = regs->dsts & 3;
-                    const char *spd;
-                    switch (enumspd) {
-                        case 0: spd = "LS"; break;
-                        case 1: spd = "FS"; break;
-                        case 2: spd = "HS"; break;
-                        default: spd = "?%d"; break;
-                    }
-                    snprintf(buf, sizeof(buf), "DST:%08lX %s SLP=%lu",
-                        (unsigned long)regs->dsts, spd,
-                        (unsigned long)((regs->dsts >> 2) & 1));
-                }
-                u8g2.drawStr(2, y, buf);
-
-                /* 第 8 行：GOTGCTL — BVAL(bit19), AVAL(bit18), D(bit16) */
-                y += 11;
-                snprintf(buf, sizeof(buf), "OTG:%08lX BV%lu AV%lu D%lu",
-                    (unsigned long)regs->gotgctl,
-                    (unsigned long)((regs->gotgctl >> 19) & 1),
-                    (unsigned long)((regs->gotgctl >> 18) & 1),
-                    (unsigned long)((regs->gotgctl >> 16) & 1));
-                u8g2.drawStr(2, y, buf);
-
-                /* 第 9 行：DOEPMSK(bit3=STUP) + DAINTMSK */
-                y += 11;
-                snprintf(buf, sizeof(buf), "DOEP:%04lX DAIM:%04lX",
-                    (unsigned long)(regs->doepmsk & 0xFFFF),
-                    (unsigned long)(regs->daintmsk & 0xFFFF));
-                u8g2.drawStr(2, y, buf);
-
-                /* 第 10 行：RX + TX FIFO 大小 */
-                y += 11;
-                snprintf(buf, sizeof(buf), "RXF:%lu TX0:%lu",
-                    (unsigned long)regs->grxfsiz,
-                    (unsigned long)((regs->dieptxf0 >> 16) & 0xFFFF));
-                u8g2.drawStr(2, y, buf);
-            }
-        }
+        draw_final_page(success, msg, regs, true);
     } while (u8g2.nextPage());
 
     final_shown = true;
 }
+
+

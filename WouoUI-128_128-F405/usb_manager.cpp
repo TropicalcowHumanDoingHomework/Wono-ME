@@ -18,6 +18,7 @@
 #include "usb_debug.h"
 #include "ui_state.h"
 #include "usbd_hid.h"
+#include "usbd_cdc.h"
 
 extern USB_OTG_CORE_HANDLE USB_OTG_dev;
 
@@ -155,6 +156,8 @@ void USBManager::begin()
     w25q_failed = false;
 
     bool need_msc = ui.param[USB_ENABLE];
+    bool need_hid = ui.param[HID_ENABLE_SW];
+    bool need_cdc = ui.param[CDC_ENABLE_SW];
 
     if (need_msc) {
         if (!usb_reg) {
@@ -169,15 +172,40 @@ void USBManager::begin()
         USBD_STORAGE_fops = &usb_storage_fops;
     }
 
-    if (ui.param[HID_ENABLE_SW] && !ui.param[USB_ENABLE]) {
+    /* 根据开关组合选择 USB 模式 */
+    if (need_cdc && !need_msc && !need_hid) {
+        /* CDC-only */
+        usb_debug_set_title("USB CDC Init");
+        usbd_cdc_reinit();
+    } else if (need_cdc && need_msc && need_hid) {
+        /* MSC + HID + CDC 三接口复合 */
+        usb_debug_set_title("USB MSC+HID+CDC");
+        usbd_composite_cdc_reinit();
+    } else if (need_hid && !need_msc && !need_cdc) {
+        /* HID-only */
         usb_debug_set_title("USB HID Init");
         usbd_hid_reinit();
-    } else if (ui.param[USB_ENABLE] && ui.param[HID_ENABLE_SW]) {
+    } else if (need_msc && need_hid && !need_cdc) {
+        /* MSC + HID 复合 */
         usb_debug_set_title("USB Composite Init");
         usbd_composite_reinit();
-    } else {
+    } else if (need_msc && !need_hid && !need_cdc) {
+        /* MSC-only */
         usb_debug_set_title("USB MSC Init");
         usbd_msc_reinit();
+    } else if (need_cdc && need_hid && !need_msc) {
+        /* HID + CDC */
+        usb_debug_set_title("USB HID+CDC");
+        usbd_hid_cdc_reinit();
+    } else if (need_cdc && need_msc && !need_hid) {
+        /* MSC + CDC */
+        usb_debug_set_title("USB MSC+CDC");
+        usbd_msc_cdc_reinit();
+    } else {
+        /* 没有启用任何 USB 功能 */
+        usb_active = false;
+        usb_pending = false;
+        return;
     }
     usb_active = true;
     usb_poll_deadline = millis() + USB_POLL_TIMEOUT_MS;
@@ -215,12 +243,22 @@ bool USBManager::poll()
         usb_pending = false;
         usb_debug_set_step(USB_STEP_DONE, USB_STATUS_OK);
         const char *ready_msg;
-        if (ui.param[HID_ENABLE_SW] && !ui.param[USB_ENABLE]) {
+        if (ui.param[CDC_ENABLE_SW] && !ui.param[USB_ENABLE] && !ui.param[HID_ENABLE_SW]) {
+            ready_msg = "USB CDC Ready";
+        } else if (ui.param[CDC_ENABLE_SW] && ui.param[USB_ENABLE] && ui.param[HID_ENABLE_SW]) {
+            ready_msg = "USB MSC+HID+CDC Ready";
+        } else if (ui.param[HID_ENABLE_SW] && !ui.param[USB_ENABLE] && !ui.param[CDC_ENABLE_SW]) {
             ready_msg = "USB HID Ready";
-        } else if (ui.param[USB_ENABLE] && ui.param[HID_ENABLE_SW]) {
+        } else if (ui.param[USB_ENABLE] && ui.param[HID_ENABLE_SW] && !ui.param[CDC_ENABLE_SW]) {
             ready_msg = "USB Composite Ready";
-        } else {
+        } else if (ui.param[USB_ENABLE] && !ui.param[HID_ENABLE_SW] && !ui.param[CDC_ENABLE_SW]) {
             ready_msg = "USB MSC Ready";
+        } else if (ui.param[CDC_ENABLE_SW] && ui.param[HID_ENABLE_SW] && !ui.param[USB_ENABLE]) {
+            ready_msg = "USB HID+CDC Ready";
+        } else if (ui.param[CDC_ENABLE_SW] && ui.param[USB_ENABLE] && !ui.param[HID_ENABLE_SW]) {
+            ready_msg = "USB MSC+CDC Ready";
+        } else {
+            ready_msg = "USB Ready";
         }
         usb_debug_final(true, ready_msg, NULL);
         return true;
